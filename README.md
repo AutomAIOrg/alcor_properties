@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Alcor — Sistema de Gestión de Reservas
 
 Aplicación web full-stack para la gestión de reservas de apartamentos. Incluye un calendario visual interactivo, filtros por piso y estado, y un formulario de creación de reservas.
@@ -123,3 +124,7 @@ Las peticiones a `/api/*` se redirigen automáticamente al backend mediante el p
 - **Modal de creación** de nuevas reservas con validación, cálculo automático de noches y selector de piso desde la base de datos
 - **Estados de reserva**: `Confirmed`, `Pending`, `Cancelled`, `ok` (configurables en `booking.model.ts`)
 - Diseño **responsive** con soporte móvil
+=======
+# alcor_properties
+App web para la gestión de alquileres y limpiezas de pisos
+>>>>>>> 744558a6ca6c400d11940ff2d63ebb47145f86b3
