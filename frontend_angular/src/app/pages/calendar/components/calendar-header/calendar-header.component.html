@@ -1,0 +1,19 @@
+<div class="calendar-header">
+  <div class="date-selects">
+    <select (change)="onMonthChange($any($event.target).value)">
+      @for (m of MONTHS; track $index) {
+        <option [value]="$index" [selected]="$index === month()">{{ m }}</option>
+      }
+    </select>
+    <select (change)="onYearChange($any($event.target).value)">
+      @for (y of yearOptions(); track y) {
+        <option [value]="y" [selected]="y === year()">{{ y }}</option>
+      }
+    </select>
+  </div>
+  <div class="nav-buttons">
+    <button (click)="prev.emit()" aria-label="Mes anterior">&#8592;</button>
+    <button class="today-btn" (click)="today.emit()">Hoy</button>
+    <button (click)="next.emit()" aria-label="Mes siguiente">&#8594;</button>
+  </div>
+</div>

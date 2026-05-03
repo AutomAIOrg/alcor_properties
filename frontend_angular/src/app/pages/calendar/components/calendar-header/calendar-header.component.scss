@@ -1,0 +1,65 @@
+.calendar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  .date-selects {
+    display: flex;
+    gap: 0.4rem;
+
+    select {
+      padding: 0.3rem 0.2rem 0.3rem 0.5rem;
+      border: none;
+      border-radius: 6px;
+      font-size: 1.2rem;
+      font-weight: 600;
+      color: #101828;
+      background: transparent;
+      cursor: pointer;
+      outline: none;
+      width: fit-content;
+      appearance: auto;
+
+      &:hover { background: #f2f4f7; }
+      &:focus { background: #f2f4f7; }
+
+      @media (max-width: 768px) {
+        font-size: 0.85rem;
+      }
+    }
+  }
+
+  h2 {
+    font-size: 1.4rem;
+    font-weight: 600;
+    margin: 0;
+    text-transform: capitalize;
+
+    @media (max-width: 768px) {
+      font-size: 1rem;
+    }
+  }
+
+  .nav-buttons {
+    display: flex;
+    gap: 0.5rem;
+
+    button {
+      padding: 0.4rem 0.9rem;
+      border: 1px solid #d0d5dd;
+      border-radius: 6px;
+      background: #fff;
+      cursor: pointer;
+      font-size: 0.9rem;
+      transition: background 0.15s;
+
+      &:hover { background: #f2f4f7; }
+      &.today-btn { font-weight: 500; }
+
+      @media (max-width: 768px) {
+        padding: 0.3rem 0.6rem;
+        font-size: 0.8rem;
+      }
+    }
+  }
+}

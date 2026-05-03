@@ -1,0 +1,308 @@
+// ── Contenedor principal ────────────────────────────────────────────────────
+// Columna vertical con espacio entre secciones.
+// max-width limita el ancho en pantallas grandes; padding se reduce en móvil.
+.calendar {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1.5rem;
+  max-width: 1100px;
+  margin: 0 auto;
+  font-family: inherit;
+  min-width: 0;
+
+  @media (max-width: 768px) {
+    padding: 0.75rem;
+  }
+}
+
+// ── Cuadrícula del calendario ────────────────────────────────────────────────
+// El borde redondeado y el overflow:hidden están en el wrapper para que
+// las celdas internas puedan tener overflow:visible sin romper el recorte.
+.calendar-grid-wrapper {
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid #eaecf0;
+}
+
+
+// ── Barra de filtros ─────────────────────────────────────────────────────────
+// Fila horizontal con flex-wrap para que en móvil los botones bajen de línea.
+// margin-left:auto en .btn-new-booking lo empuja al extremo derecho.
+.calendar-filters {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+// ── Desplegable de filtro ────────────────────────────────────────────────────
+// Cada filtro (piso, estado, …) usa este bloque.
+// position:relative es necesario para que .filter-panel se posicione
+// relativo al botón y no al viewport.
+.filter-dropdown {
+  position: relative;
+
+  // Botón que abre/cierra el panel.
+  // Al estar abierto (.open), el borde cambia a azul para indicar actividad.
+  .filter-trigger {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.3rem 0.7rem;
+    border: 1px solid #d0d5dd;
+    border-radius: 6px;
+    background: #fff;
+    font-size: 0.82rem;
+    cursor: pointer;
+    color: #344054;
+    transition: border-color 0.15s;
+
+    &:hover { border-color: #2563eb; }
+
+    // Flecha decorativa que indica que hay un menú desplegable.
+    .arrow { font-size: 0.7rem; color: #667085; }
+
+    // Contador de opciones seleccionadas. Solo aparece si hay alguna activa.
+    .badge {
+      background: #2563eb;
+      color: #fff;
+      border-radius: 10px;
+      padding: 0 5px;
+      font-size: 0.7rem;
+      line-height: 1.4;
+    }
+  }
+
+  // Cuando el panel está abierto, el borde del trigger se pone azul.
+  &.open .filter-trigger { border-color: #2563eb; }
+
+  // Panel flotante con la lista de checkboxes.
+  // z-index:100 garantiza que se superpone sobre el calendario.
+  // max-height + overflow-y:auto permite scroll si hay muchas opciones.
+  .filter-panel {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    z-index: 100;
+    background: #fff;
+    border: 1px solid #d0d5dd;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    padding: 0.4rem 0;
+    min-width: 160px;
+    max-height: 240px;
+    overflow-y: auto;
+  }
+
+  // Cada fila del panel: etiqueta clicable con checkbox + texto de la opción.
+  .filter-option {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.35rem 0.8rem;
+    font-size: 0.82rem;
+    cursor: pointer;
+    color: #344054;
+
+    &:hover { background: #f9fafb; }
+
+    // accent-color aplica el color de marca al checkbox nativo del navegador.
+    input[type="checkbox"] { cursor: pointer; accent-color: #2563eb; }
+  }
+}
+
+// ── Botón «Limpiar filtros» ───────────────────────────────────────────────────
+// Aparece en la barra solo cuando hasActiveFilters() es true.
+// En hover cambia a rojo para indicar acción destructiva.
+.clear-filter {
+  padding: 0.3rem 0.7rem;
+  border: 1px solid #d0d5dd;
+  border-radius: 6px;
+  background: #fff;
+  color: #667085;
+  font-size: 0.8rem;
+  cursor: pointer;
+  line-height: 1;
+  transition: background 0.15s, color 0.15s;
+
+  &:hover { background: #fef2f2; color: #f87171; border-color: #f87171; }
+}
+
+// ── Botón «Nueva reserva» ────────────────────────────────────────────────────
+// margin-left:auto lo desplaza al extremo derecho de la barra de filtros.
+.btn-new-booking {
+  margin-left: auto;
+  padding: 0.3rem 0.8rem;
+  background: #2563eb;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+
+  &:hover { background: #1d4ed8; }
+}
+
+// ── Cabecera de días de la semana ─────────────────────────────────────────────
+// Grid de 7 columnas iguales, una por día. column-gap:1px con background
+// en el padre simula los separadores verticales entre celdas.
+.weekday-header-row {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  column-gap: 1px;
+  background: #eaecf0;
+  border-bottom: 1px solid #eaecf0;
+}
+
+.weekday-header {
+  min-width: 0;
+  background: #f9fafb;
+  text-align: center;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #667085;
+  padding: 0.5rem 0;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+// ── Selector de vista (Mes / Semana / Día) ────────────────────────────────────
+// Grupo de botones con borde compartido. El botón activo se rellena de azul.
+.view-toggle {
+  display: flex;
+  align-self: flex-start;
+  border: 1px solid #d0d5dd;
+  border-radius: 6px;
+  overflow: hidden;
+
+  button {
+    padding: 0.35rem 0.9rem;
+    border: none;
+    border-right: 1px solid #d0d5dd;
+    background: #fff;
+    font-size: 0.85rem;
+    cursor: pointer;
+    color: #344054;
+    transition: background 0.15s;
+
+    &:last-child { border-right: none; }
+    &:hover { background: #f2f4f7; }
+    &.active { background: #2563eb; color: #fff; }
+  }
+}
+
+// ── Vista diaria ──────────────────────────────────────────────────────────────
+// Contenedor de toda la vista de día. Actualmente desactivada en el template.
+.day-view {
+  border: 1px solid #eaecf0;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+// Cabecera del día: nombre, número (resaltado si es hoy) y mes/año.
+.day-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  background: #f9fafb;
+  border-bottom: 1px solid #eaecf0;
+
+  .day-name  { font-size: 0.9rem; font-weight: 600; color: #667085; }
+  .day-month { font-size: 0.85rem; color: #667085; text-transform: capitalize; }
+
+  // El número del día es un círculo; si es hoy, se rellena de azul.
+  .day-number {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #101828;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+
+    &.today { background: #2563eb; color: #fff; }
+  }
+}
+
+// ── Sección «Todo el día» (vista diaria) ──────────────────────────────────────
+// Muestra las reservas activas en el día seleccionado como barras horizontales.
+.allday-section {
+  display: flex;
+  min-height: 40px;
+  border-bottom: 2px solid #eaecf0;
+
+  // Etiqueta lateral fija de 60px.
+  .allday-sidebar {
+    width: 60px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding-right: 8px;
+    font-size: 0.7rem;
+    color: #98a2b3;
+    border-right: 1px solid #eaecf0;
+  }
+
+  // Área donde se apilan las barras de reserva.
+  .allday-events {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    padding: 4px 8px;
+  }
+
+  // Barra individual de reserva. El color de fondo se aplica inline desde el template
+  // usando el pipe bookingColor. text-overflow:ellipsis evita desbordamiento.
+  .allday-bar {
+    border-radius: 4px;
+    padding: 3px 8px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #fff;
+    cursor: pointer;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    &:hover { filter: brightness(1.1); }
+  }
+
+  .no-events { font-size: 0.8rem; color: #c1c9d4; align-self: center; }
+}
+
+// ── Rejilla de horas (vista diaria) ──────────────────────────────────────────
+// 24 filas de altura fija. overflow-y:auto permite scroll si la pantalla
+// es pequeña. Las celdas están vacías; aquí se podrían añadir eventos
+// con hora exacta en el futuro.
+.hour-grid { overflow-y: auto; max-height: 600px; }
+
+.hour-row {
+  display: flex;
+  height: 48px;
+  border-bottom: 1px solid #f2f4f7;
+  &:last-child { border-bottom: none; }
+}
+
+// Etiqueta de hora alineada a la derecha, con borde separador.
+.hour-label {
+  width: 60px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  padding: 4px 8px 0 0;
+  font-size: 0.72rem;
+  color: #98a2b3;
+  border-right: 1px solid #eaecf0;
+}
+
+// Celda vacía que ocupa el resto del ancho; aquí irían los eventos con hora.
+.hour-cell { flex: 1; }

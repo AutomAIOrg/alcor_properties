@@ -1,0 +1,136 @@
+<div class="modal-backdrop" (click)="close.emit()">
+  <div class="modal-card" (click)="$event.stopPropagation()" role="dialog" aria-modal="true">
+
+    <div class="modal-header">
+      <h2 class="modal-title">Nueva reserva</h2>
+      <button class="close-btn" (click)="close.emit()" aria-label="Cerrar">&#10005;</button>
+    </div>
+
+    <div class="modal-body">
+
+      <p class="section-title">Datos generales</p>
+      <div class="field-row">
+        <div class="field">
+          <label>Referencia piso *</label>
+          <select (change)="patch('booking_id', $any($event.target).value)">
+            <option value="" disabled [selected]="!draft().booking_id">Selecciona un piso</option>
+            @for (apt of apartments(); track apt) {
+              <option [value]="apt" [selected]="draft().booking_id === apt">{{ apt }}</option>
+            }
+          </select>
+        </div>
+        <div class="field">
+          <label>Estado</label>
+          <select (change)="patch('status', $any($event.target).value)">
+            @for (s of BASE_STATUSES; track s) {
+              <option [value]="s" [selected]="(draft().status ?? 'Confirmed') === s">{{ s }}</option>
+            }
+          </select>
+        </div>
+      </div>
+
+      <div class="field-row">
+        <div class="field field--full">
+          <label>Nombre del huésped *</label>
+          <input type="text" placeholder="Nombre y apellidos"
+                 [value]="draft().guest_name ?? ''"
+                 (input)="patch('guest_name', $any($event.target).value)">
+        </div>
+      </div>
+
+      <div class="field-row">
+        <div class="field">
+          <label>Entrada *</label>
+          <input type="date" [value]="draft().check_in ?? ''"
+                 (input)="patch('check_in', $any($event.target).value)">
+        </div>
+        <div class="field">
+          <label>Salida *</label>
+          <input type="date" [value]="draft().check_out ?? ''"
+                 (input)="patch('check_out', $any($event.target).value)">
+        </div>
+      </div>
+
+      @if (nights() > 0) {
+        <p class="nights-info">{{ nights() }} noche{{ nights() !== 1 ? 's' : '' }}</p>
+      }
+
+      <p class="section-title">Huéspedes</p>
+      <div class="field-row">
+        <div class="field">
+          <label>Adultos</label>
+          <input type="number" min="0" [value]="draft().adults ?? 1"
+                 (input)="patch('adults', +$any($event.target).value)">
+        </div>
+        <div class="field">
+          <label>Niños</label>
+          <input type="number" min="0" [value]="draft().children ?? 0"
+                 (input)="patch('children', +$any($event.target).value)">
+        </div>
+      </div>
+
+      <p class="section-title">Económico</p>
+      <div class="field-row field-row--3">
+        <div class="field">
+          <label>Precio total (€)</label>
+          <input type="number" min="0" step="0.01" placeholder="—"
+                 [value]="draft().price ?? ''"
+                 (input)="patch('price', $any($event.target).value)">
+        </div>
+        <div class="field">
+          <label>Cargos extra (€)</label>
+          <input type="number" min="0" step="0.01" placeholder="—"
+                 [value]="draft().charges ?? ''"
+                 (input)="patch('charges', $any($event.target).value)">
+        </div>
+        <div class="field">
+          <label>Luz incluida (€)</label>
+          <input type="number" min="0" step="0.01" placeholder="—"
+                 [value]="draft().electric_allowance ?? ''"
+                 (input)="patch('electric_allowance', $any($event.target).value)">
+        </div>
+      </div>
+
+      <p class="section-title">Contacto</p>
+      <div class="field-row">
+        <div class="field">
+          <label>Email</label>
+          <input type="email" placeholder="sin correo"
+                 [value]="draft().email ?? ''"
+                 (input)="patch('email', $any($event.target).value)">
+        </div>
+        <div class="field">
+          <label>Teléfono</label>
+          <input type="tel" placeholder="sin teléfono"
+                 [value]="draft().phone ?? ''"
+                 (input)="patch('phone', $any($event.target).value)">
+        </div>
+      </div>
+
+      <p class="section-title">Referencias</p>
+      <div class="field-row">
+        <div class="field field--full">
+          <label>Nº reserva (plataforma)</label>
+          <input type="text" placeholder="—"
+                 [value]="draft().booking_number ?? ''"
+                 (input)="patch('booking_number', $any($event.target).value)">
+        </div>
+      </div>
+
+      <p class="section-title">Comentarios</p>
+      <div class="field">
+        <textarea rows="3" placeholder="Cualquier información adicional sobre la reserva..."
+                  [value]="draft().notes ?? ''"
+                  (input)="patch('notes', $any($event.target).value)"></textarea>
+      </div>
+
+      <div class="edit-actions">
+        <button class="btn-cancel" (click)="close.emit()" [disabled]="saving()">Cancelar</button>
+        <button class="btn-save" (click)="save()" [disabled]="saving() || !isValid()">
+          {{ saving() ? 'Guardando…' : 'Crear reserva' }}
+        </button>
+      </div>
+
+    </div>
+  </div>
+</div>

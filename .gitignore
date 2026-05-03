@@ -1,0 +1,58 @@
+# ── Secretos y configuración local ──────────────────────────────────────────
+.env
+.env.*
+!.env.example
+
+# ── Python / FastAPI ─────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Entornos virtuales
+.venv/
+venv/
+env/
+ENV/
+
+# pytest / coverage
+.pytest_cache/
+.coverage
+htmlcov/
+coverage.xml
+
+# mypy / ruff
+.mypy_cache/
+.ruff_cache/
+
+# ── Node / Angular ───────────────────────────────────────────────────────────
+frontend_angular/node_modules/
+frontend_angular/dist/
+frontend_angular/.angular/cache/
+frontend_angular/tmp/
+frontend_angular/out-tsc/
+frontend_angular/coverage/
+frontend_angular/npm-debug.log
+frontend_angular/yarn-error.log
+
+# ── IDEs ─────────────────────────────────────────────────────────────────────
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+.idea/
+*.sublime-workspace
+*.sublime-project
+.history/
+
+# ── Sistema operativo ────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
