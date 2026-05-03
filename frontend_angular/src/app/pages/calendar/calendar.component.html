@@ -1,29 +1,16 @@
 <!-- Contenedor principal del calendario. Todo el layout vertical vive aquí. -->
 <div class="calendar">
 
-  <!-- ── Cabecera de navegación ──────────────────────────────────────────────
-       Muestra el mes/año actual y los botones de anterior, siguiente y hoy.
-       (dateChange) se emite cuando el usuario salta a un mes/año concreto
-       desde el selector del header. -->
-  <app-calendar-header
-    [month]="currentDate().getMonth()"
-    [year]="currentDate().getFullYear()"
-    (prev)="prevPeriod()"
-    (next)="nextPeriod()"
-    (today)="goToToday()"
-    (dateChange)="goToDate($event)" />
+  <!-- Fila 1: botón Nueva reserva alineado a la derecha -->
+  <div class="calendar-actions">
+    <button class="btn-new-booking" (click)="showCreateModal.set(true)">
+      + Nueva reserva
+    </button>
+  </div>
 
-  <!-- ── Barra de filtros ────────────────────────────────────────────────────
-       Cada .filter-dropdown es un botón con panel desplegable de checkboxes.
-       Al hacer click fuera de cualquier panel, se cierra automáticamente
-       (gestionado por @HostListener en el .ts).
-       Para añadir un nuevo filtro: duplica uno de los .filter-dropdown,
-       crea su signal/computed en el .ts y añade su método toggle. -->
+  <!-- Fila 2: filtros a la izquierda, selector Mes/Semana a la derecha -->
   <div class="calendar-filters">
 
-    <!-- Filtro por referencia de piso (booking_id).
-         Las opciones se calculan dinámicamente a partir de las reservas cargadas.
-         El badge muestra cuántas referencias están seleccionadas. -->
     <div class="filter-dropdown" [class.open]="showIdDropdown()">
       <button class="filter-trigger" (click)="showIdDropdown.set(!showIdDropdown())">
         Piso @if (filterBookingIds().length) { <span class="badge">{{ filterBookingIds().length }}</span> }
@@ -43,10 +30,6 @@
       }
     </div>
 
-    <!-- Filtro por estado de la reserva.
-         Las opciones vienen de BASE_STATUSES definido en booking.model.ts;
-         edita ese array para añadir o quitar estados posibles.
-         La comparación ignora mayúsculas/minúsculas (ver filteredBookings en el .ts). -->
     <div class="filter-dropdown" [class.open]="showStateDropdown()">
       <button class="filter-trigger" (click)="showStateDropdown.set(!showStateDropdown())">
         Estado @if (filterBookingStates().length) { <span class="badge">{{ filterBookingStates().length }}</span> }
@@ -66,38 +49,28 @@
       }
     </div>
 
-    <!-- Botón para limpiar todos los filtros a la vez.
-         Solo aparece si hay al menos un filtro activo (hasActiveFilters). -->
     @if (hasActiveFilters()) {
-      <button class="clear-filter clear-all" (click)="clearAllFilters()">
-        Limpiar filtros
-      </button>
+      <button class="clear-filter clear-all" (click)="clearAllFilters()">Limpiar filtros</button>
     }
 
-    <!-- Botón para abrir el modal de creación de nueva reserva. -->
-    <button class="btn-new-booking" (click)="showCreateModal.set(true)">
-      + Nueva reserva
-    </button>
+    <div class="view-toggle">
+      <button [class.active]="viewMode() === 'month'" (click)="viewMode.set('month')">Mes</button>
+      <button [class.active]="viewMode() === 'week'" (click)="viewMode.set('week')">Semana</button>
+    </div>
 
   </div>
 
-  <!-- ── Selector de vista ───────────────────────────────────────────────────
-       Alterna entre vista mensual y semanal.
-       La vista diaria está preparada pero comentada; descomenta su botón
-       y el @case('day') de abajo para activarla. -->
-  <div class="view-toggle">
-    <button [class.active]="viewMode() === 'month'" (click)="viewMode.set('month')">Mes</button>
-    <button [class.active]="viewMode() === 'week'" (click)="viewMode.set('week')">Semana</button>
-    <!-- <button [class.active]="viewMode() === 'day'" (click)="viewMode.set('day')">Día</button> -->
-  </div>
+  <!-- Fila 3: mes/año a la izquierda, flechas y Hoy a la derecha -->
+  <app-calendar-header
+    [month]="currentDate().getMonth()"
+    [year]="currentDate().getFullYear()"
+    (prev)="prevPeriod()"
+    (next)="nextPeriod()"
+    (today)="goToToday()"
+    (dateChange)="goToDate($event)" />
 
-  <!-- ── Contenido de la vista activa ───────────────────────────────────────
-       @switch renderiza solo el bloque correspondiente al viewMode actual. -->
   @switch (viewMode()) {
 
-    <!-- Vista mensual: muestra todas las semanas del mes en curso.
-         weeks() es un computed que recalcula la cuadrícula cuando cambia
-         el mes o los filtros. Cada fila es un <app-week-row>. -->
     @case ('month') {
       <div class="calendar-grid-wrapper">
         <div class="weekday-header-row">
@@ -111,8 +84,6 @@
       </div>
     }
 
-    <!-- Vista semanal: muestra solo la semana que contiene currentDate.
-         Comparte el mismo componente <app-week-row> que la vista mensual. -->
     @case ('week') {
       <div class="calendar-grid-wrapper">
         <div class="weekday-header-row">
@@ -124,18 +95,13 @@
       </div>
     }
 
-    <!-- Vista diaria (desactivada por defecto).
-         Muestra las reservas activas en el día seleccionado
-         y una rejilla de horas de 00:00 a 23:00. -->
     @case ('day') {
       <div class="day-view">
-        <!-- Cabecera con nombre del día, número y mes/año -->
         <div class="day-header">
           <span class="day-name">{{ DAYS[currentDate().getDay()] }}</span>
           <span class="day-number" [class.today]="isToday(currentDate())">{{ currentDate().getDate() }}</span>
           <span class="day-month">{{ MONTHS[currentDate().getMonth()].toLowerCase() }} {{ currentDate().getFullYear() }}</span>
         </div>
-        <!-- Sección de eventos de todo el día -->
         <div class="allday-section">
           <div class="allday-sidebar">Todo el día</div>
           <div class="allday-events">
@@ -151,8 +117,6 @@
             }
           </div>
         </div>
-        <!-- Rejilla de horas (00:00–23:00). Las celdas están vacías;
-             aquí se podrían renderizar eventos con hora exacta en el futuro. -->
         <div class="hour-grid">
           @for (hour of HOURS; track hour) {
             <div class="hour-row">
@@ -167,10 +131,6 @@
 
 </div>
 
-<!-- ── Modal de detalle de reserva ──────────────────────────────────────────
-     Solo se renderiza cuando hay una reserva seleccionada (selectedBooking).
-     (close) limpia la selección; (saved) actualiza la lista local sin recargar
-     desde la API. -->
 @if (selectedBooking()) {
   <app-booking-modal
     [booking]="selectedBooking()!"
@@ -178,8 +138,6 @@
     (saved)="onBookingSaved($event)" />
 }
 
-<!-- ── Modal de creación de reserva ──────────────────────────────────────────
-     (close) cierra sin guardar; (created) añade la nueva reserva a la lista. -->
 @if (showCreateModal()) {
   <app-booking-create-modal
     [apartments]="bookingIdOptions()"

@@ -1,0 +1,64 @@
+.main-container {
+  display: flex;
+  height: 100vh;
+  width: 100vw;
+  position: relative;  
+}
+
+.sidebar {
+  width: 250px;
+  background-color: #2c3e50;
+  color: white;
+  transition: all 0.3s ease;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+
+  &.hidden {
+    margin-left: -250px; // Se oculta a la izquierda
+  }
+
+  .menu {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 20px;
+
+    a {
+      color: white;
+      text-decoration: none;
+      padding: 10px;
+      border-radius: 4px;
+
+      &.active-link {
+        background-color: #3498db; // Color azul para el link activo
+      }
+    }
+  }
+}
+
+.content-area {
+  flex-grow: 1;
+  padding: 0;                  // quitamos el padding que comprimía el calendario
+  background-color: #ecf0f1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.toggle-btn {
+  position: absolute;          // sale del flujo, no desplaza nada
+  top: 8px;
+  left: 8px;
+  z-index: 100;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  font-size: 0.75rem;
+  line-height: 1;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  background: #fff;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+}

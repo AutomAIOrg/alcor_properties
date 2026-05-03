@@ -1,1 +1,26 @@
-<router-outlet />
+<div class="main-container">
+    <!--BARRA LATERAL-->
+    <aside class="sidebar" [class.hidden]="isSidebarHidden">
+        <div class="logo">
+            <img src="logo.png" class="logo-img">
+        </div>
+
+        <nav class="menu">
+            <!-- Usamos routerLink para la navegación -->
+             <a routerLink="/calendar" routerLinkActive="active-link">📅 Calendario</a>
+            <a routerLink="/searches" routerLinkActive="active-link">🔍 Búsquedas</a>
+        </nav>
+
+    </aside>
+
+    <!--CONTENIDO PRINCIPAL-->
+    <main class="content-area">
+        <!--Botón para ocultar/mostrar la barra lateral-->
+        <button class="toggle-btn" (click)="toggleSidebar()">
+            {{ isSidebarHidden ? '➡️' : '⬅️' }}
+        </button>
+
+        <!--Aquí se renderizarán los componentes según la ruta-->
+        <router-outlet></router-outlet>
+    </main>
+</div>
