@@ -40,8 +40,22 @@
   gap: 0.5rem;
   flex-wrap: wrap;
 
+  // Agrupa los filtros y el botón «Limpiar» como un bloque único.
+  // Así el view-toggle no se desplaza cuando aparece «Limpiar filtros».
+  .filter-group {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+
   .view-toggle {
     margin-left: auto;
+
+    // En desktop/tablet el toggle vive en el header → ocultarlo aquí
+    @media (min-width: 769px) {
+      display: none;
+    }
   }
 }
 
@@ -123,17 +137,21 @@
 
 // ── Botón «Limpiar filtros» ───────────────────────────────────────────────────
 // Aparece en la barra solo cuando hasActiveFilters() es true.
-// En hover cambia a rojo para indicar acción destructiva.
 .clear-filter {
-  padding: 0.3rem 0.7rem;
-  border: 1px solid #d0d5dd;
-  border-radius: 6px;
-  background: #fff;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0px solid #d0d5dd;
+  border-radius: 50%;
+  // background: #fff;
   color: #667085;
-  font-size: 0.8rem;
-  cursor: pointer;
+  font-size: 1.1rem;
   line-height: 1;
-  transition: background 0.15s, color 0.15s;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
 
   &:hover { background: #fef2f2; color: #f87171; border-color: #f87171; }
 }

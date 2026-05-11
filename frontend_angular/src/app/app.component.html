@@ -1,26 +1,23 @@
 <div class="main-container">
-    <!--BARRA LATERAL-->
+    <!-- BARRA LATERAL -->
     <aside class="sidebar" [class.hidden]="isSidebarHidden">
+        <!-- Ponemos el botón arriba del todo para que sea más fácil de posicionar -->
+        <button class="toggle-btn" (click)="toggleSidebar()">
+            {{ isSidebarHidden ? '»' : '«' }}
+        </button>
+
         <div class="logo">
             <img src="logo.png" class="logo-img">
         </div>
 
         <nav class="menu">
-            <!-- Usamos routerLink para la navegación -->
-             <a routerLink="/calendar" routerLinkActive="active-link">📅 Calendario</a>
+            <a routerLink="/calendar" routerLinkActive="active-link">📅 Calendario</a>
             <a routerLink="/searches" routerLinkActive="active-link">🔍 Búsquedas</a>
         </nav>
-
     </aside>
 
-    <!--CONTENIDO PRINCIPAL-->
+    <!-- CONTENIDO PRINCIPAL -->
     <main class="content-area">
-        <!--Botón para ocultar/mostrar la barra lateral-->
-        <button class="toggle-btn" (click)="toggleSidebar()">
-            {{ isSidebarHidden ? '➡️' : '⬅️' }}
-        </button>
-
-        <!--Aquí se renderizarán los componentes según la ruta-->
         <router-outlet></router-outlet>
     </main>
 </div>
