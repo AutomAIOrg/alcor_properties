@@ -1,6 +1,3 @@
-"""
-Backend package for Property Management System.
-Contains API, business logic, data access, and infrastructure.
-"""
+from config import settings
 
-__version__ = "0.1.0"
+__version__ = settings.APP_VERSION
