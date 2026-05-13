@@ -1,52 +1,49 @@
 """
-Configuration settings for the backend application.
+Configuración de ajustes para la aplicación backend.
 """
 
-from pydantic_settings import BaseSettings
 from typing import Optional
-import os
-from dotenv import load_dotenv
 
-load_dotenv()
+from pydantic import model_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    """Application settings loaded from environment variables."""
-    
-    # Application
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        case_sensitive=True,
+        extra="allow",
+    )
+
+    # Aplicación
     APP_NAME: str = "Property Management System API"
     APP_VERSION: str = "0.1.0"
     DEBUG: bool = False
-    
-    # Database - acepta tanto DB_* como MYSQL_*
+
+    # Base de datos — claves principales (DB_*)
     DB_HOST: Optional[str] = None
     DB_USER: Optional[str] = None
     DB_PASS: Optional[str] = None
     DB_NAME: Optional[str] = None
     DB_PORT: int = 3306
-    
-    # Alternativas para compatibilidad
+
+    # Alias de compatibilidad (MYSQL_*) — los DB_* tienen prioridad si ambos están definidos
     MYSQL_HOST: Optional[str] = None
     MYSQL_USER: Optional[str] = None
     MYSQL_PASSWORD: Optional[str] = None
     MYSQL_DATABASE: Optional[str] = None
     MYSQL_PORT: Optional[str] = None
-    
-    # Electric allowance bookings (comma-separated list)
+
+    # Cupo eléctrico — IDs de reservas separados por comas
     ELECTRIC: str = ""
-    
+
     # API
     API_PREFIX: str = "/api/v1"
     CORS_ORIGINS: list = ["*"]
-    
-    class Config:
-        env_file = ".env"
-        case_sensitive = True
-        extra = "allow"  # Permite campos extra
-    
-    def model_post_init(self, __context):
-        """Post-initialization to handle both DB_* and MYSQL_* prefixes."""
-        # Si MYSQL_* está definido pero DB_* no, usar MYSQL_*
+
+    @model_validator(mode="after")
+    def _resolve_db_aliases(self) -> "Settings":
+        """Utiliza variables MYSQL_* cuando las variables canónicas DB_* no están presentes."""
         if self.MYSQL_HOST and not self.DB_HOST:
             self.DB_HOST = self.MYSQL_HOST
         if self.MYSQL_USER and not self.DB_USER:
@@ -55,9 +52,9 @@ class Settings(BaseSettings):
             self.DB_PASS = self.MYSQL_PASSWORD
         if self.MYSQL_DATABASE and not self.DB_NAME:
             self.DB_NAME = self.MYSQL_DATABASE
-        if self.MYSQL_PORT and not isinstance(self.DB_PORT, int):
+        if self.MYSQL_PORT and self.DB_PORT == 3306:
             self.DB_PORT = int(self.MYSQL_PORT)
+        return self
 
 
-# Global settings instance
 settings = Settings()
