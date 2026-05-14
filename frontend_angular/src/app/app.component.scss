@@ -53,6 +53,24 @@
     color: #000000;
     line-height: 1;
   }
+// Botón de logout, colocado al final del sidebar para que siempre esté abajo
+  .logout-btn {
+    margin-top: auto;
+    width: 100%;
+    padding: 10px;
+    background: none;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 4px;
+    color: white;
+    font-size: 0.95rem;
+    cursor: pointer;
+    text-align: left;
+    transition: background 0.2s;
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
+  }
 } // Cierre real de .sidebar
 
 .content-area {
