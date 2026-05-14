@@ -5,8 +5,9 @@ Stack: TestClient → Use Cases reales → SQLAlchemyBookingRepository → SQLit
 Solo se sobreescribe get_db para apuntar a SQLite en lugar de MySQL.
 """
 
-import pytest
 from datetime import date, timedelta
+
+import pytest
 
 pytestmark = pytest.mark.e2e
 

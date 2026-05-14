@@ -27,7 +27,6 @@ from infrastructure.repositories.sqlalchemy_booking_repository import (
     SQLAlchemyBookingRepository,
 )
 
-
 # ---------------------------------------------------------------------------
 # Dependencias primitivas
 # ---------------------------------------------------------------------------
@@ -51,6 +50,7 @@ def get_booking_repository(db: Session = Depends(get_db)) -> IBookingRepository:
 @dataclass
 class BookingUseCases:
     """Casos de uso de reservas."""
+
     list_query: ListBookingsQuery
     get_by_id_query: GetBookingByIdQuery
     get_active_query: GetActiveBookingsQuery

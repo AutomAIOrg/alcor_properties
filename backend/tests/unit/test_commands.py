@@ -4,8 +4,9 @@ Unit tests — casos de uso de escritura (Create, Update, Delete).
 El repositorio se sustituye por un MagicMock en todos los tests.
 """
 
-import pytest
 from datetime import date
+
+import pytest
 
 from application.bookings.commands import (
     BookingUpdateData,

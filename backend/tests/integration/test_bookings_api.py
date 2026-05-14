@@ -5,8 +5,9 @@ FastAPI TestClient con use cases inyectados como MagicMock.
 Sin base de datos real: la dependencia get_booking_use_cases se sobreescribe.
 """
 
-import pytest
 from datetime import date
+
+import pytest
 
 from domain.exceptions import BookingConflict, BookingNotFound, DomainValidationError
 from tests.helpers import make_booking

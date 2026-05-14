@@ -25,7 +25,9 @@ class BookingORM(Base):
     booking_number: Mapped[Optional[str]] = mapped_column("Nº Booking", String(255), nullable=True)
 
     # Huésped
-    guest_name: Mapped[Optional[str]] = mapped_column("Nombre,Apellidos", String(255), nullable=True)
+    guest_name: Mapped[Optional[str]] = mapped_column(
+        "Nombre,Apellidos", String(255), nullable=True
+    )
     email: Mapped[Optional[str]] = mapped_column("Email", String(255), nullable=True)
     phone: Mapped[Optional[str]] = mapped_column("Movil", String(100), nullable=True)
 
@@ -42,7 +44,9 @@ class BookingORM(Base):
 
     # Financiero
     price: Mapped[Optional[Decimal]] = mapped_column("Precio", Numeric(10, 2), nullable=True)
-    charges: Mapped[Optional[Decimal]] = mapped_column("Comm y Cargos", Numeric(10, 2), nullable=True)
+    charges: Mapped[Optional[Decimal]] = mapped_column(
+        "Comm y Cargos", Numeric(10, 2), nullable=True
+    )
 
     # Notas
     notes: Mapped[Optional[str]] = mapped_column("Notes", Text, nullable=True)

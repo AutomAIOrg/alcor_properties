@@ -19,7 +19,6 @@ import infrastructure.models.booking  # noqa: F401 — registra BookingORM en Ba
 from domain.bookings.repository import IBookingRepository
 from infrastructure.database.base import Base
 
-
 # ---------------------------------------------------------------------------
 # Unit
 # ---------------------------------------------------------------------------
