@@ -1,0 +1,85 @@
+<div class="login-wrapper">
+  <div class="login-card">
+    <div class="login-logo">
+      <img src="logo.png" alt="Logo" />
+    </div>
+
+    @if (!showRecovery) {
+      <h1 class="login-title">Iniciar sesión</h1>
+
+      <form class="login-form" (ngSubmit)="onSubmit()" #loginForm="ngForm">
+        <div class="form-group">
+          <label for="username">Usuario</label>
+          <input
+            id="username"
+            type="text"
+            name="username"
+            [(ngModel)]="username"
+            required
+            placeholder="Introduce tu usuario"
+            autocomplete="username"
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="password">Contraseña</label>
+          <input
+            id="password"
+            type="password"
+            name="password"
+            [(ngModel)]="password"
+            required
+            placeholder="Introduce tu contraseña"
+            autocomplete="current-password"
+          />
+        </div>
+
+        @if (errorMsg) {
+          <p class="error-msg">{{ errorMsg }}</p>
+        }
+
+        <button type="submit" class="btn-login" [disabled]="loginForm.invalid">
+          Entrar
+        </button>
+
+        <button type="button" class="btn-forgot" (click)="showRecovery = true">
+          ¿Olvidaste tu contraseña?
+        </button>
+      </form>
+    } @else {
+      <h1 class="login-title">Recuperar contraseña</h1>
+      <p class="recovery-hint">Introduce tu email y te enviaremos un enlace para restablecer tu contraseña.</p>
+
+      <form class="login-form" (ngSubmit)="onRecovery()" #recoveryForm="ngForm">
+        <div class="form-group">
+          <label for="recoveryEmail">Email</label>
+          <input
+            id="recoveryEmail"
+            type="email"
+            name="recoveryEmail"
+            [(ngModel)]="recoveryEmail"
+            required
+            email
+            placeholder="tu@email.com"
+            autocomplete="email"
+          />
+        </div>
+
+        @if (recoveryMsg) {
+          <p class="success-msg">{{ recoveryMsg }}</p>
+        }
+        @if (errorMsg) {
+          <p class="error-msg">{{ errorMsg }}</p>
+        }
+
+        <button type="submit" class="btn-login" [disabled]="recoveryForm.invalid">
+          Enviar enlace
+        </button>
+
+        <button type="button" class="btn-forgot" (click)="backToLogin()">
+          ← Volver al inicio de sesión
+        </button>
+      </form>
+    }
+  </div>
+</div>
