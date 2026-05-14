@@ -3,7 +3,7 @@ Casos de uso de lectura (consultas) para el dominio de Reservas.
 """
 
 from datetime import date, timedelta
-from typing import Optional
+from typing import Any, Optional
 
 from domain.bookings.entity import Booking
 from domain.bookings.repository import IBookingRepository
@@ -151,7 +151,7 @@ class GetCalendarEventsQuery:
         self,
         start_date: Optional[date] = None,
         days: int = 90,
-    ) -> list[dict]:
+    ) -> list[dict[str, Any]]:
         resolved_start = start_date or date.today()
         end_date = resolved_start + timedelta(days=days)
         bookings = self._repo.list(start_date=resolved_start, end_date=end_date)
@@ -162,32 +162,33 @@ class GetCalendarEventsQuery:
         for booking in bookings:
             if booking.is_cancelled() and (booking.check_in - today).days < 3:
                 continue
-            events.append({
-                "id": f"booking-{booking.record_id}",
-                "title": f"{booking.booking_id} - {booking.guest_name}",
-                "start": booking.check_in.isoformat(),
-                "end": booking.check_out.isoformat(),
-                "allDay": True,
-                "classNames": ["reserva"] + (["cancelled"] if booking.is_cancelled() else []),
-                "extendedProps": {
-                    "record_id": booking.record_id,
-                    "booking_id": booking.booking_id,
-                    "booking_number": booking.booking_number,
-                    "guest_name": booking.guest_name,
-                    "check_in": booking.check_in.isoformat(),
-                    "check_out": booking.check_out.isoformat(),
-                    "status": booking.status,
-                    "nights": booking.nights,
-                    "persons": booking.persons,
-                    "adults": booking.adults,
-                    "children": booking.children,
-                    "email": booking.email,
-                    "phone": booking.phone,
-                    "price": booking.price,
-                    "charges": booking.charges,
-                    "electric_allowance": booking.electric_allowance,
-                    "source": "database",
-                },
-            })
+            events.append(
+                {
+                    "id": f"booking-{booking.record_id}",
+                    "title": f"{booking.booking_id} - {booking.guest_name}",
+                    "start": booking.check_in.isoformat(),
+                    "end": booking.check_out.isoformat(),
+                    "allDay": True,
+                    "classNames": ["reserva"] + (["cancelled"] if booking.is_cancelled() else []),
+                    "extendedProps": {
+                        "record_id": booking.record_id,
+                        "booking_id": booking.booking_id,
+                        "booking_number": booking.booking_number,
+                        "guest_name": booking.guest_name,
+                        "check_in": booking.check_in.isoformat(),
+                        "check_out": booking.check_out.isoformat(),
+                        "status": booking.status,
+                        "nights": booking.nights,
+                        "persons": booking.persons,
+                        "adults": booking.adults,
+                        "children": booking.children,
+                        "email": booking.email,
+                        "phone": booking.phone,
+                        "price": booking.price,
+                        "charges": booking.charges,
+                        "electric_allowance": booking.electric_allowance,
+                        "source": "database",
+                    },
+                }
+            )
         return events
-   
