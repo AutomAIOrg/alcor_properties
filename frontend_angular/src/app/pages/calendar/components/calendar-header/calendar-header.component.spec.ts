@@ -1,5 +1,4 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { CalendarHeaderComponent } from './calendar-header.component';
 
 describe('CalendarHeaderComponent', () => {
