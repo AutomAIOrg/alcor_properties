@@ -4,8 +4,9 @@ Unit tests — casos de uso de lectura (queries).
 El repositorio se sustituye por un MagicMock en todos los tests.
 """
 
-import pytest
 from datetime import date, timedelta
+
+import pytest
 
 from application.bookings.queries import (
     GetBookingByIdQuery,
@@ -185,9 +186,7 @@ class TestGetCalendarEventsQuery:
         )
         mock_repo.list.return_value = [cancelled_soon]
 
-        events = GetCalendarEventsQuery(mock_repo, set()).execute(
-            start_date=today, days=90
-        )
+        events = GetCalendarEventsQuery(mock_repo, set()).execute(start_date=today, days=90)
 
         assert len(events) == 0
 
@@ -201,9 +200,7 @@ class TestGetCalendarEventsQuery:
         )
         mock_repo.list.return_value = [cancelled_far]
 
-        events = GetCalendarEventsQuery(mock_repo, set()).execute(
-            start_date=today, days=90
-        )
+        events = GetCalendarEventsQuery(mock_repo, set()).execute(start_date=today, days=90)
 
         assert len(events) == 1
         assert "cancelled" in events[0]["classNames"]

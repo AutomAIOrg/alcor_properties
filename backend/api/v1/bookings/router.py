@@ -24,7 +24,9 @@ async def get_bookings(
     limit: Optional[int] = Query(None, description="Limita el número de resultados"),
     start_date: Optional[date] = Query(None, description="Filtrar desde esta fecha"),
     end_date: Optional[date] = Query(None, description="Filtrar hasta esta fecha"),
-    days: Optional[int] = Query(None, description="Obtener reservas para los próximos N días desde start_date"),
+    days: Optional[int] = Query(
+        None, description="Obtener reservas para los próximos N días desde start_date"
+    ),
     use_cases: BookingUseCases = Depends(get_booking_use_cases),
 ):
     return use_cases.list_query.execute(

@@ -33,8 +33,8 @@ db_url: URL = URL.create(
 # Import Base and ALL ORM models so Alembic can detect the full schema.
 # Every new model added to infrastructure/models/ must be imported here.
 # ---------------------------------------------------------------------------
-from infrastructure.database.base import Base  # noqa: E402
 import infrastructure.models.booking  # noqa: E402, F401
+from infrastructure.database.base import Base  # noqa: E402
 
 target_metadata = Base.metadata
 

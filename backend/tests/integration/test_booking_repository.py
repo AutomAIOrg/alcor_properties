@@ -4,8 +4,9 @@ Integration tests — SQLAlchemyBookingRepository contra SQLite en memoria.
 No se conecta a MySQL. El mismo Base.metadata crea la tabla bookings en SQLite.
 """
 
-import pytest
 from datetime import date
+
+import pytest
 
 from domain.exceptions import BookingNotFound
 from infrastructure.models.booking import BookingORM

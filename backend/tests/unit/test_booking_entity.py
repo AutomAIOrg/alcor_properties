@@ -4,8 +4,9 @@ Unit tests — entidad de dominio Booking y excepciones de dominio.
 Sin I/O, sin mocks, sin dependencias externas.
 """
 
+from datetime import date
+
 import pytest
-from datetime import date, timedelta
 
 from domain.bookings.entity import Booking
 from domain.exceptions import BookingConflict, BookingNotFound, DomainValidationError
