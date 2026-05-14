@@ -3,9 +3,10 @@ Entidad de dominio Booking.
 """
 
 from datetime import date, timedelta
-from typing import Optional
+from decimal import Decimal
+from typing import Any, Optional
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator
 
 
 class Booking(BaseModel):
@@ -23,7 +24,9 @@ class Booking(BaseModel):
         default=None,
         description="Clave primaria de base de datos. None para entidades aún no persistidas.",
     )
-    booking_id: str = Field(..., description="Identificador único de la reserva (ej. referencia Airbnb)")
+    booking_id: str = Field(
+        ..., description="Identificador único de la reserva (ej. referencia Airbnb)"
+    )
     guest_name: str = Field(..., min_length=1, description="Nombre completo del huésped")
     check_in: date = Field(..., description="Fecha de entrada (inclusiva)")
     check_out: date = Field(..., description="Fecha de salida (exclusiva)")
@@ -36,15 +39,17 @@ class Booking(BaseModel):
     children: int = Field(default=0, ge=0, description="Número de niños")
 
     # Financiero
-    price: Optional[float] = Field(default=None, ge=0, description="Precio total")
-    charges: Optional[float] = Field(default=None, ge=0, description="Comisión y cargos")
+    price: Optional[Decimal] = Field(default=None, ge=0, description="Precio total")
+    charges: Optional[Decimal] = Field(default=None, ge=0, description="Comisión y cargos")
 
     # Contacto
     email: Optional[str] = Field(default=None, description="Correo electrónico del huésped")
     phone: Optional[str] = Field(default=None, description="Teléfono del huésped")
 
     # Metadatos
-    booking_number: Optional[str] = Field(default=None, description="Referencia de reserva de la plataforma")
+    booking_number: Optional[str] = Field(
+        default=None, description="Referencia de reserva de la plataforma"
+    )
     notes: Optional[str] = Field(default=None, description="Notas en texto libre")
 
     # Campo calculado — establecido por la capa de aplicación, no persistido en la BD
@@ -59,17 +64,19 @@ class Booking(BaseModel):
 
     @field_validator("check_out")
     @classmethod
-    def check_out_after_check_in(cls, v: date, info) -> date:
+    def check_out_after_check_in(cls, v: date, info: ValidationInfo) -> date:
         if "check_in" in info.data and v <= info.data["check_in"]:
             raise ValueError("check_out debe ser estrictamente posterior a check_in")
         return v
 
     @field_validator("nights")
     @classmethod
-    def nights_derived_from_dates(cls, v: int, info) -> int:
+    def nights_derived_from_dates(cls, v: int, info: ValidationInfo) -> int:
         """Corrige automáticamente el número de noches para que siempre coincida con la diferencia real de fechas."""
         if "check_in" in info.data and "check_out" in info.data:
-            return (info.data["check_out"] - info.data["check_in"]).days
+            data: dict[str, Any] = info.data
+            delta: timedelta = data["check_out"] - data["check_in"]
+            return delta.days
         return v
 
     # ------------------------------------------------------------------ #
