@@ -3,9 +3,11 @@
 
   <!-- Fila 1: botón Nueva reserva -->
   <div class="calendar-actions">
-    <button class="btn-new-booking" (click)="showCreateModal.set(true)">
-      + Nueva reserva
-    </button>
+    @if (authService.hasPermission('bookings:create')) {
+      <button class="btn-new-booking" (click)="showCreateModal.set(true)">
+        + Nueva reserva
+      </button>
+    }
   </div>
 
   <!-- Fila 2: Filtros y Selector de vista -->

@@ -2,26 +2,21 @@
 // computed para valores derivados reactivos, inject para inyección de dependencias,
 // HostListener para escuchar eventos del documento, OnInit para el ciclo de vida, signal para estado reactivo.
 import { Component, computed, HostListener, inject, OnInit, signal } from '@angular/core';
-// Servicio que comunica con la API REST para leer y actualizar reservas.
 import { BookingService } from '../../services/booking.service';
-// Servicio con utilidades de cálculo del calendario (semanas, carriles, fechas ISO).
 import { CalendarLayoutService } from '../../services/calendar-layout.service';
-// Tipos de datos: Booking representa una reserva, CalendarWeek una fila de semana.
 import { Booking, BASE_STATUSES } from '../../models/booking.model';
 import { CalendarWeek } from '../../models/calendar.model';
-// Pipe que asigna un color a cada reserva según su booking_id.
-import { BookingColorPipe } from '../../pipes/booking-color.pipe';
-// Subcomponentes visuales del calendario.
 import { CalendarHeaderComponent } from './components/calendar-header/calendar-header.component';
 import { WeekRowComponent } from './components/week-row/week-row.component';
 import { BookingModalComponent } from './components/booking-modal/booking-modal.component';
 import { BookingCreateModalComponent } from './components/booking-create-modal/booking-create-modal.component';
+import { AuthService } from '../../auth/auth.service';
 
 @Component({
   selector: 'app-calendar',
   standalone: true,
   // Todos los subcomponentes y pipes usados en el template deben declararse aquí.
-  imports: [CalendarHeaderComponent, WeekRowComponent, BookingModalComponent, BookingCreateModalComponent, BookingColorPipe],
+  imports: [CalendarHeaderComponent, WeekRowComponent, BookingModalComponent, BookingCreateModalComponent],
   templateUrl: './calendar.component.html',
   styleUrl: './calendar.component.scss'
 })
@@ -30,6 +25,7 @@ export class CalendarComponent implements OnInit {
   // Inyección de dependencias: servicios disponibles en toda la clase.
   private bookingService = inject(BookingService);
   private layout         = inject(CalendarLayoutService);
+  authService            = inject(AuthService);
 
   // ─── Constantes de etiquetas ────────────────────────────────────────────────
   // Nombres de días para la cabecera del calendario (vista mes/semana).

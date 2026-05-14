@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { Booking, BASE_STATUSES } from '../../../../models/booking.model';
 import { BookingColorPipe } from '../../../../pipes/booking-color.pipe';
 import { BookingService } from '../../../../services/booking.service';
+import { AuthService } from '../../../../auth/auth.service';
 
 
 @Component({
@@ -19,6 +20,7 @@ export class BookingModalComponent {
   saved   = output<Booking>();
 
   private bookingService = inject(BookingService);
+  authService            = inject(AuthService);
 
   statusOptions = computed(() => {
     const currentLower = this.booking().status?.toLowerCase();
