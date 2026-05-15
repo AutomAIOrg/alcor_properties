@@ -1,8 +1,29 @@
 <!-- Contenedor principal del calendario -->
 <div class="calendar">
 
-  <!-- Fila 1: botón Nueva reserva -->
+  <!-- Fila 1: búsqueda + botón Nueva reserva -->
   <div class="calendar-actions">
+    <div class="search-wrapper">
+      <input
+        type="text"
+        class="search-input"
+        placeholder="Buscar huésped o nº reserva…"
+        [value]="searchQuery()"
+        (input)="onSearchInput($any($event.target).value)"
+        (focus)="onSearchFocus()"
+        autocomplete="off"
+      />
+      @if (showSuggestions() && suggestions().length) {
+        <div class="suggestions-panel">
+          @for (s of suggestions(); track s.text) {
+            <button class="suggestion-item" type="button" (mousedown)="selectSuggestion(s.text)">
+              <span class="suggestion-text">{{ s.text }}</span>
+              <span class="suggestion-label">{{ s.label }}</span>
+            </button>
+          }
+        </div>
+      }
+    </div>
     @if (authService.hasPermission('bookings:create')) {
       <button class="btn-new-booking" (click)="showCreateModal.set(true)">
         + Nueva reserva
@@ -51,6 +72,29 @@
                        (change)="toggleBookingState(state)" />
                 {{ state }}
               </label>
+            }
+          </div>
+        }
+      </div>
+
+      <!-- Buscador: visible solo en desktop/tablet (en móvil está en .calendar-actions) -->
+      <div class="search-wrapper">
+        <input
+          type="text"
+          class="search-input"
+          placeholder="Buscar huésped o nº reserva…"
+          [value]="searchQuery()"
+          (input)="onSearchInput($any($event.target).value)"
+          (focus)="onSearchFocus()"
+          autocomplete="off"
+        />
+        @if (showSuggestions() && suggestions().length) {
+          <div class="suggestions-panel">
+            @for (s of suggestions(); track s.text) {
+              <button class="suggestion-item" type="button" (mousedown)="selectSuggestion(s.text)">
+                <span class="suggestion-text">{{ s.text }}</span>
+                <span class="suggestion-label">{{ s.label }}</span>
+              </button>
             }
           </div>
         }

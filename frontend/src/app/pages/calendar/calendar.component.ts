@@ -1,7 +1,7 @@
 // Primitivas de Angular necesarias: Component para definir el componente,
 // computed para valores derivados reactivos, inject para inyección de dependencias,
 // HostListener para escuchar eventos del documento, OnInit para el ciclo de vida, signal para estado reactivo.
-import { Component, computed, HostListener, inject, OnInit, signal } from '@angular/core';
+import { Component, computed, effect, HostListener, inject, OnInit, signal } from '@angular/core';
 import { BookingService } from '../../services/booking.service';
 import { CalendarLayoutService } from '../../services/calendar-layout.service';
 import { Booking, BASE_STATUSES } from '../../models/booking.model';
@@ -51,6 +51,10 @@ export class CalendarComponent implements OnInit {
   selectedBooking = signal<Booking | null>(null);
   // Controla la visibilidad del modal de creación de reserva.
   showCreateModal = signal(false);
+  // Texto del buscador en tiempo real.
+  searchQuery     = signal('');
+  // Controla si el desplegable de sugerencias está visible.
+  showSuggestions = signal(false);
 
   // ─── Filtros ─────────────────────────────────────────────────────────────────
   // Arrays con los valores seleccionados. Array vacío = sin filtro activo.
@@ -71,8 +75,31 @@ export class CalendarComponent implements OnInit {
 
   // Indica si hay algún filtro activo; se usa para mostrar el botón "Limpiar todo".
   hasActiveFilters = computed(() =>
-    this.filterBookingIds().length > 0 || this.filterBookingStates().length > 0
+    this.filterBookingIds().length > 0 || this.filterBookingStates().length > 0 || this.searchQuery().trim().length > 0
   );
+
+  // Sugerencias de autocompletado: nombres de huésped y números de reserva que
+  // contienen el texto buscado. Máximo 10 resultados.
+  suggestions = computed(() => {
+    const query = this.searchQuery().trim().toLowerCase();
+    if (!query) return [];
+
+    const results: { text: string; label: string }[] = [];
+    const seen = new Set<string>();
+
+    for (const b of this.bookings()) {
+      if (b.guest_name && b.guest_name.toLowerCase().includes(query) && !seen.has(b.guest_name)) {
+        seen.add(b.guest_name);
+        results.push({ text: b.guest_name, label: 'Huésped' });
+      }
+      if (b.booking_number && b.booking_number.toLowerCase().includes(query) && !seen.has(b.booking_number)) {
+        seen.add(b.booking_number);
+        results.push({ text: b.booking_number, label: 'Nº reserva' });
+      }
+    }
+
+    return results.slice(0, 10);
+  });
 
   // Reservas tras aplicar todos los filtros activos.
   // Este computed es el punto central del filtrado: todos los computeds de vista
@@ -81,18 +108,18 @@ export class CalendarComponent implements OnInit {
   private filteredBookings = computed(() => {
     const ids    = this.filterBookingIds();
     const states = this.filterBookingStates();
+    const query  = this.searchQuery().trim().toLowerCase();
 
-    // Si no hay filtros activos, devolvemos todas las reservas sin crear un nuevo array.
-    if (!ids.length && !states.length) return this.bookings();
+    if (!ids.length && !states.length && !query) return this.bookings();
 
     return this.bookings().filter(b => {
-      // Comprobamos el ID (debe estar entre los seleccionados)
       const matchesId    = !ids.length    || ids.includes(b.booking_id);
-      // Comprobamos el Estado (comparación sin distinción de mayúsculas)
       const matchesState = !states.length || states.some(s => s.toUpperCase() === b.status?.toUpperCase());
+      const matchesQuery = !query ||
+        b.guest_name?.toLowerCase().includes(query) ||
+        (b.booking_number?.toLowerCase().includes(query) ?? false);
 
-      // Se devuelve true si la reserva cumple ambas condiciones
-      return matchesId && matchesState;
+      return matchesId && matchesState && matchesQuery;
     });
   });
 
@@ -131,6 +158,51 @@ export class CalendarComponent implements OnInit {
   });
 
   // ─── Ciclo de vida ───────────────────────────────────────────────────────────
+
+  constructor() {
+    // Cuando hay búsqueda activa y ningún resultado es visible en el período actual,
+    // navega automáticamente al mes/semana del primer resultado encontrado.
+    effect(() => {
+      const query = this.searchQuery().trim();
+      if (!query) return;
+
+      const matches = this.filteredBookings();
+      if (!matches.length) return;
+
+      const cur  = this.currentDate();
+      const mode = this.viewMode();
+      let periodStart: string;
+      let periodEnd: string;
+
+      if (mode === 'month') {
+        periodStart = this.layout.toIso(new Date(cur.getFullYear(), cur.getMonth(), 1));
+        periodEnd   = this.layout.toIso(new Date(cur.getFullYear(), cur.getMonth() + 1, 0));
+      } else {
+        const day    = cur.getDay();
+        const monday = new Date(cur);
+        monday.setDate(cur.getDate() - ((day + 6) % 7));
+        const sunday = new Date(monday);
+        sunday.setDate(monday.getDate() + 6);
+        periodStart = this.layout.toIso(monday);
+        periodEnd   = this.layout.toIso(sunday);
+      }
+
+      const visibleInPeriod = matches.some(b =>
+        b.check_in <= periodEnd && b.check_out >= periodStart
+      );
+
+      if (!visibleInPeriod) {
+        const first = [...matches].sort((a, b) => a.check_in.localeCompare(b.check_in))[0];
+        const d = new Date(first.check_in + 'T00:00:00');
+        this.currentDate.set(
+          mode === 'month'
+            ? new Date(d.getFullYear(), d.getMonth(), 1)
+            : d
+        );
+      }
+    });
+  }
+
   // Se ejecuta una vez al montar el componente: carga todas las reservas desde la API.
   ngOnInit(): void {
     this.bookingService.getBookings().subscribe(bookings => {
@@ -177,6 +249,9 @@ export class CalendarComponent implements OnInit {
       this.showIdDropdown.set(false);
       this.showStateDropdown.set(false);
     }
+    if (!target.closest('.search-wrapper')) {
+      this.showSuggestions.set(false);
+    }
   }
 
   // Añade o quita un booking_id del filtro activo.
@@ -197,6 +272,24 @@ export class CalendarComponent implements OnInit {
   clearAllFilters(): void {
     this.filterBookingIds.set([]);
     this.filterBookingStates.set([]);
+    this.searchQuery.set('');
+  }
+
+  // ─── Buscador con autocompletado ──────────────────────────────────────────────
+  onSearchInput(value: string): void {
+    this.searchQuery.set(value);
+    this.showSuggestions.set(true);
+  }
+
+  onSearchFocus(): void {
+    if (this.suggestions().length > 0) {
+      this.showSuggestions.set(true);
+    }
+  }
+
+  selectSuggestion(text: string): void {
+    this.searchQuery.set(text);
+    this.showSuggestions.set(false);
   }
 
   // ─── Modal de detalle de reserva ─────────────────────────────────────────────
