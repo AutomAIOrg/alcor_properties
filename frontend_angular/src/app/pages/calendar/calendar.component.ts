@@ -46,7 +46,7 @@ export class CalendarComponent implements OnInit {
 
   // ─── Estado reactivo (signals) ───────────────────────────────────────────────
   // Vista activa del calendario. Añadir 'day' al union type para activar la vista diaria.
-  viewMode        = signal<'month' | 'week' | 'day'>('month');
+  viewMode        = signal<'month' | 'week'>('month'); // signal<'month' | 'week' | 'day'>('month');
   // Fecha de referencia que determina qué mes/semana/día se muestra.
   currentDate     = signal(new Date());
   // Lista completa de reservas cargadas desde la API.
@@ -149,7 +149,7 @@ export class CalendarComponent implements OnInit {
     switch (this.viewMode()) {
       case 'month': this.currentDate.set(new Date(d.getFullYear(), d.getMonth() - 1, 1)); break;
       case 'week':  this.currentDate.set(new Date(d.getFullYear(), d.getMonth(), d.getDate() - 7)); break;
-      case 'day':   this.currentDate.set(new Date(d.getFullYear(), d.getMonth(), d.getDate() - 1)); break;
+      // case 'day':   this.currentDate.set(new Date(d.getFullYear(), d.getMonth(), d.getDate() - 1)); break;
     }
   }
 
@@ -159,7 +159,7 @@ export class CalendarComponent implements OnInit {
     switch (this.viewMode()) {
       case 'month': this.currentDate.set(new Date(d.getFullYear(), d.getMonth() + 1, 1)); break;
       case 'week':  this.currentDate.set(new Date(d.getFullYear(), d.getMonth(), d.getDate() + 7)); break;
-      case 'day':   this.currentDate.set(new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1)); break;
+      // case 'day':   this.currentDate.set(new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1)); break;
     }
   }
 

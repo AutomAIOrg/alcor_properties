@@ -5,14 +5,14 @@
   display: flex;
   flex-direction: column;
   gap: 1rem;
-  padding: 1.5rem;
-  max-width: 1100px;
+  padding: 0.5rem 1.5rem 1.5rem;
+  max-width: 1400px;
   margin: 0 auto;
   font-family: inherit;
   min-width: 0;
 
   @media (max-width: 768px) {
-    padding: 0.75rem;
+    padding: 0.5rem 0.75rem 0.75rem;
   }
 }
 
@@ -26,14 +26,37 @@
 }
 
 
-// ── Barra de filtros ─────────────────────────────────────────────────────────
-// Fila horizontal con flex-wrap para que en móvil los botones bajen de línea.
-// margin-left:auto en .btn-new-booking lo empuja al extremo derecho.
+// ── Fila 1: acciones principales ────────────────────────────────────────────────────
+.calendar-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+// ── Fila 2: filtros + selector de vista ──────────────────────────────────────
+// Filtros a la izquierda, view-toggle empujado a la derecha con margin-left:auto.
 .calendar-filters {
   display: flex;
   align-items: center;
   gap: 0.5rem;
   flex-wrap: wrap;
+
+  // Agrupa los filtros y el botón «Limpiar» como un bloque único.
+  // Así el view-toggle no se desplaza cuando aparece «Limpiar filtros».
+  .filter-group {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+
+  .view-toggle {
+    margin-left: auto;
+
+    // En desktop/tablet el toggle vive en el header → ocultarlo aquí
+    @media (min-width: 769px) {
+      display: none;
+    }
+  }
 }
 
 // ── Desplegable de filtro ────────────────────────────────────────────────────
@@ -114,25 +137,28 @@
 
 // ── Botón «Limpiar filtros» ───────────────────────────────────────────────────
 // Aparece en la barra solo cuando hasActiveFilters() es true.
-// En hover cambia a rojo para indicar acción destructiva.
 .clear-filter {
-  padding: 0.3rem 0.7rem;
-  border: 1px solid #d0d5dd;
-  border-radius: 6px;
-  background: #fff;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0px solid #d0d5dd;
+  border-radius: 50%;
+  // background: #fff;
   color: #667085;
-  font-size: 0.8rem;
-  cursor: pointer;
+  font-size: 1.1rem;
   line-height: 1;
-  transition: background 0.15s, color 0.15s;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
 
   &:hover { background: #fef2f2; color: #f87171; border-color: #f87171; }
 }
 
-// ── Botón «Nueva reserva» ────────────────────────────────────────────────────
-// margin-left:auto lo desplaza al extremo derecho de la barra de filtros.
+// ── Botón «Nueva reserva» ────────────────────────────────────────────
+// Está en su propia fila .calendar-actions con justify-content:flex-end.
 .btn-new-booking {
-  margin-left: auto;
   padding: 0.3rem 0.8rem;
   background: #2563eb;
   color: #fff;
@@ -144,6 +170,43 @@
   transition: background 0.15s;
 
   &:hover { background: #1d4ed8; }
+}
+
+// ── Selector Mes / Semana ───────────────────────────────────────────
+// Vive dentro de .calendar-filters. margin-left:auto lo empuja a la derecha.
+.view-toggle {
+  display: flex;
+  gap: 0;
+  flex-shrink: 0;
+  border: 1px solid #d0d5dd;
+  border-radius: 8px;
+  overflow: hidden;
+
+  button {
+    padding: 0.4rem 1rem;
+    border: none;
+    background: #fff;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.15s, color 0.15s;
+    border-right: 1px solid #d0d5dd;
+
+    &:last-child { border-right: none; }
+
+    &.active {
+      background: #101828;
+      color: #fff;
+    }
+
+    &:not(.active):hover { background: #f2f4f7; }
+
+    @media (max-width: 768px) {
+      padding: 0.3rem 0.7rem;
+      font-size: 0.8rem;
+    }
+  }
 }
 
 // ── Cabecera de días de la semana ─────────────────────────────────────────────

@@ -7,13 +7,15 @@ import { Component, computed, input, output } from '@angular/core';
   styleUrl: './calendar-header.component.scss'
 })
 export class CalendarHeaderComponent {
-  month = input.required<number>();
-  year  = input.required<number>();
+  month    = input.required<number>();
+  year     = input.required<number>();
+  viewMode = input<'month' | 'week'>('month');
 
-  prev        = output<void>();
-  next        = output<void>();
-  today       = output<void>();
-  dateChange  = output<{ month: number; year: number }>();
+  prev           = output<void>();
+  next           = output<void>();
+  today          = output<void>();
+  dateChange     = output<{ month: number; year: number }>();
+  viewModeChange = output<'month' | 'week'>();
 
   readonly MONTHS = [
     'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
