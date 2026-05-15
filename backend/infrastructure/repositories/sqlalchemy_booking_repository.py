@@ -66,6 +66,7 @@ class SQLAlchemyBookingRepository(IBookingRepository):
     def update(self, booking: Booking) -> Booking:
         orm = self._db.get(BookingORM, booking.record_id)
         if orm is None:
+            assert booking.record_id is not None
             raise BookingNotFound(booking.record_id)
 
         orm.booking_id = booking.booking_id
@@ -115,8 +116,8 @@ class SQLAlchemyBookingRepository(IBookingRepository):
             persons=orm.persons or 1,
             adults=orm.adults or 1,
             children=orm.children or 0,
-            price=float(orm.price) if orm.price is not None else None,
-            charges=float(orm.charges) if orm.charges is not None else None,
+            price=orm.price,
+            charges=orm.charges,
             email=orm.email,
             phone=orm.phone,
             booking_number=orm.booking_number,

@@ -8,6 +8,7 @@ La capa de API asigna cada excepción al código de estado HTTP apropiado.
 
 class DomainException(Exception):
     """Clase base para todas las excepciones de dominio."""
+
     pass
 
 
@@ -36,4 +37,3 @@ class DomainValidationError(DomainException):
 
     def __init__(self, message: str) -> None:
         super().__init__(message)
-   

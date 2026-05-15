@@ -2,7 +2,7 @@
 Engine de SQLAlchemy y fábrica de sesiones.
 """
 
-from typing import Generator
+from collections.abc import Generator
 from urllib.parse import quote_plus
 
 from sqlalchemy import create_engine
@@ -22,8 +22,8 @@ def _build_database_url() -> str:
 
 engine = create_engine(
     _build_database_url(),
-    pool_pre_ping=True,   # vuelve a comprobar la conexión antes de usarla (reemplaza la antigua lógica de ping)
-    pool_recycle=3600,    # recicla conexiones tras 1 h para evitar el wait_timeout de MySQL
+    pool_pre_ping=True,  # vuelve a comprobar la conexión antes de usarla (reemplaza la antigua lógica de ping)
+    pool_recycle=3600,  # recicla conexiones tras 1 h para evitar el wait_timeout de MySQL
 )
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
@@ -36,4 +36,3 @@ def get_db() -> Generator[Session, None, None]:
         yield db
     finally:
         db.close()
-  
