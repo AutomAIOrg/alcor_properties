@@ -32,7 +32,7 @@ alcor_project/
 │   └── routers/
 │       └── bookings.py       # Endpoints /api/v1/bookings
 │
-└── frontend_angular/         # SPA Angular
+└── frontend/         # SPA Angular
     └── src/app/
         ├── models/           # Interfaces TypeScript (Booking, BASE_STATUSES)
         ├── services/         # BookingService (HTTP)
@@ -93,7 +93,7 @@ Documentación interactiva: `http://localhost:8000/docs`
 ### Frontend
 
 ```bash
-cd frontend_angular
+cd frontend
 npm install
 ng serve
 ```

@@ -5,6 +5,7 @@ import { of } from 'rxjs';
 import { CalendarComponent } from './calendar.component';
 import { BookingService } from '../../services/booking.service';
 import { CalendarLayoutService } from '../../services/calendar-layout.service';
+import { AuthService } from '../../auth/auth.service';
 import { Booking } from '../../models/booking.model';
 import { CalendarWeek } from '../../models/calendar.model';
 import { CalendarHeaderComponent } from './components/calendar-header/calendar-header.component';
@@ -98,6 +99,7 @@ describe('CalendarComponent', () => {
       imports: [CalendarComponent],
       providers: [
         { provide: BookingService, useValue: bookingServiceSpy },
+        { provide: AuthService, useValue: { hasPermission: jest.fn().mockReturnValue(true), hasRole: jest.fn().mockReturnValue(true) } },
         CalendarLayoutService,
       ],
     })

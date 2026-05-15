@@ -2,6 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { of, throwError } from 'rxjs';
 import { BookingModalComponent } from './booking-modal.component';
 import { BookingService } from '../../../../services/booking.service';
+import { AuthService } from '../../../../auth/auth.service';
 import { Booking, BASE_STATUSES } from '../../../../models/booking.model';
 
 // ─── Fixture helper ────────────────────────────────────────────────────────────
@@ -31,9 +32,18 @@ describe('BookingModalComponent', () => {
     } as unknown as jest.Mocked<BookingService>;
     bookingServiceSpy.updateBooking.mockReturnValue(of(makeBooking({ guest_name: 'Updated' })));
 
+    const authServiceMock = {
+      hasPermission: jest.fn().mockReturnValue(true),
+      hasRole: jest.fn().mockReturnValue(true),
+      isAuthenticated: jest.fn().mockReturnValue(true),
+    };
+
     await TestBed.configureTestingModule({
       imports: [BookingModalComponent],
-      providers: [{ provide: BookingService, useValue: bookingServiceSpy }],
+      providers: [
+        { provide: BookingService, useValue: bookingServiceSpy },
+        { provide: AuthService, useValue: authServiceMock },
+      ],
     }).compileComponents();
 
     fixture = TestBed.createComponent(BookingModalComponent);
