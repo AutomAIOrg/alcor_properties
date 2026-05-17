@@ -1,22 +1,41 @@
 """
-FastAPI backend for Property Management System.
+Aplicación FastAPI del proyecto.
 """
+
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from config import settings
-from routers import bookings
 
-# Create FastAPI app
+from api.error_handlers import (
+    booking_conflict_handler,
+    booking_not_found_handler,
+    domain_validation_error_handler,
+)
+from api.v1.router import router as v1_router
+from config import settings
+from domain.exceptions import BookingConflict, BookingNotFound, DomainValidationError
+from infrastructure.database.session import engine
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Verifica que la conexión a la base de datos esté disponible al iniciar."""
+    with engine.connect():
+        pass
+    yield
+
+
 app = FastAPI(
     title=settings.APP_NAME,
     version=settings.APP_VERSION,
     description="REST API for Property Management System",
     docs_url="/docs",
-    redoc_url="/redoc"
+    redoc_url="/redoc",
+    lifespan=lifespan,
 )
 
-# CORS middleware
+# CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.CORS_ORIGINS,
@@ -25,27 +44,31 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Include routers
-app.include_router(bookings.router, prefix=settings.API_PREFIX)
+# Excepción de dominio → Respuesta HTTP
+app.add_exception_handler(BookingNotFound, booking_not_found_handler)
+app.add_exception_handler(BookingConflict, booking_conflict_handler)
+app.add_exception_handler(DomainValidationError, domain_validation_error_handler)
+
+# Rutas de la API
+app.include_router(v1_router)
 
 
 @app.get("/")
 async def root():
-    """Root endpoint."""
     return {
         "name": settings.APP_NAME,
         "version": settings.APP_VERSION,
         "status": "running",
-        "docs": "/docs"
+        "docs": "/docs",
     }
 
 
 @app.get("/health")
 async def health_check():
-    """Health check endpoint."""
     return {"status": "healthy"}
 
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(app, host="0.0.0.0", port=8000)

@@ -1,0 +1,67 @@
+"""
+Interfaz abstracta de repositorio para el dominio de Reservas.
+"""
+
+from abc import ABC, abstractmethod
+from datetime import date
+from typing import Optional
+
+from domain.bookings.entity import Booking
+
+
+class IBookingRepository(ABC):
+    """Puerto para las operaciones de persistencia de reservas."""
+
+    @abstractmethod
+    def get_by_id(self, record_id: int) -> Booking:
+        """
+        Devuelve la reserva identificada por *record_id*.
+
+        Excepciones:
+            BookingNotFound: si no existe una reserva con ese ID.
+        """
+        pass
+
+    @abstractmethod
+    def list(
+        self,
+        start_date: Optional[date] = None,
+        end_date: Optional[date] = None,
+        limit: Optional[int] = None,
+    ) -> list[Booking]:
+        """
+        Devuelve las reservas, opcionalmente filtradas por rango de fechas y limitadas en cantidad.
+
+        Cuando se proporcionan *start_date* / *end_date*, solo se retornan reservas cuya
+        estancia se superpone con ese rango.
+        """
+        pass
+
+    @abstractmethod
+    def create(self, booking: Booking) -> Booking:
+        """
+        Persiste una nueva reserva y la devuelve con el *record_id* asignado.
+
+        La *booking* recibida debe tener ``record_id=None``.
+        """
+        pass
+
+    @abstractmethod
+    def update(self, booking: Booking) -> Booking:
+        """
+        Persiste los cambios en una reserva existente y devuelve la entidad actualizada.
+
+        Excepciones:
+            BookingNotFound: si no existe una reserva con *booking.record_id*.
+        """
+        pass
+
+    @abstractmethod
+    def delete(self, record_id: int) -> None:
+        """
+        Elimina la reserva identificada por *record_id*.
+
+        Excepciones:
+            BookingNotFound: si no existe una reserva con ese ID.
+        """
+        pass
