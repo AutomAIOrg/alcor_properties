@@ -2,7 +2,6 @@ name: Backend CI
 
 on:
   push:
-    branches: [main, "feature/**"]
     paths: ["backend/**"]
   pull_request:
     paths: ["backend/**"]
