@@ -53,6 +53,9 @@ frontend/package-lock.json
 *.sublime-project
 .history/
 
+# ── Base de datos local (datos reales del cliente, nunca subir) ──────────────
+db/init/*.sql
+
 # ── Sistema operativo ────────────────────────────────────────────────────────
 .DS_Store
 Thumbs.db
