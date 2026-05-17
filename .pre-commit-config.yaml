@@ -1,0 +1,37 @@
+repos:
+  # ── Checks generales ────────────────────────────────────────────────────────
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-merge-conflict
+      - id: detect-private-key
+
+  # ── Python: Ruff (linting + import sort) ────────────────────────────────────
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.11.10
+    hooks:
+      - id: ruff
+        args: [--fix]
+        files: ^backend/
+      - id: ruff-format
+        files: ^backend/
+
+  # ── TypeScript/HTML/SCSS: ESLint + Prettier ──────────────────────────────────
+  - repo: local
+    hooks:
+      - id: eslint
+        name: eslint
+        language: system
+        entry: bash -c 'cd frontend && pnpm lint'
+        files: ^frontend/src/.*\.(ts|html)$
+        pass_filenames: false
+
+      - id: prettier
+        name: prettier
+        language: system
+        entry: bash -c 'cd frontend && pnpm format'
+        files: ^frontend/src/.*\.(ts|html|scss)$
+        pass_filenames: false

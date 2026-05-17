@@ -48,6 +48,30 @@ jobs:
     name: Tests & Coverage (pytest)
     runs-on: ubuntu-latest
     needs: [lint, typecheck]
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: alcor_test
+          MYSQL_USER: alcor
+          MYSQL_PASSWORD: alcor_pass
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping --silent"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+    env:
+      DB_HOST: 127.0.0.1
+      DB_USER: alcor
+      DB_PASS: alcor_pass
+      DB_NAME: alcor_test
+      DB_PORT: 3306
+
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -55,5 +79,7 @@ jobs:
           python-version: "3.13"
       - name: Install dependencies
         run: pip install -r requirements.txt
+      - name: Apply migrations
+        run: alembic upgrade head
       - name: Run tests with coverage
         run: python -m pytest tests/ --cov --cov-report=term-missing
