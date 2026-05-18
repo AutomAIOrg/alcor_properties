@@ -1,2 +1,10 @@
+if ! command -v pnpm >/dev/null 2>&1; then
+  export NVM_DIR="$HOME/.nvm"
+  [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+  nvm use --silent 18.20.8
+fi
+
+cd frontend
+
 pnpm exec lint-staged
-pnpm test --no-coverage --forceExit
+pnpm test --runInBand --no-coverage
