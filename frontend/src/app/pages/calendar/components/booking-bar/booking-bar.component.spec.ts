@@ -8,13 +8,24 @@ import { Booking } from '../../../../models/booking.model';
 
 function makeBooking(overrides: Partial<Booking> = {}): Booking {
   return {
-    record_id: 1, booking_id: 'R180', guest_name: 'Ana García',
-    check_in: '2025-06-01', check_out: '2025-06-07',
-    status: 'Confirmed', nights: 6, persons: 2,
-    adults: 2, children: 0, price: 600, charges: null,
-    electric_allowance: null, email: null, phone: null,
-    booking_number: null, notes: null,
-    ...overrides
+    record_id: 1,
+    booking_id: 'R180',
+    guest_name: 'Ana García',
+    check_in: '2025-06-01',
+    check_out: '2025-06-07',
+    status: 'Confirmed',
+    nights: 6,
+    persons: 2,
+    adults: 2,
+    children: 0,
+    price: 600,
+    charges: null,
+    electric_allowance: null,
+    email: null,
+    phone: null,
+    booking_number: null,
+    notes: null,
+    ...overrides,
   };
 }
 
@@ -27,7 +38,7 @@ function makeBar(overrides: Partial<WeekBar> = {}): WeekBar {
     isCheckin: true,
     isCheckout: false,
     background: 'hsl(200, 65%, 42%)',
-    ...overrides
+    ...overrides,
   };
 }
 
@@ -75,39 +86,36 @@ describe('BookingBarComponent', () => {
   // ── Clases CSS condicionales ─────────────────────────────────────────────────
 
   describe('clases CSS', () => {
-    it('isCheckin=true aplica .bar-round-left', () => {
-      fixture.componentRef.setInput('bar', makeBar({ isCheckin: true }));
+    it('aplica las clases de borde según isCheckin/isCheckout', () => {
+      fixture.componentRef.setInput('bar', makeBar({ isCheckin: true, isCheckout: true }));
       fixture.detectChanges();
-      const el: HTMLElement = fixture.nativeElement.querySelector('.booking-bar');
+      let el: HTMLElement = fixture.nativeElement.querySelector('.booking-bar');
+
       expect(el.classList).toContain('bar-round-left');
-    });
-
-    it('isCheckin=false no aplica .bar-round-left', () => {
-      fixture.componentRef.setInput('bar', makeBar({ isCheckin: false }));
-      fixture.detectChanges();
-      const el: HTMLElement = fixture.nativeElement.querySelector('.booking-bar');
-      expect(el.classList).not.toContain('bar-round-left');
-    });
-
-    it('isCheckout=true aplica .bar-round-right', () => {
-      fixture.componentRef.setInput('bar', makeBar({ isCheckout: true }));
-      fixture.detectChanges();
-      const el: HTMLElement = fixture.nativeElement.querySelector('.booking-bar');
       expect(el.classList).toContain('bar-round-right');
+
+      fixture.componentRef.setInput('bar', makeBar({ isCheckin: false, isCheckout: false }));
+      fixture.detectChanges();
+      el = fixture.nativeElement.querySelector('.booking-bar');
+      expect(el.classList).not.toContain('bar-round-left');
+      expect(el.classList).not.toContain('bar-round-right');
     });
 
-    it('status="Cancelled" aplica .bar-cancelled', () => {
-      const bar = makeBar({ booking: makeBooking({ status: 'Cancelled' }) });
-      fixture.componentRef.setInput('bar', bar);
+    it('aplica .bar-cancelled solo cuando status="Cancelled"', () => {
+      fixture.componentRef.setInput(
+        'bar',
+        makeBar({ booking: makeBooking({ status: 'Cancelled' }) })
+      );
       fixture.detectChanges();
-      const el: HTMLElement = fixture.nativeElement.querySelector('.booking-bar');
+      let el: HTMLElement = fixture.nativeElement.querySelector('.booking-bar');
       expect(el.classList).toContain('bar-cancelled');
-    });
 
-    it('status distinto de "Cancelled" no aplica .bar-cancelled', () => {
-      fixture.componentRef.setInput('bar', makeBar({ booking: makeBooking({ status: 'Confirmed' }) }));
+      fixture.componentRef.setInput(
+        'bar',
+        makeBar({ booking: makeBooking({ status: 'Confirmed' }) })
+      );
       fixture.detectChanges();
-      const el: HTMLElement = fixture.nativeElement.querySelector('.booking-bar');
+      el = fixture.nativeElement.querySelector('.booking-bar');
       expect(el.classList).not.toContain('bar-cancelled');
     });
   });
@@ -116,7 +124,10 @@ describe('BookingBarComponent', () => {
 
   describe('background', () => {
     it('status="Cancelled" deja background en null (se gestiona por CSS)', () => {
-      const bar = makeBar({ booking: makeBooking({ status: 'Cancelled' }), background: 'hsl(200, 65%, 42%)' });
+      const bar = makeBar({
+        booking: makeBooking({ status: 'Cancelled' }),
+        background: 'hsl(200, 65%, 42%)',
+      });
       fixture.componentRef.setInput('bar', bar);
       fixture.detectChanges();
       const el: HTMLElement = fixture.nativeElement.querySelector('.booking-bar');

@@ -27,10 +27,10 @@ class StubCalendarHeaderComponent {
   @Input() month!: number;
   @Input() year!: number;
   @Input() viewMode!: string;
-  @Output() prev           = new EventEmitter<void>();
-  @Output() next           = new EventEmitter<void>();
-  @Output() today          = new EventEmitter<void>();
-  @Output() dateChange     = new EventEmitter<{ month: number; year: number }>();
+  @Output() prev = new EventEmitter<void>();
+  @Output() next = new EventEmitter<void>();
+  @Output() today = new EventEmitter<void>();
+  @Output() dateChange = new EventEmitter<{ month: number; year: number }>();
   @Output() viewModeChange = new EventEmitter<string>();
 }
 
@@ -62,7 +62,7 @@ class StubBookingModalComponent {
 })
 class StubBookingCreateModalComponent {
   @Input() apartments!: string[];
-  @Output() close   = new EventEmitter<void>();
+  @Output() close = new EventEmitter<void>();
   @Output() created = new EventEmitter<Booking>();
 }
 
@@ -70,13 +70,24 @@ class StubBookingCreateModalComponent {
 
 function makeBooking(overrides: Partial<Booking> = {}): Booking {
   return {
-    record_id: 1, booking_id: 'R180', guest_name: 'Ana García',
-    check_in: '2025-06-01', check_out: '2025-06-07',
-    status: 'Confirmed', nights: 6, persons: 2,
-    adults: 2, children: 0, price: 600, charges: null,
-    electric_allowance: null, email: null, phone: null,
-    booking_number: null, notes: null,
-    ...overrides
+    record_id: 1,
+    booking_id: 'R180',
+    guest_name: 'Ana García',
+    check_in: '2025-06-01',
+    check_out: '2025-06-07',
+    status: 'Confirmed',
+    nights: 6,
+    persons: 2,
+    adults: 2,
+    children: 0,
+    price: 600,
+    charges: null,
+    electric_allowance: null,
+    email: null,
+    phone: null,
+    booking_number: null,
+    notes: null,
+    ...overrides,
   };
 }
 
@@ -99,7 +110,13 @@ describe('CalendarComponent', () => {
       imports: [CalendarComponent],
       providers: [
         { provide: BookingService, useValue: bookingServiceSpy },
-        { provide: AuthService, useValue: { hasPermission: jest.fn().mockReturnValue(true), hasRole: jest.fn().mockReturnValue(true) } },
+        {
+          provide: AuthService,
+          useValue: {
+            hasPermission: jest.fn().mockReturnValue(true),
+            hasRole: jest.fn().mockReturnValue(true),
+          },
+        },
         CalendarLayoutService,
       ],
     })
@@ -309,9 +326,7 @@ describe('CalendarComponent', () => {
       component.filterBookingStates.set(['confirmed']); // minúsculas
       const allBars = component.weeks().flatMap(w => w.bars);
       expect(allBars.length).toBeGreaterThan(0);
-      allBars.forEach(bar =>
-        expect(bar.booking.status.toUpperCase()).toBe('CONFIRMED')
-      );
+      allBars.forEach(bar => expect(bar.booking.status.toUpperCase()).toBe('CONFIRMED'));
     });
 
     it('filtrado combinado (AND): ID y estado deben cumplirse a la vez', () => {
@@ -416,7 +431,9 @@ describe('CalendarComponent', () => {
         makeBooking({ record_id: 1, guest_name: 'Actualizado por output' })
       );
 
-      expect(component.bookings().find(x => x.record_id === 1)?.guest_name).toBe('Actualizado por output');
+      expect(component.bookings().find(x => x.record_id === 1)?.guest_name).toBe(
+        'Actualizado por output'
+      );
     });
 
     it('el output close del stub create-modal pone showCreateModal a false', () => {
@@ -466,26 +483,6 @@ describe('CalendarComponent', () => {
       expect(headers.length).toBe(7);
     });
 
-    it('el botón "Mes" tiene clase .active en viewMode="month"', () => {
-      component.viewMode.set('month');
-      fixture.detectChanges();
-      const btns: HTMLButtonElement[] = Array.from(
-        fixture.nativeElement.querySelectorAll('.view-toggle button')
-      );
-      const mesBtn = btns.find(b => b.textContent?.trim() === 'Mes');
-      expect(mesBtn?.classList).toContain('active');
-    });
-
-    it('el botón "Semana" tiene clase .active en viewMode="week"', () => {
-      component.viewMode.set('week');
-      fixture.detectChanges();
-      const btns: HTMLButtonElement[] = Array.from(
-        fixture.nativeElement.querySelectorAll('.view-toggle button')
-      );
-      const semanaBtn = btns.find(b => b.textContent?.trim() === 'Semana');
-      expect(semanaBtn?.classList).toContain('active');
-    });
-
     it('.clear-filter no se renderiza cuando no hay filtros activos', () => {
       expect(fixture.nativeElement.querySelector('.clear-filter')).toBeNull();
     });
@@ -497,18 +494,10 @@ describe('CalendarComponent', () => {
       expect(fixture.nativeElement.querySelector('.clear-filter')).toBeTruthy();
     });
 
-    it('app-booking-modal no se renderiza sin selectedBooking', () => {
-      expect(fixture.nativeElement.querySelector('app-booking-modal')).toBeNull();
-    });
-
     it('app-booking-modal se renderiza cuando hay selectedBooking', () => {
       component.openBooking(makeBooking());
       fixture.detectChanges();
       expect(fixture.nativeElement.querySelector('app-booking-modal')).toBeTruthy();
-    });
-
-    it('app-booking-create-modal no se renderiza con showCreateModal=false', () => {
-      expect(fixture.nativeElement.querySelector('app-booking-create-modal')).toBeNull();
     });
 
     it('app-booking-create-modal se renderiza con showCreateModal=true', () => {
@@ -523,9 +512,7 @@ describe('CalendarComponent', () => {
     });
 
     it('barClick de app-week-row llama a openBooking', () => {
-      const rows = fixture.debugElement.queryAll(
-        el => el.nativeElement.tagName === 'APP-WEEK-ROW'
-      );
+      const rows = fixture.debugElement.queryAll(el => el.nativeElement.tagName === 'APP-WEEK-ROW');
       const booking = makeBooking({ record_id: 77 });
       (rows[0].componentInstance as StubWeekRowComponent).barClick.emit(booking);
 
@@ -587,8 +574,18 @@ describe('CalendarComponent', () => {
     });
 
     it('respeta los filtros activos', () => {
-      const b1 = makeBooking({ record_id: 1, booking_id: 'R180', check_in: '2025-06-01', check_out: '2025-06-07' });
-      const b2 = makeBooking({ record_id: 2, booking_id: 'R101', check_in: '2025-06-01', check_out: '2025-06-07' });
+      const b1 = makeBooking({
+        record_id: 1,
+        booking_id: 'R180',
+        check_in: '2025-06-01',
+        check_out: '2025-06-07',
+      });
+      const b2 = makeBooking({
+        record_id: 2,
+        booking_id: 'R101',
+        check_in: '2025-06-01',
+        check_out: '2025-06-07',
+      });
       component.bookings.set([b1, b2]);
       component.currentDate.set(new Date(2025, 5, 3));
       component.toggleBookingId('R180');

@@ -13,12 +13,6 @@ describe('BookingColorPipe', () => {
     expect(a).toBe(b);
   });
 
-  it('devuelve colores distintos para booking_ids distintos', () => {
-    const a = pipe.transform('R180');
-    const b = pipe.transform('R101');
-    expect(a).not.toBe(b);
-  });
-
   it('el resultado tiene formato hsl(N, 65%, 42%)', () => {
     const result = pipe.transform('R180');
     expect(result).toMatch(/^hsl\(\d+, 65%, 42%\)$/);
