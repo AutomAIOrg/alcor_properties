@@ -2,7 +2,9 @@ name: CI
 
 on:
   push:
+    paths: ["frontend/**"]
   pull_request:
+    paths: ["frontend/**"]
 
 jobs:
   frontend:
@@ -32,10 +34,13 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Lint
-        run: pnpm lint
+        run: pnpm lint && pnpm exec prettier --check "src/**/*.{ts,html,scss}"
 
       - name: Test
-        run: pnpm test --no-coverage --forceExit
+        run: pnpm test --coverage --detectOpenHandles --coverageReporters=text-summary
+
+      - name: Type check
+        run: pnpm typecheck
 
       - name: Build
         run: pnpm build

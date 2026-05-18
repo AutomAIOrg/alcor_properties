@@ -25,13 +25,14 @@ export default [
       '@angular-eslint': angular,
     },
     rules: {
-      '@typescript-eslint/no-explicit-any': 'warn',
-      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+      '@typescript-eslint/no-explicit-any': 'error',
+      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', ignoreRestSiblings: true }],
       '@typescript-eslint/explicit-function-return-type': 'off',
       '@angular-eslint/component-class-suffix': 'error',
       '@angular-eslint/directive-class-suffix': 'error',
-      '@angular-eslint/no-empty-lifecycle-method': 'warn',
+      '@angular-eslint/no-empty-lifecycle-method': 'error',
       '@angular-eslint/use-lifecycle-interface': 'warn',
+      '@typescript-eslint/no-floating-promises': 'error',
     },
   },
 
@@ -46,6 +47,7 @@ export default [
     },
     rules: {
       '@angular-eslint/template/no-negated-async': 'warn',
+      '@angular-eslint/template/no-any': 'error',
     },
   },
 ];

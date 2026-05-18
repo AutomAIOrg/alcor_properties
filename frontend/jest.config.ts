@@ -4,4 +4,7 @@ import { createCjsPreset } from 'jest-preset-angular/presets/index.js';
 export default {
   ...createCjsPreset(),
   setupFilesAfterEnv: ['<rootDir>/setup-jest.ts'],
+  coverageThreshold: {
+    global: { lines: 60 },
+  },
 } satisfies Config;
