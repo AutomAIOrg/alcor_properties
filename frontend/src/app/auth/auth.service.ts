@@ -9,9 +9,8 @@ import { ROLE_PERMISSIONS } from '../config/permissions.config';
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
-
-  private http         = inject(HttpClient);
-  private router       = inject(Router);
+  private http = inject(HttpClient);
+  private router = inject(Router);
   private tokenService = inject(TokenService);
 
   private readonly API = '/api/auth/login';
@@ -19,9 +18,9 @@ export class AuthService {
   // ── Estado reactivo ────────────────────────────────────────────────────────
   private _currentUser = signal<User | null>(this.loadUserFromToken());
 
-  currentUser     = this._currentUser.asReadonly();
+  currentUser = this._currentUser.asReadonly();
   isAuthenticated = computed(() => !!this._currentUser());
-  currentRole     = computed(() => this._currentUser()?.role ?? null);
+  currentRole = computed(() => this._currentUser()?.role ?? null);
 
   // ── Login / Logout ─────────────────────────────────────────────────────────
   login(credentials: AuthRequest): Observable<AuthResponse> {
@@ -36,7 +35,7 @@ export class AuthService {
   logout(): void {
     this.tokenService.removeToken();
     this._currentUser.set(null);
-    this.router.navigate(['/login']);
+    void this.router.navigate(['/login']);
   }
 
   // ── Control de acceso ──────────────────────────────────────────────────────
