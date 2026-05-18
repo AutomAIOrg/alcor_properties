@@ -16,10 +16,10 @@ export const appConfig: ApplicationConfig = {
     provideRouter(routes),
     provideHttpClient(
       withInterceptors([
-        mockAuthInterceptor, // ELIMINAR cuando el backend esté listo
+        mockAuthInterceptor, // TODO: eliminar cuando el backend implemente /api/auth/login
         authInterceptor,
       ])
     ),
-    { provide: LOCALE_ID, useValue: 'es' }
-  ]
+    { provide: LOCALE_ID, useValue: 'es' },
+  ],
 };
