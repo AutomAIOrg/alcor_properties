@@ -1,19 +1,22 @@
 <div class="calendar-header">
-
   <!-- Solo visible en PC/tablet: toggle Mes/Semana alineado a la izquierda -->
   <div class="desktop-view-toggle">
-    <button [class.active]="viewMode() === 'month'" (click)="viewModeChange.emit('month')">Mes</button>
-    <button [class.active]="viewMode() === 'week'"  (click)="viewModeChange.emit('week')">Semana</button>
+    <button [class.active]="viewMode() === 'month'" (click)="viewModeChange.emit('month')">
+      Mes
+    </button>
+    <button [class.active]="viewMode() === 'week'" (click)="viewModeChange.emit('week')">
+      Semana
+    </button>
   </div>
 
   <!-- Mes/Año: centrado en desktop, alineado a la izquierda en móvil -->
   <div class="date-selects">
-    <select (change)="onMonthChange($any($event.target).value)">
+    <select (change)="onMonthSelectChange($event)">
       @for (m of MONTHS; track $index) {
         <option [value]="$index" [selected]="$index === month()">{{ m }}</option>
       }
     </select>
-    <select (change)="onYearChange($any($event.target).value)">
+    <select (change)="onYearSelectChange($event)">
       @for (y of yearOptions(); track y) {
         <option [value]="y" [selected]="y === year()">{{ y }}</option>
       }
@@ -25,5 +28,4 @@
     <button class="today-btn" (click)="today.emit()">Hoy</button>
     <button (click)="next.emit()" aria-label="Mes siguiente">&#8594;</button>
   </div>
-
 </div>

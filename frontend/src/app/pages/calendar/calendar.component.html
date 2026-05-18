@@ -1,6 +1,5 @@
 <!-- Contenedor principal del calendario -->
 <div class="calendar">
-
   <!-- Fila 1: búsqueda + botón Nueva reserva -->
   <div class="calendar-actions">
     <div class="search-wrapper">
@@ -9,7 +8,7 @@
         class="search-input"
         placeholder="Buscar huésped o nº reserva…"
         [value]="searchQuery()"
-        (input)="onSearchInput($any($event.target).value)"
+        (input)="onSearchInputEvent($event)"
         (focus)="onSearchFocus()"
         autocomplete="off"
       />
@@ -25,31 +24,32 @@
       }
     </div>
     @if (authService.hasPermission('bookings:create')) {
-      <button class="btn-new-booking" (click)="showCreateModal.set(true)">
-        + Nueva reserva
-      </button>
+      <button class="btn-new-booking" (click)="showCreateModal.set(true)">+ Nueva reserva</button>
     }
   </div>
 
   <!-- Fila 2: Filtros y Selector de vista -->
   <div class="calendar-filters">
-    
     <!-- Agrupamos los filtros para que actúen como un bloque frente al view-toggle -->
     <div class="filter-group">
-      
       <!-- Filtro: Piso -->
       <div class="filter-dropdown" [class.open]="showIdDropdown()">
         <button class="filter-trigger" (click)="showIdDropdown.set(!showIdDropdown())">
-          Piso @if (filterBookingIds().length) { <span class="badge">{{ filterBookingIds().length }}</span> }
+          Piso
+          @if (filterBookingIds().length) {
+            <span class="badge">{{ filterBookingIds().length }}</span>
+          }
           <span class="arrow">▾</span>
         </button>
         @if (showIdDropdown()) {
           <div class="filter-panel">
             @for (id of bookingIdOptions(); track id) {
               <label class="filter-option">
-                <input type="checkbox"
-                       [checked]="filterBookingIds().includes(id)"
-                       (change)="toggleBookingId(id)" />
+                <input
+                  type="checkbox"
+                  [checked]="filterBookingIds().includes(id)"
+                  (change)="toggleBookingId(id)"
+                />
                 {{ id }}
               </label>
             }
@@ -60,16 +60,21 @@
       <!-- Filtro: Estado -->
       <div class="filter-dropdown" [class.open]="showStateDropdown()">
         <button class="filter-trigger" (click)="showStateDropdown.set(!showStateDropdown())">
-          Estado @if (filterBookingStates().length) { <span class="badge">{{ filterBookingStates().length }}</span> }
+          Estado
+          @if (filterBookingStates().length) {
+            <span class="badge">{{ filterBookingStates().length }}</span>
+          }
           <span class="arrow">▾</span>
         </button>
         @if (showStateDropdown()) {
           <div class="filter-panel">
             @for (state of BASE_STATUSES; track state) {
               <label class="filter-option">
-                <input type="checkbox"
-                       [checked]="filterBookingStates().includes(state)"
-                       (change)="toggleBookingState(state)" />
+                <input
+                  type="checkbox"
+                  [checked]="filterBookingStates().includes(state)"
+                  (change)="toggleBookingState(state)"
+                />
                 {{ state }}
               </label>
             }
@@ -84,7 +89,7 @@
           class="search-input"
           placeholder="Buscar huésped o nº reserva…"
           [value]="searchQuery()"
-          (input)="onSearchInput($any($event.target).value)"
+          (input)="onSearchInputEvent($event)"
           (focus)="onSearchFocus()"
           autocomplete="off"
         />
@@ -113,7 +118,6 @@
       <button [class.active]="viewMode() === 'month'" (click)="viewMode.set('month')">Mes</button>
       <button [class.active]="viewMode() === 'week'" (click)="viewMode.set('week')">Semana</button>
     </div>
-
   </div>
 
   <!-- Fila 3: Header del calendario -->
@@ -125,7 +129,8 @@
     (next)="nextPeriod()"
     (today)="goToToday()"
     (dateChange)="goToDate($event)"
-    (viewModeChange)="viewMode.set($event)" />
+    (viewModeChange)="viewMode.set($event)"
+  />
 
   <!-- Grid del Calendario -->
   @switch (viewMode()) {
@@ -153,7 +158,6 @@
       </div>
     }
   }
-
 </div>
 
 <!-- Modales -->
@@ -161,12 +165,14 @@
   <app-booking-modal
     [booking]="selectedBooking()!"
     (close)="closeBooking()"
-    (saved)="onBookingSaved($event)" />
+    (saved)="onBookingSaved($event)"
+  />
 }
 
 @if (showCreateModal()) {
   <app-booking-create-modal
     [apartments]="bookingIdOptions()"
     (close)="showCreateModal.set(false)"
-    (created)="onBookingCreated($event)" />
+    (created)="onBookingCreated($event)"
+  />
 }
