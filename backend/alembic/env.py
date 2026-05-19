@@ -10,7 +10,7 @@ from alembic import context
 # ---------------------------------------------------------------------------
 config = context.config
 
-if config.config_file_name is not None and config.attributes.get('configure_logger', True):
+if config.config_file_name is not None and config.attributes.get("configure_logger", True):
     fileConfig(config.config_file_name)
 
 # ---------------------------------------------------------------------------
@@ -73,11 +73,13 @@ def run_migrations_online() -> None:
         with context.begin_transaction():
             context.run_migrations()
 
+
 def include_object(object, name, type_, reflected, compare_to):
     """Solo gestiona tablas que tienen un modelo SQLAlchemy definido."""
     if type_ == "table" and name not in target_metadata.tables:
         return False
     return True
+
 
 if context.is_offline_mode():
     run_migrations_offline()

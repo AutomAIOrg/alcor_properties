@@ -2,8 +2,8 @@
 Configuración de ajustes para la aplicación backend.
 """
 
-from typing import Optional
 from pathlib import Path
+from typing import Optional
 
 from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict

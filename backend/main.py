@@ -21,11 +21,12 @@ from infrastructure.database.session import engine
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Aplica migraciones pendientes y verifica la conexión al arrancar."""
-    from alembic import command
     from alembic.config import Config
 
+    from alembic import command
+
     alembic_cfg = Config("alembic.ini")
-    alembic_cfg.attributes['configure_logger'] = False
+    alembic_cfg.attributes["configure_logger"] = False
     command.upgrade(alembic_cfg, "head")
 
     with engine.connect():
