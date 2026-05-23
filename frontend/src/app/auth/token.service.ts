@@ -6,7 +6,6 @@ const TOKEN_KEY = 'auth_token';
 
 @Injectable({ providedIn: 'root' })
 export class TokenService {
-
   setToken(token: string): void {
     localStorage.setItem(TOKEN_KEY, token);
   }

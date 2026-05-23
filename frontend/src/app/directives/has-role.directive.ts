@@ -15,9 +15,8 @@ import { Role } from '../models/user.model';
   standalone: true,
 })
 export class HasRoleDirective {
-
-  private authService   = inject(AuthService);
-  private templateRef   = inject(TemplateRef);
+  private authService = inject(AuthService);
+  private templateRef = inject(TemplateRef);
   private viewContainer = inject(ViewContainerRef);
 
   private hasView = false;

@@ -9,11 +9,6 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'searches:access',
     'admin:access',
   ],
-  employee: [
-    'bookings:read',
-    'searches:access',
-  ],
-  viewer: [
-    'bookings:read',
-  ],
+  employee: ['bookings:read', 'searches:access'],
+  viewer: ['bookings:read'],
 };

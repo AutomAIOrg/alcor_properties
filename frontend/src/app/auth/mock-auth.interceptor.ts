@@ -12,27 +12,24 @@ interface MockUser {
 }
 
 const MOCK_USERS: MockUser[] = [
-  { sub: '1', username: 'admin',    password: 'admin123',  name: 'GUIRUFO',    role: 'admin'    },
-  { sub: '2', username: 'employee', password: 'emp123',    name: 'Employee User', role: 'employee' },
-  { sub: '3', username: 'viewer',   password: 'view123',   name: 'Viewer User',   role: 'viewer'   },
+  { sub: '1', username: 'admin', password: 'admin123', name: 'GUIRUFO', role: 'admin' },
+  { sub: '2', username: 'employee', password: 'emp123', name: 'Employee User', role: 'employee' },
+  { sub: '3', username: 'viewer', password: 'view123', name: 'Viewer User', role: 'viewer' },
 ];
 
 function base64url(obj: object): string {
-  return btoa(JSON.stringify(obj))
-    .replace(/=/g, '')
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_');
+  return btoa(JSON.stringify(obj)).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
 }
 
 function generateMockJwt(user: MockUser): string {
-  const header  = base64url({ alg: 'HS256', typ: 'JWT' });
-  const iat     = Math.floor(Date.now() / 1000);
-  const exp     = iat + 8 * 60 * 60; // 8 horas
+  const header = base64url({ alg: 'HS256', typ: 'JWT' });
+  const iat = Math.floor(Date.now() / 1000);
+  const exp = iat + 8 * 60 * 60; // 8 horas
   const payload = base64url({
-    sub:      user.sub,
+    sub: user.sub,
     username: user.username,
-    name:     user.name,
-    role:     user.role,
+    name: user.name,
+    role: user.role,
     iat,
     exp,
   });
@@ -50,17 +47,19 @@ export const mockAuthInterceptor: HttpInterceptorFn = (req, next) => {
     const user = MOCK_USERS.find(u => u.username === username && u.password === password);
 
     if (!user) {
-      return throwError(() => ({ status: 401, error: { detail: 'Credenciales incorrectas.' } }))
-        .pipe(delay(400));
+      return throwError(() => ({
+        status: 401,
+        error: { detail: 'Credenciales incorrectas.' },
+      })).pipe(delay(400));
     }
 
     const response = new HttpResponse({
       status: 200,
       body: {
         access_token: generateMockJwt(user),
-        token_type:   'bearer',
-        expires_in:   28800,
-        role:         user.role,
+        token_type: 'bearer',
+        expires_in: 28800,
+        role: user.role,
       },
     });
 

@@ -4,7 +4,7 @@ import { AuthService } from './auth.service';
 import { Permission } from '../models/user.model';
 
 export const authGuard: CanActivateFn = () => {
-  const auth   = inject(AuthService);
+  const auth = inject(AuthService);
   const router = inject(Router);
 
   if (auth.isAuthenticated()) return true;
@@ -12,9 +12,10 @@ export const authGuard: CanActivateFn = () => {
   return router.createUrlTree(['/login']);
 };
 
-export const permissionGuard = (permission: Permission): CanActivateFn =>
+export const permissionGuard =
+  (permission: Permission): CanActivateFn =>
   () => {
-    const auth   = inject(AuthService);
+    const auth = inject(AuthService);
     const router = inject(Router);
 
     if (auth.isAuthenticated() && auth.hasPermission(permission)) return true;
