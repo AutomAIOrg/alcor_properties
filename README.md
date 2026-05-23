@@ -84,22 +84,74 @@ cd backend
 python -m venv .venv
 source .venv/bin/activate        # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
-python main.py
+./start.sh
 ```
 
-La API queda disponible en `http://localhost:8000`.  
+La API queda disponible en `http://localhost:8000`.
 Documentación interactiva: `http://localhost:8000/docs`
+
+Para desarrollo con recarga automática:
+
+```bash
+cd backend
+./start-dev.sh
+```
+
+Los scripts de arranque ejecutan primero las migraciones pendientes y, solo si
+terminan correctamente, arrancan Uvicorn:
+
+```bash
+alembic upgrade head
+uvicorn main:app --host 0.0.0.0 --port 8000
+```
+
+Si hay cambios en la base de datos, crea la migración correspondiente y después
+arranca la app con el script habitual:
+
+```bash
+cd backend
+alembic revision --autogenerate -m "describe database change"
+./start.sh
+```
+
+`python main.py` sigue arrancando la API directamente, pero no aplica
+migraciones. Úsalo solo si ya has ejecutado `alembic upgrade head`.
 
 ### Frontend
 
 ```bash
 cd frontend
-npm install
-ng serve
+pnpm install
+pnpm start
 ```
 
-La aplicación queda disponible en `http://localhost:4200`.  
+La aplicación queda disponible en `http://localhost:4200`.
 Las peticiones a `/api/*` se redirigen automáticamente al backend mediante el proxy configurado en `proxy.conf.json`.
+
+### Calidad local
+
+El flujo de Git se coordina desde la raíz del proyecto:
+
+- `.husky/pre-commit` ejecuta `pre-commit`.
+- `.husky/pre-push` ejecuta `scripts/check-ci.sh`.
+- `scripts/check-ci.sh` llama a los checks de backend y frontend.
+
+Para preparar el entorno local:
+
+```bash
+python3.13 -m venv .venv
+. .venv/bin/activate
+pip install -r backend/requirements.txt pre-commit ruff==0.15.13 mypy==2.1.0
+
+cd frontend
+pnpm install
+```
+
+Para ejecutar el mismo flujo manualmente desde la raíz:
+
+```bash
+./scripts/check-ci.sh
+```
 
 ---
 
