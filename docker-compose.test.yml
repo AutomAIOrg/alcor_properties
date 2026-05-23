@@ -9,7 +9,7 @@ services:
       MYSQL_USER: alcor
       MYSQL_PASSWORD: alcor_pass
     ports:
-      - "3306:3306"
+      - "3307:3306"
     tmpfs:
       - /var/lib/mysql
     healthcheck:

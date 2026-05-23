@@ -2,6 +2,7 @@
 Configuración de ajustes para la aplicación backend.
 """
 
+import os
 from pathlib import Path
 from typing import Optional
 
@@ -9,9 +10,15 @@ from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
+def _env_file() -> Optional[str]:
+    if os.getenv("ALCOR_IGNORE_ENV_FILE") == "1":
+        return None
+    return str(Path(__file__).parent.parent / ".env")
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=str(Path(__file__).parent.parent / ".env"),
+        env_file=_env_file(),
         case_sensitive=True,
         extra="allow",
     )
