@@ -9,13 +9,24 @@ import { Booking, BASE_STATUSES } from '../../../../models/booking.model';
 
 function makeBooking(overrides: Partial<Booking> = {}): Booking {
   return {
-    record_id: 1, booking_id: 'R180', guest_name: 'Ana García',
-    check_in: '2025-06-01', check_out: '2025-06-07',
-    status: 'Confirmed', nights: 6, persons: 2,
-    adults: 2, children: 0, price: 600, charges: 50,
-    electric_allowance: null, email: 'ana@test.com', phone: '+34600000000',
-    booking_number: 'BK001', notes: null,
-    ...overrides
+    record_id: 1,
+    booking_id: 'R180',
+    guest_name: 'Ana García',
+    check_in: '2025-06-01',
+    check_out: '2025-06-07',
+    status: 'Confirmed',
+    nights: 6,
+    persons: 2,
+    adults: 2,
+    children: 0,
+    price: 600,
+    charges: 50,
+    electric_allowance: null,
+    email: 'ana@test.com',
+    phone: '+34600000000',
+    booking_number: 'BK001',
+    notes: null,
+    ...overrides,
   };
 }
 
@@ -75,7 +86,10 @@ describe('BookingModalComponent', () => {
     });
 
     it('guest_name null → "?"', () => {
-      fixture.componentRef.setInput('booking', makeBooking({ guest_name: null as unknown as string }));
+      fixture.componentRef.setInput(
+        'booking',
+        makeBooking({ guest_name: null as unknown as string })
+      );
       fixture.detectChanges();
       expect(component.initials()).toBe('?');
     });
@@ -111,7 +125,7 @@ describe('BookingModalComponent', () => {
   describe('startEdit', () => {
     it('copia booking al draft y pone editing=true', () => {
       component.startEdit();
-    expect(component.editing()).toBe(true);
+      expect(component.editing()).toBe(true);
       expect(component.draft().guest_name).toBe('Ana García');
     });
   });

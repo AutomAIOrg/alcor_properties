@@ -22,7 +22,9 @@
         font-size: 0.875rem;
         transition: background 0.15s;
 
-        &:hover  { background: #f2f4f7; }
+        &:hover {
+          background: #f2f4f7;
+        }
         &.active {
           background: #2563eb;
           color: #fff;
@@ -69,8 +71,12 @@
       appearance: auto;
       white-space: nowrap;
 
-      &:hover { background: #f2f4f7; }
-      &:focus { background: #f2f4f7; }
+      &:hover {
+        background: #f2f4f7;
+      }
+      &:focus {
+        background: #f2f4f7;
+      }
 
       @media (max-width: 768px) {
         font-size: 0.95rem;
@@ -94,8 +100,12 @@
       white-space: nowrap;
       transition: background 0.15s;
 
-      &:hover { background: #f2f4f7; }
-      &.today-btn { font-weight: 600; }
+      &:hover {
+        background: #f2f4f7;
+      }
+      &.today-btn {
+        font-weight: 600;
+      }
 
       @media (max-width: 768px) {
         padding: 0.3rem 0.6rem;

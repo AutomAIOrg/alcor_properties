@@ -11,8 +11,12 @@
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to   { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 .modal-card {
@@ -29,8 +33,14 @@
 }
 
 @keyframes slideUp {
-  from { transform: translateY(24px) scale(0.97); opacity: 0; }
-  to   { transform: translateY(0) scale(1);       opacity: 1; }
+  from {
+    transform: translateY(24px) scale(0.97);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
 }
 
 // ── HERO ────────────────────────────────────────────────────────────────────
@@ -46,7 +56,7 @@
     content: '';
     position: absolute;
     inset: 0;
-    background: linear-gradient(135deg, rgba(255,255,255,0.12) 0%, transparent 100%);
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.12) 0%, transparent 100%);
     pointer-events: none;
   }
 }
@@ -55,7 +65,7 @@
   position: absolute;
   top: 0.75rem;
   right: 0.75rem;
-  background: rgba(255,255,255,0.2);
+  background: rgba(255, 255, 255, 0.2);
   border: none;
   color: #fff;
   cursor: pointer;
@@ -69,15 +79,17 @@
   transition: background 0.15s;
   z-index: 1;
 
-  &:hover { background: rgba(255,255,255,0.35); }
+  &:hover {
+    background: rgba(255, 255, 255, 0.35);
+  }
 }
 
 .hero-avatar {
   width: 60px;
   height: 60px;
   border-radius: 50%;
-  background: rgba(255,255,255,0.25);
-  border: 2px solid rgba(255,255,255,0.5);
+  background: rgba(255, 255, 255, 0.25);
+  border: 2px solid rgba(255, 255, 255, 0.5);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -103,7 +115,7 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  text-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
 .hero-meta {
@@ -113,14 +125,14 @@
 }
 
 .apt-badge {
-  background: rgba(255,255,255,0.25);
+  background: rgba(255, 255, 255, 0.25);
   color: #fff;
   border-radius: 999px;
   padding: 0.15rem 0.6rem;
   font-size: 0.8rem;
   font-weight: 600;
   letter-spacing: 0.04em;
-  border: 1px solid rgba(255,255,255,0.35);
+  border: 1px solid rgba(255, 255, 255, 0.35);
 }
 
 // ── STATS ───────────────────────────────────────────────────────────────────
@@ -191,8 +203,14 @@
   align-items: center;
   gap: 0.2rem;
 
-  &.price-main     { border-color: #d1fae5; background: #f0fdf4; }
-  &.price-electric  { border-color: #dbeafe; background: #eff6ff; }
+  &.price-main {
+    border-color: #d1fae5;
+    background: #f0fdf4;
+  }
+  &.price-electric {
+    border-color: #dbeafe;
+    background: #eff6ff;
+  }
 }
 
 .price-label {
@@ -208,9 +226,16 @@
   font-weight: 700;
   color: #101828;
 
-  &.charges  { color: #f59e0b; }
-  &.electric { color: #3b82f6; }
-  &.no-data  { color: #d0d5dd; font-weight: 500; }
+  &.charges {
+    color: #f59e0b;
+  }
+  &.electric {
+    color: #3b82f6;
+  }
+  &.no-data {
+    color: #d0d5dd;
+    font-weight: 500;
+  }
 }
 
 // ── GUESTS ──────────────────────────────────────────────────────────────────
@@ -231,7 +256,11 @@
   font-weight: 500;
   color: #344054;
 
-  svg { width: 15px; height: 15px; color: #667085; }
+  svg {
+    width: 15px;
+    height: 15px;
+    color: #667085;
+  }
 }
 
 // ── CONTACT ─────────────────────────────────────────────────────────────────
@@ -261,9 +290,17 @@
   font-size: 0.875rem;
   transition: background 0.13s;
 
-  &:hover { background: #f2f4f7; color: #101828; }
+  &:hover {
+    background: #f2f4f7;
+    color: #101828;
+  }
 
-  svg { width: 16px; height: 16px; color: #667085; flex-shrink: 0; }
+  svg {
+    width: 16px;
+    height: 16px;
+    color: #667085;
+    flex-shrink: 0;
+  }
 }
 
 .no-contact {
@@ -278,7 +315,10 @@
   gap: 0.5rem;
   flex-wrap: wrap;
 
-  .booking-ref { flex: 1; min-width: 0; }
+  .booking-ref {
+    flex: 1;
+    min-width: 0;
+  }
 }
 
 .booking-ref {
@@ -311,7 +351,10 @@
   text-overflow: ellipsis;
   min-width: 0;
 
-  &.no-data { color: #d0d5dd; font-weight: 500; }
+  &.no-data {
+    color: #d0d5dd;
+    font-weight: 500;
+  }
 }
 
 // Status badge colours
@@ -321,9 +364,9 @@
   border-radius: 999px;
   font-size: 0.75rem;
   font-weight: 600;
-  background: rgba(255,255,255,0.25);
+  background: rgba(255, 255, 255, 0.25);
   color: #fff;
-  border: 1px solid rgba(255,255,255,0.4);
+  border: 1px solid rgba(255, 255, 255, 0.4);
 }
 
 // ── EDIT BUTTON ─────────────────────────────────────────────────────────────
@@ -341,11 +384,19 @@
   font-size: 0.875rem;
   font-weight: 600;
   cursor: pointer;
-  transition: border-color 0.15s, background 0.15s;
+  transition:
+    border-color 0.15s,
+    background 0.15s;
 
-  svg { width: 15px; height: 15px; }
+  svg {
+    width: 15px;
+    height: 15px;
+  }
 
-  &:hover { border-color: #667085; background: #f9fafb; }
+  &:hover {
+    border-color: #667085;
+    background: #f9fafb;
+  }
 }
 
 // ── EDIT FORM ────────────────────────────────────────────────────────────────
@@ -369,11 +420,15 @@
   grid-template-columns: 1fr 1fr;
   gap: 0.6rem;
 
-  &--3 { grid-template-columns: 1fr 1fr 1fr; }
+  &--3 {
+    grid-template-columns: 1fr 1fr 1fr;
+  }
 
   @media (max-width: 400px) {
     grid-template-columns: 1fr;
-    &--3 { grid-template-columns: 1fr 1fr; }
+    &--3 {
+      grid-template-columns: 1fr 1fr;
+    }
   }
 }
 
@@ -388,7 +443,8 @@
     color: #667085;
   }
 
-  input, select {
+  input,
+  select {
     border: 1.5px solid #d0d5dd;
     border-radius: 7px;
     padding: 0.45rem 0.6rem;
@@ -399,8 +455,12 @@
     width: 100%;
     transition: border-color 0.15s;
 
-    &:focus { border-color: #667085; }
-    &::placeholder { color: #c1c9d4; }
+    &:focus {
+      border-color: #667085;
+    }
+    &::placeholder {
+      color: #c1c9d4;
+    }
   }
 }
 
@@ -422,8 +482,13 @@
   cursor: pointer;
   transition: background 0.15s;
 
-  &:hover:not(:disabled) { background: #f9fafb; }
-  &:disabled { opacity: 0.5; cursor: not-allowed; }
+  &:hover:not(:disabled) {
+    background: #f9fafb;
+  }
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
 }
 
 .btn-save {
@@ -438,7 +503,11 @@
   cursor: pointer;
   transition: background 0.15s;
 
-  &:hover:not(:disabled) { background: #344054; }
-  &:disabled { opacity: 0.6; cursor: not-allowed; }
+  &:hover:not(:disabled) {
+    background: #344054;
+  }
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
 }
-

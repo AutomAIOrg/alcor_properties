@@ -2,7 +2,9 @@
   position: relative;
   border-bottom: 1px solid #eaecf0;
 
-  &:last-child { border-bottom: none; }
+  &:last-child {
+    border-bottom: none;
+  }
 }
 
 .days-grid {
@@ -22,7 +24,9 @@
   &.other-month {
     background: #f9fafb;
 
-    .day-number { color: #c1c9d4; }
+    .day-number {
+      color: #c1c9d4;
+    }
   }
 
   &.today .day-number {

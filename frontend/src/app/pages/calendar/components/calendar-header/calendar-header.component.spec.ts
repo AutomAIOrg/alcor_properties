@@ -13,7 +13,7 @@ describe('CalendarHeaderComponent', () => {
     fixture = TestBed.createComponent(CalendarHeaderComponent);
     component = fixture.componentInstance;
 
-    fixture.componentRef.setInput('month', 5);  // Junio (0-based)
+    fixture.componentRef.setInput('month', 5); // Junio (0-based)
     fixture.componentRef.setInput('year', 2025);
     fixture.componentRef.setInput('viewMode', 'month');
     fixture.detectChanges();

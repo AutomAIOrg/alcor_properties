@@ -7,7 +7,7 @@ import { CalendarLayoutService } from '../../../../services/calendar-layout.serv
   selector: 'app-booking-bar',
   standalone: true,
   templateUrl: './booking-bar.component.html',
-  styleUrl: './booking-bar.component.scss'
+  styleUrl: './booking-bar.component.scss',
 })
 export class BookingBarComponent {
   bar = input.required<WeekBar>();
@@ -15,6 +15,10 @@ export class BookingBarComponent {
 
   private layout = inject(CalendarLayoutService);
 
-  get height(): number { return this.layout.BAR_HEIGHT; }
-  get top():    number { return this.layout.barTop(this.bar().laneIndex); }
+  get height(): number {
+    return this.layout.BAR_HEIGHT;
+  }
+  get top(): number {
+    return this.layout.barTop(this.bar().laneIndex);
+  }
 }

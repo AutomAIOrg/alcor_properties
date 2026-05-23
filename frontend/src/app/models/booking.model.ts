@@ -1,9 +1,9 @@
 export interface Booking {
-  record_id: number;       // ID único por reserva en DB
-  booking_id: string;      // Identificador del apartamento (ej: R180) — NO único entre reservas
+  record_id: number; // ID único por reserva en DB
+  booking_id: string; // Identificador del apartamento (ej: R180) — NO único entre reservas
   guest_name: string;
-  check_in: string;        // "YYYY-MM-DD"
-  check_out: string;       // "YYYY-MM-DD"
+  check_in: string; // "YYYY-MM-DD"
+  check_out: string; // "YYYY-MM-DD"
   status: string;
   nights: number;
   persons: number;
@@ -19,4 +19,4 @@ export interface Booking {
 }
 
 export const BASE_STATUSES = ['Confirmed', 'Pending', 'Cancelled', 'ok'] as const;
-export type BookingStatus = typeof BASE_STATUSES[number];
+export type BookingStatus = (typeof BASE_STATUSES)[number];

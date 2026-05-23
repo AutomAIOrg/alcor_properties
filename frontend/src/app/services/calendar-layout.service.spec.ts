@@ -5,13 +5,24 @@ import { Booking } from '../models/booking.model';
 
 function makeBooking(overrides: Partial<Booking> = {}): Booking {
   return {
-    record_id: 1, booking_id: 'R180', guest_name: 'Ana García',
-    check_in: '2025-06-01', check_out: '2025-06-07',
-    status: 'Confirmed', nights: 6, persons: 2,
-    adults: 2, children: 0, price: 600, charges: null,
-    electric_allowance: null, email: null, phone: null,
-    booking_number: null, notes: null,
-    ...overrides
+    record_id: 1,
+    booking_id: 'R180',
+    guest_name: 'Ana García',
+    check_in: '2025-06-01',
+    check_out: '2025-06-07',
+    status: 'Confirmed',
+    nights: 6,
+    persons: 2,
+    adults: 2,
+    children: 0,
+    price: 600,
+    charges: null,
+    electric_allowance: null,
+    email: null,
+    phone: null,
+    booking_number: null,
+    notes: null,
+    ...overrides,
   };
 }
 
@@ -20,7 +31,9 @@ function makeBooking(overrides: Partial<Booking> = {}): Booking {
 describe('CalendarLayoutService', () => {
   let svc: CalendarLayoutService;
 
-  beforeEach(() => { svc = new CalendarLayoutService(); });
+  beforeEach(() => {
+    svc = new CalendarLayoutService();
+  });
 
   // ── toIso ────────────────────────────────────────────────────────────────────
 
@@ -144,7 +157,9 @@ describe('CalendarLayoutService', () => {
 
     it('una reserva multi-semana aparece en barras de dos semanas distintas', () => {
       const booking = makeBooking({
-        record_id: 1, check_in: '2025-06-07', check_out: '2025-06-14'
+        record_id: 1,
+        check_in: '2025-06-07',
+        check_out: '2025-06-14',
       });
       const assignment = svc.buildLaneAssignment([booking]);
       const weeks = svc.buildWeeks(2025, 5, [booking], TODAY, assignment);
@@ -154,7 +169,9 @@ describe('CalendarLayoutService', () => {
 
     it('una reserva fuera del mes no genera barras', () => {
       const booking = makeBooking({
-        record_id: 1, check_in: '2025-08-01', check_out: '2025-08-10'
+        record_id: 1,
+        check_in: '2025-08-01',
+        check_out: '2025-08-10',
       });
       const assignment = svc.buildLaneAssignment([booking]);
       const weeks = svc.buildWeeks(2025, 5, [booking], TODAY, assignment); // Junio
@@ -171,7 +188,12 @@ describe('CalendarLayoutService', () => {
 
     it('totalLanes refleja el número de carriles activos en la semana', () => {
       const b1 = makeBooking({ record_id: 1, check_in: '2025-06-02', check_out: '2025-06-06' });
-      const b2 = makeBooking({ record_id: 2, booking_id: 'R101', check_in: '2025-06-03', check_out: '2025-06-05' });
+      const b2 = makeBooking({
+        record_id: 2,
+        booking_id: 'R101',
+        check_in: '2025-06-03',
+        check_out: '2025-06-05',
+      });
       const assignment = svc.buildLaneAssignment([b1, b2]);
       const weeks = svc.buildWeeks(2025, 5, [b1, b2], TODAY, assignment);
       // Primera semana de junio (lun 02 - dom 08): ambas reservas solapan → 2 carriles

@@ -1,10 +1,7 @@
 <div class="week-row" [style.height.px]="weekHeight">
-
   <div class="days-grid">
     @for (day of week().days; track day.date) {
-      <div class="day-cell"
-        [class.other-month]="!day.currentMonth"
-        [class.today]="day.isToday">
+      <div class="day-cell" [class.other-month]="!day.currentMonth" [class.today]="day.isToday">
         <span class="day-number">{{ day.date.getDate() }}</span>
       </div>
     }
@@ -15,5 +12,4 @@
       <app-booking-bar [bar]="bar" (barClick)="barClick.emit($event)" />
     }
   </div>
-
 </div>

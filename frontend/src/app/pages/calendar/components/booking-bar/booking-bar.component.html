@@ -1,4 +1,5 @@
-<div class="booking-bar"
+<div
+  class="booking-bar"
   [class.bar-round-left]="bar().isCheckin"
   [class.bar-round-right]="bar().isCheckout"
   [class.bar-cancelled]="bar().booking.status === 'Cancelled'"
@@ -8,6 +9,7 @@
   [style.height.px]="height"
   [style.background]="bar().booking.status === 'Cancelled' ? null : bar().background"
   (click)="barClick.emit(bar().booking)"
-  [attr.title]="bar().booking.booking_id + ' — ' + bar().booking.guest_name">
+  [attr.title]="bar().booking.booking_id + ' — ' + bar().booking.guest_name"
+>
   <span class="bar-label">{{ bar().booking.booking_id }} - {{ bar().booking.guest_name }}</span>
 </div>

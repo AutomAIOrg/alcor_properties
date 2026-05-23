@@ -9,10 +9,9 @@ import { Pipe, PipeTransform } from '@angular/core';
  */
 @Pipe({
   name: 'bookingColor',
-  standalone: true
+  standalone: true,
 })
 export class BookingColorPipe implements PipeTransform {
-
   transform(bookingId: string): string {
     let hash = 0;
     for (const c of bookingId) hash = (hash * 31 + c.charCodeAt(0)) & 0xffff;

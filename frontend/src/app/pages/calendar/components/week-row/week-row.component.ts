@@ -9,7 +9,7 @@ import { BookingBarComponent } from '../booking-bar/booking-bar.component';
   standalone: true,
   imports: [BookingBarComponent],
   templateUrl: './week-row.component.html',
-  styleUrl: './week-row.component.scss'
+  styleUrl: './week-row.component.scss',
 })
 export class WeekRowComponent {
   week = input.required<CalendarWeek>();

@@ -22,23 +22,37 @@ class StubBookingBarComponent {
 
 function makeBooking(overrides: Partial<Booking> = {}): Booking {
   return {
-    record_id: 1, booking_id: 'R180', guest_name: 'Ana García',
-    check_in: '2025-06-02', check_out: '2025-06-06',
-    status: 'Confirmed', nights: 4, persons: 2,
-    adults: 2, children: 0, price: null, charges: null,
-    electric_allowance: null, email: null, phone: null,
-    booking_number: null, notes: null,
-    ...overrides
+    record_id: 1,
+    booking_id: 'R180',
+    guest_name: 'Ana García',
+    check_in: '2025-06-02',
+    check_out: '2025-06-06',
+    status: 'Confirmed',
+    nights: 4,
+    persons: 2,
+    adults: 2,
+    children: 0,
+    price: null,
+    charges: null,
+    electric_allowance: null,
+    email: null,
+    phone: null,
+    booking_number: null,
+    notes: null,
+    ...overrides,
   };
 }
 
 function makeBar(overrides: Partial<WeekBar> = {}): WeekBar {
   return {
     booking: makeBooking(),
-    laneIndex: 0, leftPct: 10, widthPct: 50,
-    isCheckin: true, isCheckout: false,
+    laneIndex: 0,
+    leftPct: 10,
+    widthPct: 50,
+    isCheckin: true,
+    isCheckout: false,
     background: 'hsl(200, 65%, 42%)',
-    ...overrides
+    ...overrides,
   };
 }
 
@@ -47,12 +61,12 @@ function makeWeek(overrides: Partial<CalendarWeek> = {}): CalendarWeek {
   return {
     days: Array.from({ length: 7 }, (_, i) => ({
       date: new Date(base.getFullYear(), base.getMonth(), base.getDate() + i),
-      currentMonth: i < 6,  // último día es de otro mes para probar other-month
-      isToday: i === 0,     // el lunes es "hoy" en el fixture
+      currentMonth: i < 6, // último día es de otro mes para probar other-month
+      isToday: i === 0, // el lunes es "hoy" en el fixture
     })),
     bars: [],
     totalLanes: 0,
-    ...overrides
+    ...overrides,
   };
 }
 
@@ -118,7 +132,9 @@ describe('WeekRowComponent', () => {
     });
 
     it('.day-number muestra el número del día correcto', () => {
-      const numbers: HTMLElement[] = Array.from(fixture.nativeElement.querySelectorAll('.day-number'));
+      const numbers: HTMLElement[] = Array.from(
+        fixture.nativeElement.querySelectorAll('.day-number')
+      );
       expect(numbers[0].textContent?.trim()).toBe('2'); // lunes 2 de junio
     });
   });

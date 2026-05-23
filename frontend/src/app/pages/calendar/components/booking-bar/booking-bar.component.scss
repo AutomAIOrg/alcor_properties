@@ -7,9 +7,15 @@
   border-radius: 0;
   pointer-events: auto;
 
-  &.bar-round-left  { border-radius: 4px 0 0 4px; }
-  &.bar-round-right { border-radius: 0 4px 4px 0; }
-  &.bar-round-left.bar-round-right { border-radius: 4px; }
+  &.bar-round-left {
+    border-radius: 4px 0 0 4px;
+  }
+  &.bar-round-right {
+    border-radius: 0 4px 4px 0;
+  }
+  &.bar-round-left.bar-round-right {
+    border-radius: 4px;
+  }
 
   &.bar-cancelled {
     background: #fecaca !important;

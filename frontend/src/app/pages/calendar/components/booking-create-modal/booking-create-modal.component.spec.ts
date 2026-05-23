@@ -8,13 +8,24 @@ import { Booking } from '../../../../models/booking.model';
 
 function makeCreatedBooking(overrides: Partial<Booking> = {}): Booking {
   return {
-    record_id: 99, booking_id: 'R180', guest_name: 'Juan Pérez',
-    check_in: '2025-07-01', check_out: '2025-07-05',
-    status: 'Confirmed', nights: 4, persons: 2,
-    adults: 2, children: 0, price: null, charges: null,
-    electric_allowance: null, email: null, phone: null,
-    booking_number: null, notes: null,
-    ...overrides
+    record_id: 99,
+    booking_id: 'R180',
+    guest_name: 'Juan Pérez',
+    check_in: '2025-07-01',
+    check_out: '2025-07-05',
+    status: 'Confirmed',
+    nights: 4,
+    persons: 2,
+    adults: 2,
+    children: 0,
+    price: null,
+    charges: null,
+    electric_allowance: null,
+    email: null,
+    phone: null,
+    booking_number: null,
+    notes: null,
+    ...overrides,
   };
 }
 

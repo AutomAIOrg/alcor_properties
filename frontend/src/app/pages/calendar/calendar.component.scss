@@ -25,7 +25,6 @@
   border: 1px solid #eaecf0;
 }
 
-
 // ── Buscador (estilos compartidos entre posición móvil y desktop) ─────────────
 .search-wrapper {
   position: relative;
@@ -42,8 +41,12 @@
     outline: none;
     transition: border-color 0.15s;
 
-    &::placeholder { color: #98a2b3; }
-    &:focus { border-color: #2563eb; }
+    &::placeholder {
+      color: #98a2b3;
+    }
+    &:focus {
+      border-color: #2563eb;
+    }
 
     @media (max-width: 768px) {
       font-size: 0.75rem;
@@ -78,7 +81,9 @@
     cursor: pointer;
     gap: 0.5rem;
 
-    &:hover { background: #f9fafb; }
+    &:hover {
+      background: #f9fafb;
+    }
 
     .suggestion-text {
       font-size: 0.82rem;
@@ -105,12 +110,16 @@
   align-items: center;
   gap: 0.5rem;
 
-  .btn-new-booking { margin-left: auto; }
+  .btn-new-booking {
+    margin-left: auto;
+  }
 
   // En desktop/tablet la búsqueda vive en la fila de filtros
   .search-wrapper {
     flex: 1;
-    @media (min-width: 769px) { display: none; }
+    @media (min-width: 769px) {
+      display: none;
+    }
   }
 }
 
@@ -133,7 +142,9 @@
     // Buscador: visible solo en desktop/tablet; en móvil está en .calendar-actions
     .search-wrapper {
       width: 200px;
-      @media (max-width: 768px) { display: none; }
+      @media (max-width: 768px) {
+        display: none;
+      }
     }
   }
 
@@ -169,10 +180,15 @@
     color: #344054;
     transition: border-color 0.15s;
 
-    &:hover { border-color: #2563eb; }
+    &:hover {
+      border-color: #2563eb;
+    }
 
     // Flecha decorativa que indica que hay un menú desplegable.
-    .arrow { font-size: 0.7rem; color: #667085; }
+    .arrow {
+      font-size: 0.7rem;
+      color: #667085;
+    }
 
     // Contador de opciones seleccionadas. Solo aparece si hay alguna activa.
     .badge {
@@ -186,7 +202,9 @@
   }
 
   // Cuando el panel está abierto, el borde del trigger se pone azul.
-  &.open .filter-trigger { border-color: #2563eb; }
+  &.open .filter-trigger {
+    border-color: #2563eb;
+  }
 
   // Panel flotante con la lista de checkboxes.
   // z-index:100 garantiza que se superpone sobre el calendario.
@@ -216,10 +234,15 @@
     cursor: pointer;
     color: #344054;
 
-    &:hover { background: #f9fafb; }
+    &:hover {
+      background: #f9fafb;
+    }
 
     // accent-color aplica el color de marca al checkbox nativo del navegador.
-    input[type="checkbox"] { cursor: pointer; accent-color: #2563eb; }
+    input[type='checkbox'] {
+      cursor: pointer;
+      accent-color: #2563eb;
+    }
   }
 }
 
@@ -239,9 +262,16 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  transition:
+    background 0.15s,
+    color 0.15s,
+    border-color 0.15s;
 
-  &:hover { background: #fef2f2; color: #f87171; border-color: #f87171; }
+  &:hover {
+    background: #fef2f2;
+    color: #f87171;
+    border-color: #f87171;
+  }
 }
 
 // ── Botón «Nueva reserva» ────────────────────────────────────────────
@@ -257,7 +287,9 @@
   cursor: pointer;
   transition: background 0.15s;
 
-  &:hover { background: #1d4ed8; }
+  &:hover {
+    background: #1d4ed8;
+  }
 }
 
 // ── Selector Mes / Semana ───────────────────────────────────────────
@@ -278,17 +310,23 @@
     font-weight: 500;
     cursor: pointer;
     white-space: nowrap;
-    transition: background 0.15s, color 0.15s;
+    transition:
+      background 0.15s,
+      color 0.15s;
     border-right: 1px solid #d0d5dd;
 
-    &:last-child { border-right: none; }
+    &:last-child {
+      border-right: none;
+    }
 
     &.active {
       background: #101828;
       color: #fff;
     }
 
-    &:not(.active):hover { background: #f2f4f7; }
+    &:not(.active):hover {
+      background: #f2f4f7;
+    }
 
     @media (max-width: 768px) {
       padding: 0.3rem 0.7rem;
@@ -339,9 +377,16 @@
     color: #344054;
     transition: background 0.15s;
 
-    &:last-child { border-right: none; }
-    &:hover { background: #f2f4f7; }
-    &.active { background: #2563eb; color: #fff; }
+    &:last-child {
+      border-right: none;
+    }
+    &:hover {
+      background: #f2f4f7;
+    }
+    &.active {
+      background: #2563eb;
+      color: #fff;
+    }
   }
 }
 
@@ -362,8 +407,16 @@
   background: #f9fafb;
   border-bottom: 1px solid #eaecf0;
 
-  .day-name  { font-size: 0.9rem; font-weight: 600; color: #667085; }
-  .day-month { font-size: 0.85rem; color: #667085; text-transform: capitalize; }
+  .day-name {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #667085;
+  }
+  .day-month {
+    font-size: 0.85rem;
+    color: #667085;
+    text-transform: capitalize;
+  }
 
   // El número del día es un círculo; si es hoy, se rellena de azul.
   .day-number {
@@ -377,7 +430,10 @@
     justify-content: center;
     border-radius: 50%;
 
-    &.today { background: #2563eb; color: #fff; }
+    &.today {
+      background: #2563eb;
+      color: #fff;
+    }
   }
 }
 
@@ -423,23 +479,34 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    &:hover { filter: brightness(1.1); }
+    &:hover {
+      filter: brightness(1.1);
+    }
   }
 
-  .no-events { font-size: 0.8rem; color: #c1c9d4; align-self: center; }
+  .no-events {
+    font-size: 0.8rem;
+    color: #c1c9d4;
+    align-self: center;
+  }
 }
 
 // ── Rejilla de horas (vista diaria) ──────────────────────────────────────────
 // 24 filas de altura fija. overflow-y:auto permite scroll si la pantalla
 // es pequeña. Las celdas están vacías; aquí se podrían añadir eventos
 // con hora exacta en el futuro.
-.hour-grid { overflow-y: auto; max-height: 600px; }
+.hour-grid {
+  overflow-y: auto;
+  max-height: 600px;
+}
 
 .hour-row {
   display: flex;
   height: 48px;
   border-bottom: 1px solid #f2f4f7;
-  &:last-child { border-bottom: none; }
+  &:last-child {
+    border-bottom: none;
+  }
 }
 
 // Etiqueta de hora alineada a la derecha, con borde separador.
@@ -456,4 +523,6 @@
 }
 
 // Celda vacía que ocupa el resto del ancho; aquí irían los eventos con hora.
-.hour-cell { flex: 1; }
+.hour-cell {
+  flex: 1;
+}
