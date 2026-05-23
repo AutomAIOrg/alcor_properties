@@ -38,9 +38,7 @@
           <p class="error-msg">{{ errorMsg }}</p>
         }
 
-        <button type="submit" class="btn-login" [disabled]="loginForm.invalid">
-          Entrar
-        </button>
+        <button type="submit" class="btn-login" [disabled]="loginForm.invalid">Entrar</button>
 
         <button type="button" class="btn-forgot" (click)="showRecovery = true">
           ¿Olvidaste tu contraseña?
@@ -48,7 +46,9 @@
       </form>
     } @else {
       <h1 class="login-title">Recuperar contraseña</h1>
-      <p class="recovery-hint">Introduce tu email y te enviaremos un enlace para restablecer tu contraseña.</p>
+      <p class="recovery-hint">
+        Introduce tu email y te enviaremos un enlace para restablecer tu contraseña.
+      </p>
 
       <form class="login-form" (ngSubmit)="onRecovery()" #recoveryForm="ngForm">
         <div class="form-group">

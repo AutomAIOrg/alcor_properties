@@ -7,20 +7,20 @@ import { AuthService } from '../../auth/auth.service';
   selector: 'app-logging',
   imports: [FormsModule],
   templateUrl: './logging.component.html',
-  styleUrl: './logging.component.scss'
+  styleUrl: './logging.component.scss',
 })
 export class LoggingComponent {
   private authService = inject(AuthService);
-  private router      = inject(Router);
+  private router = inject(Router);
 
   username = '';
   password = '';
   errorMsg = '';
-  loading  = signal(false);
+  loading = signal(false);
 
-  showRecovery  = false;
+  showRecovery = false;
   recoveryEmail = '';
-  recoveryMsg   = '';
+  recoveryMsg = '';
 
   onSubmit() {
     if (this.loading()) return;
@@ -32,20 +32,20 @@ export class LoggingComponent {
       error: () => {
         this.errorMsg = 'Usuario o contraseña incorrectos.';
         this.loading.set(false);
-      }
+      },
     });
   }
 
   onRecovery() {
     // TODO: conectar con el endpoint de recuperación de contraseña
-    this.errorMsg   = '';
+    this.errorMsg = '';
     this.recoveryMsg = `Se ha enviado un enlace de recuperación a ${this.recoveryEmail}.`;
     this.recoveryEmail = '';
   }
 
   backToLogin() {
     this.showRecovery = false;
-    this.errorMsg     = '';
-    this.recoveryMsg  = '';
+    this.errorMsg = '';
+    this.recoveryMsg = '';
   }
 }

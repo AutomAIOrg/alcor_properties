@@ -11,11 +11,11 @@ import { HasRoleDirective } from './directives/has-role.directive';
   standalone: true,
   imports: [RouterOutlet, RouterLink, RouterLinkActive, CommonModule, HasRoleDirective],
   templateUrl: './app.component.html',
-  styleUrls: ['./app.component.scss']
+  styleUrls: ['./app.component.scss'],
 })
 export class AppComponent {
-  private router  = inject(Router);
-  authService     = inject(AuthService);
+  private router = inject(Router);
+  authService = inject(AuthService);
 
   showSidebar = toSignal(
     this.router.events.pipe(

@@ -2,7 +2,7 @@
   display: flex;
   height: 100vh;
   width: 100vw;
-  position: relative;  
+  position: relative;
 }
 
 .sidebar {
@@ -13,10 +13,10 @@
   padding: 20px;
   display: flex;
   flex-direction: column;
-  position: relative; 
-  overflow: visible !important;  // Permite que el botón "asome" por la derecha
+  position: relative;
+  overflow: visible !important; // Permite que el botón "asome" por la derecha
   height: 100vh;
-  
+
   &.hidden {
     margin-left: -250px;
   }
@@ -53,7 +53,7 @@
     color: #000000;
     line-height: 1;
   }
-// Botón de logout, colocado al final del sidebar para que siempre esté abajo
+  // Botón de logout, colocado al final del sidebar para que siempre esté abajo
   .logout-btn {
     margin-top: auto;
     width: 100%;
