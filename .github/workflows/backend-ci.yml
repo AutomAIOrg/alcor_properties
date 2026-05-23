@@ -2,9 +2,21 @@ name: Backend CI
 
 on:
   push:
-    paths: ["backend/**"]
+    paths:
+      - ".github/workflows/backend-ci.yml"
+      - ".husky/**"
+      - ".pre-commit-config.yaml"
+      - "backend/**"
+      - "docker-compose.test.yml"
+      - "scripts/**"
   pull_request:
-    paths: ["backend/**"]
+    paths:
+      - ".github/workflows/backend-ci.yml"
+      - ".husky/**"
+      - ".pre-commit-config.yaml"
+      - "backend/**"
+      - "docker-compose.test.yml"
+      - "scripts/**"
 
 defaults:
   run:
@@ -70,6 +82,8 @@ jobs:
       DB_PASS: alcor_pass
       DB_NAME: alcor_test
       DB_PORT: 3306
+      ALCOR_IGNORE_ENV_FILE: 1
+      DEBUG: false
 
     steps:
       - uses: actions/checkout@v4
@@ -78,6 +92,35 @@ jobs:
           python-version: "3.13"
       - name: Install dependencies
         run: pip install -r requirements.txt
+      - name: Load baseline schema
+        run: |
+          python - <<'PY'
+          import os
+          from pathlib import Path
+
+          import pymysql
+
+          schema_path = Path("tests/fixtures/baseline_schema.sql")
+          connection = pymysql.connect(
+              host=os.environ["DB_HOST"],
+              port=int(os.environ["DB_PORT"]),
+              user=os.environ["DB_USER"],
+              password=os.environ["DB_PASS"],
+              database=os.environ["DB_NAME"],
+              autocommit=True,
+          )
+
+          try:
+              with connection.cursor() as cursor:
+                  for statement in schema_path.read_text().split(";"):
+                      statement = statement.strip()
+                      if statement:
+                          cursor.execute(statement)
+          finally:
+              connection.close()
+          PY
+      - name: Mark baseline revision
+        run: alembic stamp c796a5e365dc
       - name: Apply migrations
         run: alembic upgrade head
       - name: Run tests with coverage
