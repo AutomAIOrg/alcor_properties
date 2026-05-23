@@ -1,30 +1,25 @@
-#!/usr/bin/env sh
+#!/usr/bin/env bash
+set -eu
+
+ROOT_DIR="$(git rev-parse --show-toplevel)"
 
 export LANG=C.utf8
 export LC_ALL=C.utf8
 
-if ! command -v pnpm >/dev/null 2>&1; then
-  export NVM_DIR="$HOME/.nvm"
-  [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
-  nvm use --silent 18.20.8
-fi
-
-if [ -d backend/.venv ]; then
-  . backend/.venv/bin/activate
-elif [ -d .venv ]; then
-  . .venv/bin/activate
+if [ -d "$ROOT_DIR/backend/.venv" ]; then
+  . "$ROOT_DIR/backend/.venv/bin/activate"
+elif [ -d "$ROOT_DIR/.venv" ]; then
+  . "$ROOT_DIR/.venv/bin/activate"
 else
-  echo "Missing Python virtualenv. Create one and install backend CI dependencies before committing."
-  echo "Expected: python3.13 -m venv .venv && . .venv/bin/activate && pip install -r backend/requirements.txt ruff==0.15.13 mypy==2.1.0"
+  echo "Missing Python virtualenv. Create one and install local dev dependencies before committing."
+  echo "Expected: python3.13 -m venv .venv && . .venv/bin/activate && pip install pre-commit"
   exit 1
 fi
 
-./backend/scripts/check-ci.sh
+python -m pre_commit --version >/dev/null 2>&1 || {
+  echo "pre-commit is not installed. Install it before committing."
+  exit 1
+}
 
-cd frontend
-
-pnpm lint
-pnpm exec prettier --check "src/**/*.{ts,html,scss}"
-pnpm test --coverage --detectOpenHandles --coverageReporters=text-summary
-pnpm typecheck
-pnpm build
+cd "$ROOT_DIR"
+python -m pre_commit run

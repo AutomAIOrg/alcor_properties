@@ -11,7 +11,7 @@ repos:
 
   # ── Python: Ruff (linting + import sort) ────────────────────────────────────
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.11.10
+    rev: v0.15.13
     hooks:
       - id: ruff
         args: [--fix]
@@ -25,13 +25,11 @@ repos:
       - id: eslint
         name: eslint
         language: system
-        entry: bash -c 'cd frontend && pnpm lint'
+        entry: bash -c 'set -e; export NVM_DIR="$HOME/.nvm"; if ! command -v pnpm >/dev/null 2>&1 && [ -s "$NVM_DIR/nvm.sh" ]; then . "$NVM_DIR/nvm.sh"; nvm use --silent 18.20.8; fi; files=(); for file in "$@"; do files+=("${file#frontend/}"); done; cd frontend && pnpm exec eslint --fix "${files[@]}"' --
         files: ^frontend/src/.*\.(ts|html)$
-        pass_filenames: false
 
       - id: prettier
         name: prettier
         language: system
-        entry: bash -c 'cd frontend && pnpm format'
+        entry: bash -c 'set -e; export NVM_DIR="$HOME/.nvm"; if ! command -v pnpm >/dev/null 2>&1 && [ -s "$NVM_DIR/nvm.sh" ]; then . "$NVM_DIR/nvm.sh"; nvm use --silent 18.20.8; fi; files=(); for file in "$@"; do files+=("${file#frontend/}"); done; cd frontend && pnpm exec prettier --write "${files[@]}"' --
         files: ^frontend/src/.*\.(ts|html|scss)$
-        pass_filenames: false
