@@ -1,4 +1,5 @@
 from datetime import date
+from typing import Any, cast
 
 from sqlalchemy import and_, func, or_
 from sqlalchemy.orm import Query, Session
@@ -6,6 +7,8 @@ from sqlalchemy.orm import Query, Session
 from api.v1.searches.schemas import BookingSearchFilters
 from infrastructure.models.apartment import ApartmentORM
 from infrastructure.models.booking import BookingORM
+
+SearchBookingRow = tuple[BookingORM, ApartmentORM | None]
 
 
 class SQLAlchemySearchRepository:
@@ -23,7 +26,7 @@ class SQLAlchemySearchRepository:
     def search_bookings(
         self,
         filters: BookingSearchFilters,
-    ) -> tuple[list[tuple[BookingORM, ApartmentORM | None]], int]:
+    ) -> tuple[list[SearchBookingRow], int]:
         """
         Busca reservas aplicando filtros, ordenación y paginación
 
@@ -33,7 +36,7 @@ class SQLAlchemySearchRepository:
         """
 
         # LEFT JOIN: conserva las reservas aunque no tengan apartamento asociado
-        query = self._db.query(BookingORM, ApartmentORM).outerjoin(
+        query: Query[Any] = self._db.query(BookingORM, ApartmentORM).outerjoin(
             ApartmentORM,
             BookingORM.booking_id == ApartmentORM.booking_id,
         )
@@ -53,11 +56,12 @@ class SQLAlchemySearchRepository:
             sort_column = sort_column.asc()
 
         # Ordenación secundaria por record_id
-        rows = (
+        rows = cast(
+            list[SearchBookingRow],
             query.order_by(sort_column, BookingORM.record_id.asc())
             .offset(filters.offset)
             .limit(filters.limit)
-            .all()
+            .all(),
         )
 
         return rows, total
@@ -96,9 +100,9 @@ class SQLAlchemySearchRepository:
 
     def _apply_filters(
         self,
-        query: Query,
+        query: Query[Any],
         filters: BookingSearchFilters,
-    ) -> Query:
+    ) -> Query[Any]:
         """
         Aplica todos los filtros de búsqueda sobre la query Base
         """
@@ -184,7 +188,7 @@ class SQLAlchemySearchRepository:
     def _sort_column(
         self,
         sort_by: str,
-    ):
+    ) -> Any:
         """
         Devuelve la columna ORM permitida para ordenar.
         """
