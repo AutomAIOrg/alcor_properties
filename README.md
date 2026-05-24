@@ -133,7 +133,7 @@ Las peticiones a `/api/*` se redirigen automáticamente al backend mediante el p
 El flujo de Git se coordina desde la raíz del proyecto:
 
 - `.husky/pre-commit` ejecuta `pre-commit`.
-- `.husky/pre-push` ejecuta `scripts/check-ci.sh`.
+- `.husky/pre-push` ejecuta `scripts/check-ci.sh --quick`.
 - `scripts/check-ci.sh` llama a los checks de backend y frontend.
 
 Para preparar el entorno local:
@@ -151,6 +151,12 @@ Para ejecutar el mismo flujo manualmente desde la raíz:
 
 ```bash
 ./scripts/check-ci.sh
+```
+
+Para ejecutar solo los checks rápidos que usa el `pre-push`:
+
+```bash
+./scripts/check-ci.sh --quick
 ```
 
 ---

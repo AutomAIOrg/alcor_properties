@@ -1,4 +1,4 @@
 #!/usr/bin/env bash
 set -eu
 
-"$(git rev-parse --show-toplevel)/scripts/check-ci.sh"
+"$(git rev-parse --show-toplevel)/scripts/check-ci.sh" --quick

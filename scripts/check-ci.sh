@@ -2,24 +2,13 @@
 set -eu
 
 ROOT_DIR="$(git rev-parse --show-toplevel)"
+MODE="${1:---all}"
 
 export LANG=C.utf8
 export LC_ALL=C.utf8
 
-if ! command -v pnpm >/dev/null 2>&1; then
-  export NVM_DIR="$HOME/.nvm"
-  [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
-  nvm use --silent
-fi
-
-if ! command -v pnpm >/dev/null 2>&1 && command -v corepack >/dev/null 2>&1; then
-  corepack enable
-fi
-
-if ! command -v pnpm >/dev/null 2>&1; then
-  echo "pnpm is not installed. Install frontend dependencies before running CI checks."
-  exit 1
-fi
+. "$ROOT_DIR/frontend/scripts/ensure-pnpm.sh"
+ensure_pnpm
 
 if [ -d "$ROOT_DIR/backend/.venv" ]; then
   . "$ROOT_DIR/backend/.venv/bin/activate"
@@ -31,7 +20,29 @@ else
   exit 1
 fi
 
-"$ROOT_DIR/backend/scripts/check-ci.sh" --quick
-"$ROOT_DIR/frontend/scripts/check-ci.sh" --quick
-"$ROOT_DIR/backend/scripts/check-ci.sh" --heavy
-"$ROOT_DIR/frontend/scripts/check-ci.sh" --heavy
+run_quick_checks() {
+  "$ROOT_DIR/backend/scripts/check-ci.sh" --quick
+  "$ROOT_DIR/frontend/scripts/check-ci.sh" --quick
+}
+
+run_heavy_checks() {
+  "$ROOT_DIR/backend/scripts/check-ci.sh" --heavy
+  "$ROOT_DIR/frontend/scripts/check-ci.sh" --heavy
+}
+
+case "$MODE" in
+  --quick)
+    run_quick_checks
+    ;;
+  --heavy)
+    run_heavy_checks
+    ;;
+  --all)
+    run_quick_checks
+    run_heavy_checks
+    ;;
+  *)
+    echo "Usage: scripts/check-ci.sh [--quick|--heavy|--all]"
+    exit 1
+    ;;
+esac
