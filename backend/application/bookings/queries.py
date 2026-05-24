@@ -3,7 +3,7 @@ Casos de uso de lectura (consultas) para el dominio de Reservas.
 """
 
 from datetime import date, timedelta
-from typing import Any, Optional
+from typing import Any
 
 from domain.bookings.entity import Booking
 from domain.bookings.repository import IBookingRepository
@@ -42,10 +42,10 @@ class ListBookingsQuery:
 
     def execute(
         self,
-        start_date: Optional[date] = None,
-        end_date: Optional[date] = None,
-        days: Optional[int] = None,
-        limit: Optional[int] = None,
+        start_date: date | None = None,
+        end_date: date | None = None,
+        days: int | None = None,
+        limit: int | None = None,
     ) -> list[Booking]:
         if start_date and end_date:
             bookings = self._repo.list(start_date=start_date, end_date=end_date)
@@ -149,7 +149,7 @@ class GetCalendarEventsQuery:
 
     def execute(
         self,
-        start_date: Optional[date] = None,
+        start_date: date | None = None,
         days: int = 90,
     ) -> list[dict[str, Any]]:
         resolved_start = start_date or date.today()

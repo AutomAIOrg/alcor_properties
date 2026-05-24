@@ -4,7 +4,6 @@ Casos de uso (comandos) para el dominio de Reservas.
 
 from dataclasses import dataclass
 from datetime import date
-from typing import Optional
 
 from domain.bookings.entity import Booking
 from domain.bookings.repository import IBookingRepository
@@ -12,20 +11,20 @@ from domain.bookings.repository import IBookingRepository
 
 @dataclass
 class BookingUpdateData:
-    booking_id: Optional[str] = None
-    guest_name: Optional[str] = None
-    check_in: Optional[date] = None
-    check_out: Optional[date] = None
-    status: Optional[str] = None
-    persons: Optional[int] = None
-    adults: Optional[int] = None
-    children: Optional[int] = None
-    price: Optional[float] = None
-    charges: Optional[float] = None
-    email: Optional[str] = None
-    phone: Optional[str] = None
-    booking_number: Optional[str] = None
-    notes: Optional[str] = None
+    booking_id: str | None = None
+    guest_name: str | None = None
+    check_in: date | None = None
+    check_out: date | None = None
+    status: str | None = None
+    persons: int | None = None
+    adults: int | None = None
+    children: int | None = None
+    price: float | None = None
+    charges: float | None = None
+    email: str | None = None
+    phone: str | None = None
+    booking_number: str | None = None
+    notes: str | None = None
 
 
 def _apply_electric_allowance(booking: Booking, electric_ids: set[str]) -> Booking:

@@ -3,7 +3,6 @@ Enrutador de reservas.
 """
 
 from datetime import date
-from typing import Optional
 
 from fastapi import APIRouter, Depends, Query, status
 
@@ -21,10 +20,10 @@ router = APIRouter(prefix="/bookings", tags=["bookings"])
 
 @router.get("/", response_model=list[BookingResponse])
 async def get_bookings(
-    limit: Optional[int] = Query(None, description="Limita el número de resultados"),
-    start_date: Optional[date] = Query(None, description="Filtrar desde esta fecha"),
-    end_date: Optional[date] = Query(None, description="Filtrar hasta esta fecha"),
-    days: Optional[int] = Query(
+    limit: int | None = Query(None, description="Limita el número de resultados"),
+    start_date: date | None = Query(None, description="Filtrar desde esta fecha"),
+    end_date: date | None = Query(None, description="Filtrar hasta esta fecha"),
+    days: int | None = Query(
         None, description="Obtener reservas para los próximos N días desde start_date"
     ),
     use_cases: BookingUseCases = Depends(get_booking_use_cases),
@@ -62,7 +61,7 @@ async def get_upcoming_checkouts(
 
 @router.get("/calendar-events")
 async def get_calendar_events(
-    start_date: Optional[date] = Query(None, description="Fecha de inicio (por defecto hoy)"),
+    start_date: date | None = Query(None, description="Fecha de inicio (por defecto hoy)"),
     days: int = Query(90, description="Cantidad de días a incluir"),
     use_cases: BookingUseCases = Depends(get_booking_use_cases),
 ):
