@@ -4,22 +4,8 @@ set -eu
 ROOT_DIR="$(git rev-parse --show-toplevel)"
 MODE="${1:---all}"
 
-ensure_pnpm() {
-  if ! command -v pnpm >/dev/null 2>&1; then
-    export NVM_DIR="$HOME/.nvm"
-    [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
-    nvm use --silent
-  fi
-
-  if ! command -v pnpm >/dev/null 2>&1 && command -v corepack >/dev/null 2>&1; then
-    corepack enable
-  fi
-
-  command -v pnpm >/dev/null 2>&1 || {
-    echo "pnpm is not installed. Install frontend dependencies before running frontend CI checks."
-    exit 1
-  }
-}
+. "$ROOT_DIR/frontend/scripts/ensure-pnpm.sh"
+ensure_pnpm
 
 run_quick_checks() {
   cd "$ROOT_DIR/frontend"
