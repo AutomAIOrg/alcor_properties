@@ -4,6 +4,7 @@ set -eu
 ROOT_DIR="$(git rev-parse --show-toplevel)"
 COMPOSE_FILE="$ROOT_DIR/docker-compose.test.yml"
 BASELINE_SCHEMA="$ROOT_DIR/backend/tests/fixtures/baseline_schema.sql"
+BASELINE_REVISION_FILE="$ROOT_DIR/backend/alembic/.baseline-revision"
 COMPOSE_CMD=()
 MODE="${1:---all}"
 
@@ -18,6 +19,23 @@ require_command() {
     echo "$1 is not installed. Install the required CI dependency before running this script."
     exit 1
   }
+}
+
+read_baseline_revision() {
+  [ -s "$BASELINE_REVISION_FILE" ] || {
+    echo "Missing Alembic baseline revision: $BASELINE_REVISION_FILE"
+    exit 1
+  }
+
+  local baseline_revision
+  baseline_revision="$(tr -d '[:space:]' < "$BASELINE_REVISION_FILE")"
+
+  [ -n "$baseline_revision" ] || {
+    echo "Alembic baseline revision file is empty: $BASELINE_REVISION_FILE"
+    exit 1
+  }
+
+  printf '%s' "$baseline_revision"
 }
 
 detect_compose() {
@@ -143,6 +161,7 @@ run_heavy_checks() {
   done
 
   cd "$ROOT_DIR/backend"
+  baseline_revision="$(read_baseline_revision)"
 
   python - <<'PY'
 import os
@@ -170,7 +189,7 @@ finally:
     connection.close()
 PY
 
-  alembic stamp c796a5e365dc
+  alembic stamp "$baseline_revision"
   alembic upgrade head
   python -m pytest tests/ --cov --cov-report=term-missing
 }

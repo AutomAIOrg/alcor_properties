@@ -31,6 +31,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.13"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
       - name: Install Ruff
         run: pip install ruff==0.15.13
       - name: Check lint
@@ -46,6 +48,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.13"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
       - name: Install dependencies
         run: pip install -r requirements.txt mypy==2.1.0
       - name: Run mypy
@@ -90,6 +94,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.13"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
       - name: Install dependencies
         run: pip install -r requirements.txt
       - name: Load baseline schema
@@ -120,7 +126,20 @@ jobs:
               connection.close()
           PY
       - name: Mark baseline revision
-        run: alembic stamp c796a5e365dc
+        run: |
+          baseline_revision_file="alembic/.baseline-revision"
+          if [ ! -s "$baseline_revision_file" ]; then
+            echo "Missing Alembic baseline revision: $baseline_revision_file"
+            exit 1
+          fi
+
+          baseline_revision="$(tr -d '[:space:]' < "$baseline_revision_file")"
+          if [ -z "$baseline_revision" ]; then
+            echo "Alembic baseline revision file is empty: $baseline_revision_file"
+            exit 1
+          fi
+
+          alembic stamp "$baseline_revision"
       - name: Apply migrations
         run: alembic upgrade head
       - name: Run tests with coverage
