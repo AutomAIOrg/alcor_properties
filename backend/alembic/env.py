@@ -38,6 +38,10 @@ from infrastructure.database.base import Base  # noqa: E402
 
 target_metadata = Base.metadata
 
+IGNORED_LEGACY_COLUMNS = {
+    ("bookings", "Electric Allowance"),
+}
+
 # ---------------------------------------------------------------------------
 # Migration runners
 # ---------------------------------------------------------------------------
@@ -78,6 +82,10 @@ def include_object(object, name, type_, reflected, compare_to):
     """Solo gestiona tablas que tienen un modelo SQLAlchemy definido."""
     if type_ == "table" and name not in target_metadata.tables:
         return False
+    if type_ == "column" and reflected and compare_to is None:
+        table_name = object.table.name
+        if (table_name, name) in IGNORED_LEGACY_COLUMNS:
+            return False
     return True
 
 
