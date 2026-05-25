@@ -4,19 +4,15 @@ on:
   push:
     paths:
       - ".github/workflows/frontend-ci.yml"
-      - ".husky/**"
       - ".nvmrc"
       - ".pre-commit-config.yaml"
       - "frontend/**"
-      - "scripts/**"
   pull_request:
     paths:
       - ".github/workflows/frontend-ci.yml"
-      - ".husky/**"
       - ".nvmrc"
       - ".pre-commit-config.yaml"
       - "frontend/**"
-      - "scripts/**"
 
 jobs:
   frontend:

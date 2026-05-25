@@ -1,5 +1,5 @@
 repos:
-  # ── Checks generales ────────────────────────────────────────────────────────
+  # ── Basic repository hygiene ────────────────────────────────────────────────
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v5.0.0
     hooks:
@@ -9,7 +9,7 @@ repos:
       - id: check-merge-conflict
       - id: detect-private-key
 
-  # ── Python: Ruff (linting + import sort) ────────────────────────────────────
+  # ── Backend: Ruff linting + formatting ─────────────────────────────────────
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.15.13
     hooks:
@@ -19,17 +19,17 @@ repos:
       - id: ruff-format
         files: ^backend/
 
-  # ── TypeScript/HTML/SCSS: ESLint + Prettier ──────────────────────────────────
+  # ── Frontend: ESLint + Prettier via local node_modules ─────────────────────
   - repo: local
     hooks:
-      - id: eslint
-        name: eslint
+      - id: frontend-prettier
+        name: frontend prettier
         language: system
-        entry: frontend/scripts/pre-commit-eslint.sh
-        files: ^frontend/src/.*\.(ts|html)$
-
-      - id: prettier
-        name: prettier
-        language: system
-        entry: frontend/scripts/pre-commit-prettier.sh
+        entry: frontend/node_modules/.bin/prettier --write
         files: ^frontend/src/.*\.(ts|html|scss)$
+
+      - id: frontend-eslint
+        name: frontend eslint
+        language: system
+        entry: frontend/node_modules/.bin/eslint --fix --config frontend/eslint.config.mjs
+        files: ^frontend/src/.*\.(ts|html)$
