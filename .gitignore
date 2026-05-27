@@ -43,11 +43,7 @@ frontend/yarn-error.log
 frontend/package-lock.json
 
 # ── IDEs ─────────────────────────────────────────────────────────────────────
-.vscode/*
-!.vscode/settings.json
-!.vscode/tasks.json
-!.vscode/launch.json
-!.vscode/extensions.json
+**/.vscode/
 .idea/
 *.sublime-workspace
 *.sublime-project
