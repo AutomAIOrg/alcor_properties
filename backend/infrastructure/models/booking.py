@@ -24,7 +24,7 @@ class BookingORM(Base):
     booking_number: Mapped[str | None] = mapped_column("Nº Booking", String(255), nullable=True)
 
     # Huésped
-    guest_name: Mapped[str | None] = mapped_column("Nombre,Apellidos", String(255), nullable=True)
+    guest_name: Mapped[str] = mapped_column("Nombre,Apellidos", String(100), nullable=False)
     email: Mapped[str | None] = mapped_column("Email", String(255), nullable=True)
     phone: Mapped[str | None] = mapped_column("Movil", String(100), nullable=True)
 
