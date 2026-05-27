@@ -1,0 +1,178 @@
+<!-- Contenedor principal del calendario -->
+<div class="calendar">
+  <!-- Fila 1: búsqueda + botón Nueva reserva -->
+  <div class="calendar-actions">
+    <div class="search-wrapper">
+      <input
+        type="text"
+        class="search-input"
+        placeholder="Buscar huésped o nº reserva…"
+        [value]="searchQuery()"
+        (input)="onSearchInputEvent($event)"
+        (focus)="onSearchFocus()"
+        autocomplete="off"
+      />
+      @if (showSuggestions() && suggestions().length) {
+        <div class="suggestions-panel">
+          @for (s of suggestions(); track s.text) {
+            <button class="suggestion-item" type="button" (mousedown)="selectSuggestion(s.text)">
+              <span class="suggestion-text">{{ s.text }}</span>
+              <span class="suggestion-label">{{ s.label }}</span>
+            </button>
+          }
+        </div>
+      }
+    </div>
+    @if (authService.hasPermission('bookings:create')) {
+      <button class="btn-new-booking" (click)="showCreateModal.set(true)">+ Nueva reserva</button>
+    }
+  </div>
+
+  <!-- Fila 2: Filtros y Selector de vista -->
+  <div class="calendar-filters">
+    <!-- Agrupamos los filtros para que actúen como un bloque frente al view-toggle -->
+    <div class="filter-group">
+      <!-- Filtro: Piso -->
+      <div class="filter-dropdown" [class.open]="showIdDropdown()">
+        <button class="filter-trigger" (click)="showIdDropdown.set(!showIdDropdown())">
+          Piso
+          @if (filterBookingIds().length) {
+            <span class="badge">{{ filterBookingIds().length }}</span>
+          }
+          <span class="arrow">▾</span>
+        </button>
+        @if (showIdDropdown()) {
+          <div class="filter-panel">
+            @for (id of bookingIdOptions(); track id) {
+              <label class="filter-option">
+                <input
+                  type="checkbox"
+                  [checked]="filterBookingIds().includes(id)"
+                  (change)="toggleBookingId(id)"
+                />
+                {{ id }}
+              </label>
+            }
+          </div>
+        }
+      </div>
+
+      <!-- Filtro: Estado -->
+      <div class="filter-dropdown" [class.open]="showStateDropdown()">
+        <button class="filter-trigger" (click)="showStateDropdown.set(!showStateDropdown())">
+          Estado
+          @if (filterBookingStates().length) {
+            <span class="badge">{{ filterBookingStates().length }}</span>
+          }
+          <span class="arrow">▾</span>
+        </button>
+        @if (showStateDropdown()) {
+          <div class="filter-panel">
+            @for (state of BASE_STATUSES; track state) {
+              <label class="filter-option">
+                <input
+                  type="checkbox"
+                  [checked]="filterBookingStates().includes(state)"
+                  (change)="toggleBookingState(state)"
+                />
+                {{ state }}
+              </label>
+            }
+          </div>
+        }
+      </div>
+
+      <!-- Buscador: visible solo en desktop/tablet (en móvil está en .calendar-actions) -->
+      <div class="search-wrapper">
+        <input
+          type="text"
+          class="search-input"
+          placeholder="Buscar huésped o nº reserva…"
+          [value]="searchQuery()"
+          (input)="onSearchInputEvent($event)"
+          (focus)="onSearchFocus()"
+          autocomplete="off"
+        />
+        @if (showSuggestions() && suggestions().length) {
+          <div class="suggestions-panel">
+            @for (s of suggestions(); track s.text) {
+              <button class="suggestion-item" type="button" (mousedown)="selectSuggestion(s.text)">
+                <span class="suggestion-text">{{ s.text }}</span>
+                <span class="suggestion-label">{{ s.label }}</span>
+              </button>
+            }
+          </div>
+        }
+      </div>
+
+      <!-- Botón Limpiar: Ahora dentro del grupo para estabilidad -->
+      @if (hasActiveFilters()) {
+        <button class="clear-filter clear-all" (click)="clearAllFilters()" title="Limpiar filtros">
+          🧹
+        </button>
+      }
+    </div>
+
+    <!-- Selector Mes/Semana (margin-left: auto lo empuja a la derecha) -->
+    <div class="view-toggle">
+      <button [class.active]="viewMode() === 'month'" (click)="viewMode.set('month')">Mes</button>
+      <button [class.active]="viewMode() === 'week'" (click)="viewMode.set('week')">Semana</button>
+    </div>
+  </div>
+
+  <!-- Fila 3: Header del calendario -->
+  <app-calendar-header
+    [month]="currentDate().getMonth()"
+    [year]="currentDate().getFullYear()"
+    [viewMode]="viewMode()"
+    (prev)="prevPeriod()"
+    (next)="nextPeriod()"
+    (today)="goToToday()"
+    (dateChange)="goToDate($event)"
+    (viewModeChange)="viewMode.set($event)"
+  />
+
+  <!-- Grid del Calendario -->
+  @switch (viewMode()) {
+    @case ('month') {
+      <div class="calendar-grid-wrapper">
+        <div class="weekday-header-row">
+          @for (day of WEEKDAYS; track day) {
+            <div class="weekday-header">{{ day }}</div>
+          }
+        </div>
+        @for (week of weeks(); track week.days[0].date) {
+          <app-week-row [week]="week" (barClick)="openBooking($event)" />
+        }
+      </div>
+    }
+
+    @case ('week') {
+      <div class="calendar-grid-wrapper">
+        <div class="weekday-header-row">
+          @for (day of WEEKDAYS; track day) {
+            <div class="weekday-header">{{ day }}</div>
+          }
+        </div>
+        <app-week-row [week]="currentWeek()" (barClick)="openBooking($event)" />
+      </div>
+    }
+  }
+</div>
+
+<!-- Modales -->
+@if (selectedBooking()) {
+  <app-booking-modal
+    [booking]="selectedBooking()!"
+    (close)="closeBooking()"
+    (saved)="onBookingSaved($event)"
+  />
+}
+
+@if (showCreateModal()) {
+  <app-booking-create-modal
+    [apartments]="bookingIdOptions()"
+    (close)="showCreateModal.set(false)"
+    (created)="onBookingCreated($event)"
+  />
+}

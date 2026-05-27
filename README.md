@@ -32,7 +32,7 @@ alcor_project/
 │   └── routers/
 │       └── bookings.py       # Endpoints /api/v1/bookings
 │
-└── frontend_angular/         # SPA Angular
+└── frontend/         # SPA Angular
     └── src/app/
         ├── models/           # Interfaces TypeScript (Booking, BASE_STATUSES)
         ├── services/         # BookingService (HTTP)
@@ -65,13 +65,31 @@ DB_NAME=nombre_bd
 
 > También se aceptan las variantes `MYSQL_HOST`, `MYSQL_USER`, `MYSQL_PASSWORD`, `MYSQL_DATABASE`, `MYSQL_PORT`.
 
-### 2. Migración de base de datos
+### 2. Base de datos y migraciones
 
-Si la tabla `bookings` no tiene todavía la columna de notas, ejecuta:
+Para una base de datos vacía, Alembic crea el esquema inicial y aplica las
+migraciones pendientes:
 
-```sql
-ALTER TABLE bookings ADD COLUMN Notes TEXT NULL;
+```bash
+cd backend
+alembic upgrade head
 ```
+
+Para desarrollo con datos reales, el dump local `db/init/backup.sql` se carga al
+arrancar MySQL con Docker. Ese dump no forma parte de Git y solo se usa en local:
+
+```bash
+docker compose up db
+# o, si usas Docker Compose v1:
+docker-compose up db
+cd backend
+alembic stamp c796a5e365dc
+alembic upgrade head
+```
+
+El `stamp` solo debe hacerse una vez sobre una base de datos existente creada
+desde el dump. A partir de ahí, las migraciones futuras se aplican normalmente
+con `alembic upgrade head`.
 
 ---
 
@@ -84,22 +102,95 @@ cd backend
 python -m venv .venv
 source .venv/bin/activate        # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
-python main.py
+./start.sh
 ```
 
-La API queda disponible en `http://localhost:8000`.  
+La API queda disponible en `http://localhost:8000`.
 Documentación interactiva: `http://localhost:8000/docs`
+
+Para desarrollo con recarga automática:
+
+```bash
+cd backend
+./start-dev.sh
+```
+
+Los scripts de arranque ejecutan primero las migraciones pendientes y, solo si
+terminan correctamente, arrancan Uvicorn:
+
+```bash
+alembic upgrade head
+uvicorn main:app --host 0.0.0.0 --port 8000
+```
+
+Si hay cambios en la base de datos, crea la migración correspondiente y después
+arranca la app con el script habitual:
+
+```bash
+cd backend
+alembic revision --autogenerate -m "describe database change"
+./start.sh
+```
+
+`python main.py` sigue arrancando la API directamente, pero no aplica
+migraciones. Úsalo solo si ya has ejecutado `alembic upgrade head`.
 
 ### Frontend
 
 ```bash
-cd frontend_angular
-npm install
-ng serve
+cd frontend
+pnpm install
+pnpm start
 ```
 
-La aplicación queda disponible en `http://localhost:4200`.  
+La aplicación queda disponible en `http://localhost:4200`.
 Las peticiones a `/api/*` se redirigen automáticamente al backend mediante el proxy configurado en `proxy.conf.json`.
+
+### Calidad local
+
+El hook local de commit lo gestiona `pre-commit`. Solo ejecuta checks rápidos y
+autoformato sobre los archivos afectados; la validación completa vive en GitHub
+Actions.
+
+Para preparar el entorno local:
+
+```bash
+python3.13 -m venv .venv
+. .venv/bin/activate
+pip install -r backend/requirements.txt pre-commit ruff==0.15.13 mypy==2.1.0
+
+cd frontend
+pnpm install
+
+cd ..
+pre-commit install
+```
+
+Para ejecutar los hooks manualmente desde la raíz:
+
+```bash
+pre-commit run --all-files
+```
+
+Comandos útiles para validar antes de subir:
+
+```bash
+# Backend
+cd backend
+ruff check .
+ruff format --check .
+python -m mypy api/ application/ domain/ infrastructure/ config.py main.py --config-file pyproject.toml --explicit-package-bases
+alembic upgrade head
+python -m pytest tests/ --cov --cov-report=term-missing
+
+# Frontend
+cd ../frontend
+pnpm lint
+pnpm exec prettier --check "src/**/*.{ts,html,scss}"
+pnpm typecheck
+pnpm test:ci
+pnpm build
+```
 
 ---
 

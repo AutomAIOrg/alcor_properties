@@ -1,0 +1,35 @@
+<div class="main-container">
+  <!-- BARRA LATERAL -->
+  @if (showSidebar()) {
+    <aside class="sidebar" [class.hidden]="isSidebarHidden">
+      <button class="toggle-btn" (click)="toggleSidebar()">
+        {{ isSidebarHidden ? '»' : '«' }}
+      </button>
+
+      <div class="logo">
+        <img src="logo.png" class="logo-img" />
+      </div>
+
+      @if (authService.currentUser()) {
+        <div class="user-info">
+          <!-- <span class="user-name">{{ authService.currentUser()!.name }}</span> -->
+          <span class="user-role">{{ authService.currentUser()!.role }}</span>
+        </div>
+      }
+
+      <nav class="menu">
+        <a routerLink="/calendar" routerLinkActive="active-link">📅 Calendario</a>
+        <a *appHasRole="['admin', 'employee']" routerLink="/searches" routerLinkActive="active-link"
+          >🔍 Búsquedas</a
+        >
+      </nav>
+
+      <button class="logout-btn" (click)="logout()">🚪 Cerrar sesión</button>
+    </aside>
+  }
+
+  <!-- CONTENIDO PRINCIPAL -->
+  <main class="content-area">
+    <router-outlet></router-outlet>
+  </main>
+</div>

@@ -2,8 +2,6 @@
 Aplicación FastAPI del proyecto.
 """
 
-from contextlib import asynccontextmanager
-
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -15,16 +13,6 @@ from api.error_handlers import (
 from api.v1.router import router as v1_router
 from config import settings
 from domain.exceptions import BookingConflict, BookingNotFound, DomainValidationError
-from infrastructure.database.session import engine
-
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    """Verifica que la conexión a la base de datos esté disponible al iniciar."""
-    with engine.connect():
-        pass
-    yield
-
 
 app = FastAPI(
     title=settings.APP_NAME,
@@ -32,7 +20,6 @@ app = FastAPI(
     description="REST API for Property Management System",
     docs_url="/docs",
     redoc_url="/redoc",
-    lifespan=lifespan,
 )
 
 # CORS

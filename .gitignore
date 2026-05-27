@@ -32,25 +32,25 @@ coverage.xml
 .ruff_cache/
 
 # ── Node / Angular ───────────────────────────────────────────────────────────
-frontend_angular/node_modules/
-frontend_angular/dist/
-frontend_angular/.angular/cache/
-frontend_angular/tmp/
-frontend_angular/out-tsc/
-frontend_angular/coverage/
-frontend_angular/npm-debug.log
-frontend_angular/yarn-error.log
+frontend/node_modules/
+frontend/dist/
+frontend/.angular/cache/
+frontend/tmp/
+frontend/out-tsc/
+frontend/coverage/
+frontend/npm-debug.log
+frontend/yarn-error.log
+frontend/package-lock.json
 
 # ── IDEs ─────────────────────────────────────────────────────────────────────
-.vscode/*
-!.vscode/settings.json
-!.vscode/tasks.json
-!.vscode/launch.json
-!.vscode/extensions.json
+**/.vscode/
 .idea/
 *.sublime-workspace
 *.sublime-project
 .history/
+
+# ── Base de datos local (datos reales del cliente, nunca subir) ──────────────
+db/init/*.sql
 
 # ── Sistema operativo ────────────────────────────────────────────────────────
 .DS_Store

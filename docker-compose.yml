@@ -1,0 +1,18 @@
+services:
+  db:
+    image: mysql:8.0
+    container_name: alcor_db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: alcor_dev
+      MYSQL_USER: alcor
+      MYSQL_PASSWORD: alcor_pass
+    ports:
+      - "3306:3306"
+    volumes:
+      - alcor_db_data:/var/lib/mysql
+      - ./db/init:/docker-entrypoint-initdb.d
+
+volumes:
+  alcor_db_data:

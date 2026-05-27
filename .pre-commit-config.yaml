@@ -1,0 +1,35 @@
+repos:
+  # ── Basic repository hygiene ────────────────────────────────────────────────
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-merge-conflict
+      - id: detect-private-key
+
+  # ── Backend: Ruff linting + formatting ─────────────────────────────────────
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.13
+    hooks:
+      - id: ruff
+        args: [--fix]
+        files: ^backend/
+      - id: ruff-format
+        files: ^backend/
+
+  # ── Frontend: ESLint + Prettier via local node_modules ─────────────────────
+  - repo: local
+    hooks:
+      - id: frontend-prettier
+        name: frontend prettier
+        language: system
+        entry: frontend/node_modules/.bin/prettier --write
+        files: ^frontend/src/.*\.(ts|html|scss)$
+
+      - id: frontend-eslint
+        name: frontend eslint
+        language: system
+        entry: frontend/node_modules/.bin/eslint --fix --config frontend/eslint.config.mjs
+        files: ^frontend/src/.*\.(ts|html)$

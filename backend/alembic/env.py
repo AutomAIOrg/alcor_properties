@@ -10,7 +10,7 @@ from alembic import context
 # ---------------------------------------------------------------------------
 config = context.config
 
-if config.config_file_name is not None:
+if config.config_file_name is not None and config.attributes.get("configure_logger", True):
     fileConfig(config.config_file_name)
 
 # ---------------------------------------------------------------------------
@@ -38,6 +38,10 @@ from infrastructure.database.base import Base  # noqa: E402
 
 target_metadata = Base.metadata
 
+IGNORED_LEGACY_COLUMNS = {
+    ("bookings", "Electric Allowance"),
+}
+
 # ---------------------------------------------------------------------------
 # Migration runners
 # ---------------------------------------------------------------------------
@@ -50,7 +54,8 @@ def run_migrations_offline() -> None:
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
-        compare_type=True,
+        compare_type=False,  # evita generar cambios por tipos de datos (ej. VARCHAR(255) vs TEXT)
+        include_object=include_object,
     )
 
     with context.begin_transaction():
@@ -65,11 +70,23 @@ def run_migrations_online() -> None:
         context.configure(
             connection=connection,
             target_metadata=target_metadata,
-            compare_type=True,
+            compare_type=False,  # evita generar cambios por tipos de datos (ej. VARCHAR(255) vs TEXT)
+            include_object=include_object,
         )
 
         with context.begin_transaction():
             context.run_migrations()
+
+
+def include_object(object, name, type_, reflected, compare_to):
+    """Solo gestiona tablas que tienen un modelo SQLAlchemy definido."""
+    if type_ == "table" and name not in target_metadata.tables:
+        return False
+    if type_ == "column" and reflected and compare_to is None:
+        table_name = object.table.name
+        if (table_name, name) in IGNORED_LEGACY_COLUMNS:
+            return False
+    return True
 
 
 if context.is_offline_mode():

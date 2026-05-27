@@ -7,7 +7,7 @@ Niveles:
   - e2e         → sqlite_engine, e2e_client
 """
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 from sqlalchemy import create_engine
@@ -80,7 +80,6 @@ def api_client(mock_use_cases: MagicMock) -> TestClient:
     """
     TestClient de FastAPI con use cases inyectados como mock.
 
-    - Parchea main.engine para que el lifespan no intente conectarse a MySQL.
     - El mismo mock_use_cases que recibe el fixture está disponible en los tests
       que lo soliciten como parámetro (pytest reutiliza la misma instancia).
     """
@@ -90,9 +89,8 @@ def api_client(mock_use_cases: MagicMock) -> TestClient:
     app.dependency_overrides[get_booking_use_cases] = lambda: mock_use_cases
 
     try:
-        with patch("main.engine"):
-            with TestClient(app, raise_server_exceptions=True) as client:
-                yield client
+        with TestClient(app, raise_server_exceptions=True) as client:
+            yield client
     finally:
         app.dependency_overrides.pop(get_booking_use_cases, None)
 
@@ -125,8 +123,7 @@ def e2e_client(sqlite_engine):
     app.dependency_overrides[get_db] = override_get_db
 
     try:
-        with patch("main.engine"):
-            with TestClient(app, raise_server_exceptions=True) as client:
-                yield client
+        with TestClient(app, raise_server_exceptions=True) as client:
+            yield client
     finally:
         app.dependency_overrides.pop(get_db, None)

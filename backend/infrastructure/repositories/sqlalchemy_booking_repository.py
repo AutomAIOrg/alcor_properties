@@ -3,7 +3,6 @@ Implementación de IBookingRepository usando SQLAlchemy.
 """
 
 from datetime import date
-from typing import Optional
 
 from sqlalchemy import and_
 from sqlalchemy.orm import Session
@@ -35,9 +34,9 @@ class SQLAlchemyBookingRepository(IBookingRepository):
 
     def list(
         self,
-        start_date: Optional[date] = None,
-        end_date: Optional[date] = None,
-        limit: Optional[int] = None,
+        start_date: date | None = None,
+        end_date: date | None = None,
+        limit: int | None = None,
     ) -> list[Booking]:
         query = self._db.query(BookingORM)
 

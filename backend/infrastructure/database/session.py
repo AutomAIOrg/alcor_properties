@@ -29,7 +29,7 @@ engine = create_engine(
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
-def get_db() -> Generator[Session, None, None]:
+def get_db() -> Generator[Session]:
     """Cede una sesión de base de datos y garantiza su cierre después de la solicitud."""
     db = SessionLocal()
     try:

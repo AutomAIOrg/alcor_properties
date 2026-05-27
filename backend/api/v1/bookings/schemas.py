@@ -3,7 +3,6 @@ DTOs (Data Transfer Objects) para la API de reservas.
 """
 
 from datetime import date
-from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -23,13 +22,13 @@ class BookingResponse(BaseModel):
     persons: int
     adults: int
     children: int
-    price: Optional[float] = None
-    charges: Optional[float] = None
-    email: Optional[str] = None
-    phone: Optional[str] = None
-    booking_number: Optional[str] = None
-    notes: Optional[str] = None
-    electric_allowance: Optional[float] = None
+    price: float | None = None
+    charges: float | None = None
+    email: str | None = None
+    phone: str | None = None
+    booking_number: str | None = None
+    notes: str | None = None
+    electric_allowance: float | None = None
 
 
 class BookingCreateRequest(BaseModel):
@@ -44,28 +43,28 @@ class BookingCreateRequest(BaseModel):
     persons: int = Field(default=1, ge=1)
     adults: int = Field(default=1, ge=1)
     children: int = Field(default=0, ge=0)
-    price: Optional[float] = Field(default=None, ge=0)
-    charges: Optional[float] = Field(default=None, ge=0)
-    email: Optional[str] = None
-    phone: Optional[str] = None
-    booking_number: Optional[str] = None
-    notes: Optional[str] = None
+    price: float | None = Field(default=None, ge=0)
+    charges: float | None = Field(default=None, ge=0)
+    email: str | None = None
+    phone: str | None = None
+    booking_number: str | None = None
+    notes: str | None = None
 
 
 class BookingUpdateRequest(BaseModel):
     """DTO de entrada para actualización de una reserva. Todos los campos son opcionales."""
 
-    booking_id: Optional[str] = None
-    guest_name: Optional[str] = None
-    check_in: Optional[date] = None
-    check_out: Optional[date] = None
-    status: Optional[str] = None
-    persons: Optional[int] = None
-    adults: Optional[int] = None
-    children: Optional[int] = None
-    price: Optional[float] = None
-    charges: Optional[float] = None
-    email: Optional[str] = None
-    phone: Optional[str] = None
-    booking_number: Optional[str] = None
-    notes: Optional[str] = None
+    booking_id: str | None = None
+    guest_name: str | None = None
+    check_in: date | None = None
+    check_out: date | None = None
+    status: str | None = None
+    persons: int | None = None
+    adults: int | None = None
+    children: int | None = None
+    price: float | None = None
+    charges: float | None = None
+    email: str | None = None
+    phone: str | None = None
+    booking_number: str | None = None
+    notes: str | None = None

@@ -4,7 +4,6 @@ Interfaz abstracta de repositorio para el dominio de Reservas.
 
 from abc import ABC, abstractmethod
 from datetime import date
-from typing import Optional
 
 from domain.bookings.entity import Booking
 
@@ -25,9 +24,9 @@ class IBookingRepository(ABC):
     @abstractmethod
     def list(
         self,
-        start_date: Optional[date] = None,
-        end_date: Optional[date] = None,
-        limit: Optional[int] = None,
+        start_date: date | None = None,
+        end_date: date | None = None,
+        limit: int | None = None,
     ) -> list[Booking]:
         """
         Devuelve las reservas, opcionalmente filtradas por rango de fechas y limitadas en cantidad.

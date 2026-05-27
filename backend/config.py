@@ -2,15 +2,22 @@
 Configuración de ajustes para la aplicación backend.
 """
 
-from typing import Optional
+import os
+from pathlib import Path
 
 from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
+def _env_file() -> str | None:
+    if os.getenv("ALCOR_IGNORE_ENV_FILE") == "1":
+        return None
+    return str(Path(__file__).parent.parent / ".env")
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=_env_file(),
         case_sensitive=True,
         extra="allow",
     )
@@ -21,18 +28,18 @@ class Settings(BaseSettings):
     DEBUG: bool = False
 
     # Base de datos — claves principales (DB_*)
-    DB_HOST: Optional[str] = None
-    DB_USER: Optional[str] = None
-    DB_PASS: Optional[str] = None
-    DB_NAME: Optional[str] = None
+    DB_HOST: str | None = None
+    DB_USER: str | None = None
+    DB_PASS: str | None = None
+    DB_NAME: str | None = None
     DB_PORT: int = 3306
 
     # Alias de compatibilidad (MYSQL_*) — los DB_* tienen prioridad si ambos están definidos
-    MYSQL_HOST: Optional[str] = None
-    MYSQL_USER: Optional[str] = None
-    MYSQL_PASSWORD: Optional[str] = None
-    MYSQL_DATABASE: Optional[str] = None
-    MYSQL_PORT: Optional[str] = None
+    MYSQL_HOST: str | None = None
+    MYSQL_USER: str | None = None
+    MYSQL_PASSWORD: str | None = None
+    MYSQL_DATABASE: str | None = None
+    MYSQL_PORT: str | None = None
 
     # Cupo eléctrico — IDs de reservas separados por comas
     ELECTRIC: str = ""
