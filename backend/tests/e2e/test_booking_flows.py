@@ -30,15 +30,19 @@ _BASE_PAYLOAD = {
 
 
 class TestCrudFlow:
-    def test_create_get_update_delete_cycle(self, e2e_client):
+    def test_create_get_update_delete_cycle(self, e2e_client, admin_auth_headers):
         # Crear
-        r = e2e_client.post("/api/v1/bookings/", json=_BASE_PAYLOAD)
+        r = e2e_client.post(
+            "/api/v1/bookings/",
+            json=_BASE_PAYLOAD,
+            headers=admin_auth_headers,
+        )
         assert r.status_code == 201
         record_id = r.json()["record_id"]
         assert record_id is not None
 
         # Obtener
-        r = e2e_client.get(f"/api/v1/bookings/{record_id}")
+        r = e2e_client.get(f"/api/v1/bookings/{record_id}", headers=admin_auth_headers)
         assert r.status_code == 200
         assert r.json()["guest_name"] == "Pedro E2E"
 
@@ -46,16 +50,17 @@ class TestCrudFlow:
         r = e2e_client.put(
             f"/api/v1/bookings/{record_id}",
             json={"guest_name": "Pedro E2E Actualizado"},
+            headers=admin_auth_headers,
         )
         assert r.status_code == 200
         assert r.json()["guest_name"] == "Pedro E2E Actualizado"
 
         # Eliminar
-        r = e2e_client.delete(f"/api/v1/bookings/{record_id}")
+        r = e2e_client.delete(f"/api/v1/bookings/{record_id}", headers=admin_auth_headers)
         assert r.status_code == 204
 
         # Confirmar eliminación
-        r = e2e_client.get(f"/api/v1/bookings/{record_id}")
+        r = e2e_client.get(f"/api/v1/bookings/{record_id}", headers=admin_auth_headers)
         assert r.status_code == 404
 
 
@@ -65,7 +70,7 @@ class TestCrudFlow:
 
 
 class TestActiveBookingsFlow:
-    def test_booking_covering_today_appears_in_active_list(self, e2e_client):
+    def test_booking_covering_today_appears_in_active_list(self, e2e_client, admin_auth_headers):
         today = date.today()
         payload = {
             "booking_id": "ACTIVE-E2E",
@@ -75,8 +80,12 @@ class TestActiveBookingsFlow:
             "nights": 3,
         }
 
-        e2e_client.post("/api/v1/bookings/", json=payload)
-        r = e2e_client.get("/api/v1/bookings/active")
+        e2e_client.post(
+            "/api/v1/bookings/",
+            json=payload,
+            headers=admin_auth_headers,
+        )
+        r = e2e_client.get("/api/v1/bookings/active", headers=admin_auth_headers)
 
         assert r.status_code == 200
         guest_names = [b["guest_name"] for b in r.json()]
@@ -89,17 +98,22 @@ class TestActiveBookingsFlow:
 
 
 class TestCalendarFlow:
-    def test_confirmed_booking_appears_in_calendar_events(self, e2e_client):
+    def test_confirmed_booking_appears_in_calendar_events(self, e2e_client, admin_auth_headers):
         payload = {**_BASE_PAYLOAD, "booking_id": "CAL-E2E", "status": "Confirmed"}
-        e2e_client.post("/api/v1/bookings/", json=payload)
+        e2e_client.post("/api/v1/bookings/", json=payload, headers=admin_auth_headers)
 
-        r = e2e_client.get("/api/v1/bookings/calendar-events?start_date=2026-07-01&days=60")
+        r = e2e_client.get(
+            "/api/v1/bookings/calendar-events?start_date=2026-07-01&days=60",
+            headers=admin_auth_headers,
+        )
 
         assert r.status_code == 200
         booking_ids = [ev["extendedProps"]["booking_id"] for ev in r.json()]
         assert "CAL-E2E" in booking_ids
 
-    def test_recently_cancelled_booking_excluded_from_calendar(self, e2e_client):
+    def test_recently_cancelled_booking_excluded_from_calendar(
+        self, e2e_client, admin_auth_headers
+    ):
         today = date.today()
         cancelled_payload = {
             "booking_id": "CANCELLED-E2E",
@@ -109,10 +123,15 @@ class TestCalendarFlow:
             "nights": 3,
             "status": "Cancelled",
         }
-        e2e_client.post("/api/v1/bookings/", json=cancelled_payload)
+        e2e_client.post(
+            "/api/v1/bookings/",
+            json=cancelled_payload,
+            headers=admin_auth_headers,
+        )
 
         r = e2e_client.get(
-            f"/api/v1/bookings/calendar-events?start_date={today.isoformat()}&days=30"
+            f"/api/v1/bookings/calendar-events?start_date={today.isoformat()}&days=30",
+            headers=admin_auth_headers,
         )
 
         assert r.status_code == 200
@@ -127,7 +146,7 @@ class TestCalendarFlow:
 
 class TestElectricAllowanceFlow:
     def test_electric_allowance_calculated_when_booking_id_in_electric_setting(
-        self, e2e_client, monkeypatch
+        self, e2e_client, admin_auth_headers, monkeypatch
     ):
         from config import settings
 
@@ -141,7 +160,11 @@ class TestElectricAllowanceFlow:
             "nights": 3,
         }
 
-        r = e2e_client.post("/api/v1/bookings/", json=payload)
+        r = e2e_client.post(
+            "/api/v1/bookings/",
+            json=payload,
+            headers=admin_auth_headers,
+        )
 
         assert r.status_code == 201
         data = r.json()
