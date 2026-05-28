@@ -65,13 +65,31 @@ DB_NAME=nombre_bd
 
 > También se aceptan las variantes `MYSQL_HOST`, `MYSQL_USER`, `MYSQL_PASSWORD`, `MYSQL_DATABASE`, `MYSQL_PORT`.
 
-### 2. Migración de base de datos
+### 2. Base de datos y migraciones
 
-Si la tabla `bookings` no tiene todavía la columna de notas, ejecuta:
+Para una base de datos vacía, Alembic crea el esquema inicial y aplica las
+migraciones pendientes:
 
-```sql
-ALTER TABLE bookings ADD COLUMN Notes TEXT NULL;
+```bash
+cd backend
+alembic upgrade head
 ```
+
+Para desarrollo con datos reales, el dump local `db/init/backup.sql` se carga al
+arrancar MySQL con Docker. Ese dump no forma parte de Git y solo se usa en local:
+
+```bash
+docker compose up db
+# o, si usas Docker Compose v1:
+docker-compose up db
+cd backend
+alembic stamp c796a5e365dc
+alembic upgrade head
+```
+
+El `stamp` solo debe hacerse una vez sobre una base de datos existente creada
+desde el dump. A partir de ahí, las migraciones futuras se aplican normalmente
+con `alembic upgrade head`.
 
 ---
 
@@ -130,11 +148,9 @@ Las peticiones a `/api/*` se redirigen automáticamente al backend mediante el p
 
 ### Calidad local
 
-El flujo de Git se coordina desde la raíz del proyecto:
-
-- `.husky/pre-commit` ejecuta `pre-commit`.
-- `.husky/pre-push` ejecuta `scripts/check-ci.sh --quick`.
-- `scripts/check-ci.sh` llama a los checks de backend y frontend.
+El hook local de commit lo gestiona `pre-commit`. Solo ejecuta checks rápidos y
+autoformato sobre los archivos afectados; la validación completa vive en GitHub
+Actions.
 
 Para preparar el entorno local:
 
@@ -145,18 +161,35 @@ pip install -r backend/requirements.txt pre-commit ruff==0.15.13 mypy==2.1.0
 
 cd frontend
 pnpm install
+
+cd ..
+pre-commit install
 ```
 
-Para ejecutar el mismo flujo manualmente desde la raíz:
+Para ejecutar los hooks manualmente desde la raíz:
 
 ```bash
-./scripts/check-ci.sh
+pre-commit run --all-files
 ```
 
-Para ejecutar solo los checks rápidos que usa el `pre-push`:
+Comandos útiles para validar antes de subir:
 
 ```bash
-./scripts/check-ci.sh --quick
+# Backend
+cd backend
+ruff check .
+ruff format --check .
+python -m mypy api/ application/ domain/ infrastructure/ config.py main.py --config-file pyproject.toml --explicit-package-bases
+alembic upgrade head
+python -m pytest tests/ --cov --cov-report=term-missing
+
+# Frontend
+cd ../frontend
+pnpm lint
+pnpm exec prettier --check "src/**/*.{ts,html,scss}"
+pnpm typecheck
+pnpm test:ci
+pnpm build
 ```
 
 ---

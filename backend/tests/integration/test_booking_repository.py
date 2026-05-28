@@ -60,11 +60,11 @@ class TestGetById:
         with pytest.raises(BookingNotFound):
             SQLAlchemyBookingRepository(sqlite_session).get_by_id(9999)
 
-    def test_fallback_values_applied_when_nullable_fields_are_null(self, sqlite_session):
-        orm = _insert_orm(sqlite_session, guest_name=None, persons=None, nights=None)
+    def test_fallback_values_applied_when_nullable_numeric_fields_are_null(self, sqlite_session):
+        orm = _insert_orm(sqlite_session, persons=None, nights=None)
         result = SQLAlchemyBookingRepository(sqlite_session).get_by_id(orm.record_id)
 
-        assert result.guest_name == "Unknown"
+        assert result.guest_name == "Ana García"
         assert result.persons == 1
         assert result.nights == (orm.check_out - orm.check_in).days
 

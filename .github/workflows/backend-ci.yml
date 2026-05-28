@@ -2,21 +2,19 @@ name: Backend CI
 
 on:
   push:
+    branches: [main]
     paths:
       - ".github/workflows/backend-ci.yml"
-      - ".husky/**"
       - ".pre-commit-config.yaml"
       - "backend/**"
       - "docker-compose.test.yml"
-      - "scripts/**"
   pull_request:
+    branches: [main]
     paths:
       - ".github/workflows/backend-ci.yml"
-      - ".husky/**"
       - ".pre-commit-config.yaml"
       - "backend/**"
       - "docker-compose.test.yml"
-      - "scripts/**"
 
 defaults:
   run:
@@ -98,48 +96,6 @@ jobs:
           cache-dependency-path: backend/requirements.txt
       - name: Install dependencies
         run: pip install -r requirements.txt
-      - name: Load baseline schema
-        run: |
-          python - <<'PY'
-          import os
-          from pathlib import Path
-
-          import pymysql
-
-          schema_path = Path("tests/fixtures/baseline_schema.sql")
-          connection = pymysql.connect(
-              host=os.environ["DB_HOST"],
-              port=int(os.environ["DB_PORT"]),
-              user=os.environ["DB_USER"],
-              password=os.environ["DB_PASS"],
-              database=os.environ["DB_NAME"],
-              autocommit=True,
-          )
-
-          try:
-              with connection.cursor() as cursor:
-                  for statement in schema_path.read_text().split(";"):
-                      statement = statement.strip()
-                      if statement:
-                          cursor.execute(statement)
-          finally:
-              connection.close()
-          PY
-      - name: Mark baseline revision
-        run: |
-          baseline_revision_file="alembic/.baseline-revision"
-          if [ ! -s "$baseline_revision_file" ]; then
-            echo "Missing Alembic baseline revision: $baseline_revision_file"
-            exit 1
-          fi
-
-          baseline_revision="$(tr -d '[:space:]' < "$baseline_revision_file")"
-          if [ -z "$baseline_revision" ]; then
-            echo "Alembic baseline revision file is empty: $baseline_revision_file"
-            exit 1
-          fi
-
-          alembic stamp "$baseline_revision"
       - name: Apply migrations
         run: alembic upgrade head
       - name: Run tests with coverage

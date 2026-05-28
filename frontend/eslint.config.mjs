@@ -1,9 +1,13 @@
 // @ts-check
+import { fileURLToPath } from 'node:url';
+
 import tsParser from '@typescript-eslint/parser';
 import tsPlugin from '@typescript-eslint/eslint-plugin';
 import angular from '@angular-eslint/eslint-plugin';
 import angularTemplate from '@angular-eslint/eslint-plugin-template';
 import angularTemplateParser from '@angular-eslint/template-parser';
+
+const tsconfigRootDir = fileURLToPath(new URL('.', import.meta.url));
 
 export default [
   {
@@ -17,6 +21,7 @@ export default [
       parser: tsParser,
       parserOptions: {
         project: './tsconfig.json',
+        tsconfigRootDir,
         sourceType: 'module',
       },
     },
