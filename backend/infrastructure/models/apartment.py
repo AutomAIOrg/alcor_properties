@@ -11,7 +11,7 @@ from infrastructure.database.base import Base
 
 
 class ApartmentORM(Base):
-    __tablename__ = "apartments"
+    __tablename__ = "Apartamentos"
 
     # Clave primaria
     booking_id: Mapped[str] = mapped_column("Booking ID", String(255), primary_key=True)
