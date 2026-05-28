@@ -5,6 +5,7 @@ No contiene fixtures de pytest — solo funciones de fábrica puras.
 
 from datetime import date
 
+from domain.auth.user_entity import Role, User
 from domain.bookings.entity import Booking
 
 
@@ -18,3 +19,17 @@ def make_booking(**overrides) -> Booking:
         "nights": 4,
     }
     return Booking(**{**defaults, **overrides})
+
+
+def make_user(**overrides) -> User:
+    """Devuelve un User válido con valores por defecto, aplicando los overrides dados."""
+    defaults: dict = {
+        "id": 1,
+        "username": "admin",
+        "password": "$2b$12$dummyhashforunitandintegrationtests",
+        "name": "Admin",
+        "lastname": "User",
+        "email": "admin@example.com",
+        "role": Role.ADMIN,
+    }
+    return User(**{**defaults, **overrides})

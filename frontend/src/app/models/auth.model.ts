@@ -1,15 +1,25 @@
 // Respuesta que devuelve el backend al hacer login correctamente
 export interface AuthResponse {
   access_token: string;
+  refresh_token: string;
   token_type: string;
-  expires_in: number;
-  role: string;
 }
 
 // Payload que se envía al backend para hacer login
 export interface AuthRequest {
   username: string;
   password: string;
+}
+
+// Payload que se envía al backend para renovar el access token
+export interface RefreshTokenRequest {
+  refresh_token: string;
+}
+
+// Respuesta que devuelve el backend al renovar el access token
+export interface AccessTokenResponse {
+  access_token: string;
+  token_type: string;
 }
 
 // Payload decodificado del JWT (coincide con lo que genera el backend)

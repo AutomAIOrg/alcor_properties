@@ -35,6 +35,7 @@ db_url: URL = URL.create(
 # ---------------------------------------------------------------------------
 import infrastructure.models.apartment  # noqa: E402, F401
 import infrastructure.models.booking  # noqa: E402, F401
+import infrastructure.models.user  # noqa: E402, F401
 from infrastructure.database.base import Base  # noqa: E402
 
 target_metadata = Base.metadata

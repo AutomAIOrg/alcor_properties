@@ -3,7 +3,8 @@ import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { Observable, tap } from 'rxjs';
 import { TokenService } from './token.service';
-import { AuthRequest, AuthResponse } from '../models/auth.model';
+import { SessionActivityService } from './session-activity.service';
+import { AccessTokenResponse, AuthRequest, AuthResponse } from '../models/auth.model';
 import { User, Role, Permission } from '../models/user.model';
 import { ROLE_PERMISSIONS } from '../config/permissions.config';
 
@@ -12,8 +13,9 @@ export class AuthService {
   private http = inject(HttpClient);
   private router = inject(Router);
   private tokenService = inject(TokenService);
+  private sessionActivity = inject(SessionActivityService);
 
-  private readonly API = '/api/auth/login';
+  private readonly API = '/api/v1/auth';
 
   // ── Estado reactivo ────────────────────────────────────────────────────────
   private _currentUser = signal<User | null>(this.loadUserFromToken());
@@ -24,16 +26,35 @@ export class AuthService {
 
   // ── Login / Logout ─────────────────────────────────────────────────────────
   login(credentials: AuthRequest): Observable<AuthResponse> {
-    return this.http.post<AuthResponse>(this.API, credentials).pipe(
+    return this.http.post<AuthResponse>(`${this.API}/login`, credentials).pipe(
       tap(response => {
-        this.tokenService.setToken(response.access_token);
+        this.tokenService.setTokens(response.access_token, response.refresh_token);
+        this.sessionActivity.recordActivity();
+        this.sessionActivity.start(() => this.logout());
         this._currentUser.set(this.tokenService.decodeToken());
       })
     );
   }
 
+  refreshToken(): Observable<AccessTokenResponse> {
+    const refreshToken = this.tokenService.getRefreshToken();
+    if (!refreshToken) {
+      throw new Error('No hay refresh token disponible.');
+    }
+
+    return this.http
+      .post<AccessTokenResponse>(`${this.API}/refresh`, { refresh_token: refreshToken })
+      .pipe(
+        tap(response => {
+          this.tokenService.setAccessToken(response.access_token);
+          this._currentUser.set(this.tokenService.decodeToken());
+        })
+      );
+  }
+
   logout(): void {
-    this.tokenService.removeToken();
+    this.sessionActivity.stop();
+    this.tokenService.removeTokens();
     this._currentUser.set(null);
     void this.router.navigate(['/login']);
   }
@@ -54,9 +75,10 @@ export class AuthService {
   // ── Restaurar sesión desde localStorage ───────────────────────────────────
   private loadUserFromToken(): User | null {
     if (!this.tokenService.isValid()) {
-      this.tokenService.removeToken();
+      this.tokenService.removeTokens();
       return null;
     }
+    this.sessionActivity.start(() => this.logout());
     return this.tokenService.decodeToken();
   }
 }

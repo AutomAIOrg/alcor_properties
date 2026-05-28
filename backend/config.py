@@ -12,7 +12,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 def _env_file() -> str | None:
     if os.getenv("ALCOR_IGNORE_ENV_FILE") == "1":
         return None
-    return str(Path(__file__).parent.parent / ".env")
+    return str(Path(__file__).parent / ".env")
 
 
 class Settings(BaseSettings):
@@ -47,6 +47,12 @@ class Settings(BaseSettings):
     # API
     API_PREFIX: str = "/api/v1"
     CORS_ORIGINS: list = ["*"]
+
+    # Autenticación / JWT
+    JWT_SECRET_KEY: str = ""
+    JWT_ALGORITHM: str = "HS256"
+    JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
+    JWT_REFRESH_TOKEN_EXPIRE_DAYS: int = 1
 
     @model_validator(mode="after")
     def _resolve_db_aliases(self) -> "Settings":
