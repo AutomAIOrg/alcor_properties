@@ -5,7 +5,6 @@ import { registerLocaleData } from '@angular/common';
 import localeEs from '@angular/common/locales/es';
 
 import { routes } from './app.routes';
-import { mockAuthInterceptor } from './auth/mock-auth.interceptor';
 import { authInterceptor } from './auth/auth.interceptor';
 
 registerLocaleData(localeEs);
@@ -14,12 +13,7 @@ export const appConfig: ApplicationConfig = {
   providers: [
     provideZoneChangeDetection({ eventCoalescing: true }),
     provideRouter(routes),
-    provideHttpClient(
-      withInterceptors([
-        mockAuthInterceptor, // TODO: eliminar cuando el backend implemente /api/auth/login
-        authInterceptor,
-      ])
-    ),
+    provideHttpClient(withInterceptors([authInterceptor])),
     { provide: LOCALE_ID, useValue: 'es' },
   ],
 };

@@ -25,11 +25,11 @@ repos:
       - id: frontend-prettier
         name: frontend prettier
         language: system
-        entry: frontend/node_modules/.bin/prettier --write
+        entry: node frontend/node_modules/prettier/bin/prettier.cjs --write
         files: ^frontend/src/.*\.(ts|html|scss)$
 
       - id: frontend-eslint
         name: frontend eslint
         language: system
-        entry: frontend/node_modules/.bin/eslint --fix --config frontend/eslint.config.mjs
+        entry: node frontend/node_modules/eslint/bin/eslint.js --fix --config frontend/eslint.config.mjs
         files: ^frontend/src/.*\.(ts|html)$

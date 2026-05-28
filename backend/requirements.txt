@@ -15,6 +15,13 @@ cryptography==42.0.8
 # Environment variables
 python-dotenv==1.0.0
 
+# Security
+PyJWT==2.13.0
+
+# Authentication
+passlib[bcrypt]==1.7.4
+bcrypt==4.0.1
+
 # Data handling
 python-multipart==0.0.9
 

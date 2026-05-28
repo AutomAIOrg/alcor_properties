@@ -86,6 +86,7 @@ jobs:
       DB_PORT: 3306
       ALCOR_IGNORE_ENV_FILE: 1
       DEBUG: false
+      JWT_SECRET_KEY: test-ci-secret-key
 
     steps:
       - uses: actions/checkout@v4

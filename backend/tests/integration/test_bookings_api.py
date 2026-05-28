@@ -8,6 +8,7 @@ Sin base de datos real: la dependencia get_booking_use_cases se sobreescribe.
 from datetime import date
 
 import pytest
+from sqlalchemy.exc import SQLAlchemyError
 
 from domain.exceptions import BookingConflict, BookingNotFound, DomainValidationError
 from tests.helpers import make_booking
@@ -30,11 +31,26 @@ class TestInfrastructureEndpoints:
         assert "version" in data
         assert "status" in data
 
-    def test_health_returns_healthy_status(self, api_client):
+    def test_health_returns_healthy_status_when_database_is_available(
+        self, api_client, monkeypatch
+    ):
+        monkeypatch.setattr("main.check_database_connection", lambda: None)
+
         response = api_client.get("/health")
 
         assert response.status_code == 200
-        assert response.json() == {"status": "healthy"}
+        assert response.json() == {"status": "healthy", "database": "ok"}
+
+    def test_health_returns_503_when_database_is_unavailable(self, api_client, monkeypatch):
+        def raise_database_error() -> None:
+            raise SQLAlchemyError("database unavailable")
+
+        monkeypatch.setattr("main.check_database_connection", raise_database_error)
+
+        response = api_client.get("/health")
+
+        assert response.status_code == 503
+        assert response.json() == {"status": "unhealthy", "database": "unavailable"}
 
 
 # ---------------------------------------------------------------------------

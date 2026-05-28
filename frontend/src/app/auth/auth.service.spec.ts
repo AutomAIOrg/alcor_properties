@@ -5,6 +5,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 
 import { AuthService } from './auth.service';
 import { TokenService } from './token.service';
+import { SessionActivityService } from './session-activity.service';
 import { AuthRequest, AuthResponse } from '../models/auth.model';
 import { User, Role, Permission } from '../models/user.model';
 import { ROLE_PERMISSIONS } from '../config/permissions.config';
@@ -43,6 +44,8 @@ function makeCredentials(overrides: Partial<AuthRequest> = {}): AuthRequest {
 function makeAuthResponse(overrides: Partial<AuthResponse> = {}): AuthResponse {
   return {
     access_token: 'fake.jwt.token',
+    refresh_token: 'fake.refresh.token',
+    token_type: 'bearer',
     ...overrides,
   } as AuthResponse;
 }
@@ -59,6 +62,7 @@ describe('AuthService', () => {
   let service: AuthService;
   let httpMock: HttpTestingController | undefined;
   let tokenServiceSpy: jest.Mocked<TokenService>;
+  let sessionActivitySpy: jest.Mocked<SessionActivityService>;
   let routerSpy: jest.Mocked<Router>;
 
   function setup(options: SetupOptions = {}) {
@@ -67,11 +71,27 @@ describe('AuthService', () => {
     TestBed.resetTestingModule();
 
     tokenServiceSpy = {
+      setTokens: jest.fn(),
+      setAccessToken: jest.fn(),
+      getAccessToken: jest.fn(),
+      setRefreshToken: jest.fn(),
+      getRefreshToken: jest.fn(),
+      removeTokens: jest.fn(),
       setToken: jest.fn(),
+      getToken: jest.fn(),
       removeToken: jest.fn(),
       decodeToken: jest.fn().mockReturnValue(decodedUser),
       isValid: jest.fn().mockReturnValue(tokenValid),
     } as unknown as jest.Mocked<TokenService>;
+
+    sessionActivitySpy = {
+      timeoutMs: 60 * 60 * 1000,
+      start: jest.fn(),
+      stop: jest.fn(),
+      recordActivity: jest.fn(),
+      isIdleExpired: jest.fn().mockReturnValue(false),
+      getLastActivityAt: jest.fn(),
+    } as unknown as jest.Mocked<SessionActivityService>;
 
     routerSpy = {
       navigate: jest.fn().mockResolvedValue(true),
@@ -83,6 +103,7 @@ describe('AuthService', () => {
         provideHttpClient(),
         provideHttpClientTesting(),
         { provide: TokenService, useValue: tokenServiceSpy },
+        { provide: SessionActivityService, useValue: sessionActivitySpy },
         { provide: Router, useValue: routerSpy },
       ],
     });
@@ -100,6 +121,7 @@ describe('AuthService', () => {
       service,
       httpMock,
       tokenServiceSpy,
+      sessionActivitySpy,
       routerSpy,
     };
   }
@@ -118,7 +140,7 @@ describe('AuthService', () => {
       });
 
       expect(tokenServiceSpy.isValid).toHaveBeenCalledTimes(1);
-      expect(tokenServiceSpy.removeToken).toHaveBeenCalledTimes(1);
+      expect(tokenServiceSpy.removeTokens).toHaveBeenCalledTimes(1);
       expect(tokenServiceSpy.decodeToken).not.toHaveBeenCalled();
 
       expect(service.currentUser()).toBeNull();
@@ -137,7 +159,8 @@ describe('AuthService', () => {
 
       expect(tokenServiceSpy.isValid).toHaveBeenCalledTimes(1);
       expect(tokenServiceSpy.decodeToken).toHaveBeenCalledTimes(1);
-      expect(tokenServiceSpy.removeToken).not.toHaveBeenCalled();
+      expect(tokenServiceSpy.removeTokens).not.toHaveBeenCalled();
+      expect(sessionActivitySpy.start).toHaveBeenCalledTimes(1);
 
       expect(service.currentUser()).toEqual(user);
       expect(service.isAuthenticated()).toBe(true);
@@ -148,14 +171,14 @@ describe('AuthService', () => {
   // ── B: Login ────────────────────────────────────────────────────────────────
 
   describe('B — login', () => {
-    it('hace POST a /api/auth/login con las credenciales recibidas', () => {
+    it('hace POST a /api/v1/auth/login con las credenciales recibidas', () => {
       setup();
 
       const credentials = makeCredentials();
 
       service.login(credentials).subscribe();
 
-      const req = httpMock!.expectOne('/api/auth/login');
+      const req = httpMock!.expectOne('/api/v1/auth/login');
 
       expect(req.request.method).toBe('POST');
       expect(req.request.body).toEqual(credentials);
@@ -177,27 +200,30 @@ describe('AuthService', () => {
         result = response;
       });
 
-      const req = httpMock!.expectOne('/api/auth/login');
+      const req = httpMock!.expectOne('/api/v1/auth/login');
       req.flush(authResponse);
 
       expect(result).toEqual(authResponse);
     });
 
-    it('guarda el access_token recibido en TokenService', () => {
+    it('guarda access_token y refresh_token recibidos en TokenService', () => {
       setup();
 
       const credentials = makeCredentials();
       const authResponse = makeAuthResponse({
         access_token: 'jwt.to.save',
+        refresh_token: 'refresh.to.save',
       });
 
       service.login(credentials).subscribe();
 
-      const req = httpMock!.expectOne('/api/auth/login');
+      const req = httpMock!.expectOne('/api/v1/auth/login');
       req.flush(authResponse);
 
-      expect(tokenServiceSpy.setToken).toHaveBeenCalledTimes(1);
-      expect(tokenServiceSpy.setToken).toHaveBeenCalledWith('jwt.to.save');
+      expect(tokenServiceSpy.setTokens).toHaveBeenCalledTimes(1);
+      expect(tokenServiceSpy.setTokens).toHaveBeenCalledWith('jwt.to.save', 'refresh.to.save');
+      expect(sessionActivitySpy.recordActivity).toHaveBeenCalledTimes(1);
+      expect(sessionActivitySpy.start).toHaveBeenCalledTimes(1);
     });
 
     it('actualiza currentUser usando decodeToken después del login', () => {
@@ -212,7 +238,7 @@ describe('AuthService', () => {
 
       service.login(makeCredentials()).subscribe();
 
-      const req = httpMock!.expectOne('/api/auth/login');
+      const req = httpMock!.expectOne('/api/v1/auth/login');
       req.flush(makeAuthResponse());
 
       expect(tokenServiceSpy.decodeToken).toHaveBeenCalledTimes(1);
@@ -226,9 +252,9 @@ describe('AuthService', () => {
 
       service.login(makeCredentials()).subscribe();
 
-      httpMock!.expectOne('/api/auth/login');
+      httpMock!.expectOne('/api/v1/auth/login');
 
-      expect(tokenServiceSpy.setToken).not.toHaveBeenCalled();
+      expect(tokenServiceSpy.setTokens).not.toHaveBeenCalled();
       expect(tokenServiceSpy.decodeToken).not.toHaveBeenCalled();
       expect(service.currentUser()).toBeNull();
       expect(service.isAuthenticated()).toBe(false);
@@ -239,10 +265,42 @@ describe('AuthService', () => {
 
       service.login(makeCredentials()).subscribe();
 
-      const req = httpMock!.expectOne('/api/auth/login');
+      const req = httpMock!.expectOne('/api/v1/auth/login');
       req.flush(makeAuthResponse());
 
       expect(routerSpy.navigate).not.toHaveBeenCalled();
+    });
+  });
+
+  // ── B2: Refresh ─────────────────────────────────────────────────────────────
+
+  describe('B2 — refresh token', () => {
+    it('hace POST a /api/v1/auth/refresh con el refresh token almacenado', () => {
+      setup();
+      tokenServiceSpy.getRefreshToken.mockReturnValue('stored.refresh.token');
+
+      service.refreshToken().subscribe();
+
+      const req = httpMock!.expectOne('/api/v1/auth/refresh');
+
+      expect(req.request.method).toBe('POST');
+      expect(req.request.body).toEqual({ refresh_token: 'stored.refresh.token' });
+
+      req.flush({ access_token: 'new.access.token', token_type: 'bearer' });
+    });
+
+    it('actualiza solo el access_token cuando refresh responde correctamente', () => {
+      setup();
+      tokenServiceSpy.getRefreshToken.mockReturnValue('stored.refresh.token');
+
+      service.refreshToken().subscribe();
+
+      const req = httpMock!.expectOne('/api/v1/auth/refresh');
+      req.flush({ access_token: 'new.access.token', token_type: 'bearer' });
+
+      expect(tokenServiceSpy.setAccessToken).toHaveBeenCalledTimes(1);
+      expect(tokenServiceSpy.setAccessToken).toHaveBeenCalledWith('new.access.token');
+      expect(tokenServiceSpy.setTokens).not.toHaveBeenCalled();
     });
   });
 
@@ -262,7 +320,8 @@ describe('AuthService', () => {
 
       service.logout();
 
-      expect(tokenServiceSpy.removeToken).toHaveBeenCalledTimes(1);
+      expect(sessionActivitySpy.stop).toHaveBeenCalledTimes(1);
+      expect(tokenServiceSpy.removeTokens).toHaveBeenCalledTimes(1);
       expect(service.currentUser()).toBeNull();
       expect(service.isAuthenticated()).toBe(false);
       expect(service.currentRole()).toBeNull();
@@ -361,7 +420,7 @@ describe('AuthService', () => {
 
       service.login(makeCredentials()).subscribe();
 
-      const req = httpMock!.expectOne('/api/auth/login');
+      const req = httpMock!.expectOne('/api/v1/auth/login');
       req.flush(makeAuthResponse());
 
       expect(service.currentUser()).not.toBeNull();

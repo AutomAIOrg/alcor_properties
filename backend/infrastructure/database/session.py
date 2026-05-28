@@ -5,7 +5,7 @@ Engine de SQLAlchemy y fábrica de sesiones.
 from collections.abc import Generator
 from urllib.parse import quote_plus
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import Session, sessionmaker
 
 from config import settings
@@ -27,6 +27,12 @@ engine = create_engine(
 )
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+
+def check_database_connection() -> None:
+    """Comprueba que MySQL responde ejecutando un ping mínimo."""
+    with engine.connect() as connection:
+        connection.execute(text("SELECT 1"))
 
 
 def get_db() -> Generator[Session]:

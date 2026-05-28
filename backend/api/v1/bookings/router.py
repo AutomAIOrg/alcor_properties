@@ -6,7 +6,7 @@ from datetime import date
 
 from fastapi import APIRouter, Depends, Query, status
 
-from api.dependencies import BookingUseCases, get_booking_use_cases
+from api.dependencies import BookingUseCases, get_booking_use_cases, require_admin
 from api.v1.bookings.schemas import (
     BookingCreateRequest,
     BookingResponse,
@@ -15,7 +15,7 @@ from api.v1.bookings.schemas import (
 from application.bookings.commands import BookingUpdateData
 from domain.bookings.entity import Booking
 
-router = APIRouter(prefix="/bookings", tags=["bookings"])
+router = APIRouter(prefix="/bookings", tags=["bookings"], dependencies=[Depends(require_admin)])
 
 
 @router.get("/", response_model=list[BookingResponse])

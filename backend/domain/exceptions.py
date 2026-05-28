@@ -37,3 +37,24 @@ class DomainValidationError(DomainException):
 
     def __init__(self, message: str) -> None:
         super().__init__(message)
+
+
+class InvalidToken(DomainException):
+    """Se lanza cuando un token de acceso no es válido."""
+
+    def __init__(self, message: str = "Token de acceso inválido") -> None:
+        super().__init__(message)
+
+
+class TokenExpired(DomainException):
+    """Se lanza cuando un token de acceso ha expirado."""
+
+    def __init__(self) -> None:
+        super().__init__("Token de acceso expirado")
+
+
+class InvalidCredentials(DomainException):
+    """Se lanza cuando las credenciales de login no son válidas."""
+
+    def __init__(self) -> None:
+        super().__init__("Usuario o contraseña inválidos")

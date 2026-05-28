@@ -7,17 +7,23 @@ Niveles:
   - e2e         → sqlite_engine, e2e_client
 """
 
+from datetime import UTC, datetime, timedelta
 from unittest.mock import MagicMock
 
 import pytest
+from passlib.context import CryptContext
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 from starlette.testclient import TestClient
 
 import infrastructure.models.booking  # noqa: F401 — registra BookingORM en Base.metadata
+import infrastructure.models.user  # noqa: F401 — registra UserORM en Base.metadata
+from domain.auth.token_payload_entity import TokenPayload
+from domain.auth.user_entity import Role
 from domain.bookings.repository import IBookingRepository
 from infrastructure.database.base import Base
+from infrastructure.models.user import UserORM
 
 # ---------------------------------------------------------------------------
 # Unit
@@ -83,16 +89,27 @@ def api_client(mock_use_cases: MagicMock) -> TestClient:
     - El mismo mock_use_cases que recibe el fixture está disponible en los tests
       que lo soliciten como parámetro (pytest reutiliza la misma instancia).
     """
-    from api.dependencies import get_booking_use_cases
+    from api.dependencies import get_booking_use_cases, get_current_user
     from main import app
 
+    now = datetime.now(UTC)
+    admin_payload = TokenPayload(
+        subject="1",
+        expires_at=now + timedelta(minutes=30),
+        issued_at=now,
+        username="admin",
+        role=Role.ADMIN,
+    )
+
     app.dependency_overrides[get_booking_use_cases] = lambda: mock_use_cases
+    app.dependency_overrides[get_current_user] = lambda: admin_payload
 
     try:
         with TestClient(app, raise_server_exceptions=True) as client:
             yield client
     finally:
         app.dependency_overrides.pop(get_booking_use_cases, None)
+        app.dependency_overrides.pop(get_current_user, None)
 
 
 # ---------------------------------------------------------------------------
@@ -127,3 +144,27 @@ def e2e_client(sqlite_engine):
             yield client
     finally:
         app.dependency_overrides.pop(get_db, None)
+
+
+@pytest.fixture
+def admin_auth_headers(sqlite_session, e2e_client) -> dict[str, str]:
+    """Crea un admin real en SQLite y devuelve headers Bearer obtenidos por login."""
+    pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+    user = UserORM(
+        username="admin",
+        password=pwd_context.hash("admin-password"),
+        name="Admin",
+        lastname="User",
+        email="admin@example.com",
+        role=Role.ADMIN.value,
+    )
+    sqlite_session.add(user)
+    sqlite_session.commit()
+
+    response = e2e_client.post(
+        "/api/v1/auth/login",
+        json={"username": "admin", "password": "admin-password"},
+    )
+    assert response.status_code == 200
+    token = response.json()["access_token"]
+    return {"Authorization": f"Bearer {token}"}
