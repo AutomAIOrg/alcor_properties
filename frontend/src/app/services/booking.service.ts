@@ -4,8 +4,9 @@ import { Observable } from 'rxjs';
 import { Booking } from '../models/booking.model';
 import { environment } from '../../environments/environment';
 
-// Re-export so existing imports of BookingService still get Booking from here
 export type { Booking } from '../models/booking.model';
+
+type BookingCreatePayload = Omit<Booking, 'record_id' | 'electric_allowance'>;
 
 @Injectable({ providedIn: 'root' })
 export class BookingService {
@@ -21,7 +22,7 @@ export class BookingService {
     return this.http.put<Booking>(`${this.API}/${recordId}`, data);
   }
 
-  createBooking(data: Omit<Booking, 'record_id'>): Observable<Booking> {
+  createBooking(data: BookingCreatePayload): Observable<Booking> {
     return this.http.post<Booking>(`${this.API}/`, data);
   }
 }
