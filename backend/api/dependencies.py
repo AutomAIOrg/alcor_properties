@@ -8,6 +8,8 @@ from fastapi import Depends, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
+from application.apartments.get_apartment_by_booking_id import GetApartmentByBookingId
+from application.apartments.search_apartments import SearchApartments
 from application.auth.login_use_case import LoginUseCase
 from application.auth.password_verifier_interface import IPasswordVerifier
 from application.auth.refresh_token_use_case import RefreshTokenUseCase
@@ -27,11 +29,15 @@ from application.bookings.queries import (
     ListBookingsQuery,
 )
 from config import settings
+from domain.apartments.repository import IApartmentRepository
 from domain.auth.token_payload_entity import TokenPayload
 from domain.auth.user_entity import Role
 from domain.bookings.repository import IBookingRepository
 from domain.exceptions import InvalidToken
 from infrastructure.database.session import get_db
+from infrastructure.repositories.sqlalchemy_apartment_repository import (
+    SQLAlchemyApartmentRepository,
+)
 from infrastructure.repositories.sqlalchemy_booking_repository import (
     SQLAlchemyBookingRepository,
 )
@@ -142,4 +148,27 @@ def get_booking_use_cases(
         create_command=CreateBookingUseCase(repo, electric_ids),
         update_command=UpdateBookingUseCase(repo, electric_ids),
         delete_command=DeleteBookingUseCase(repo),
+    )
+
+
+def get_apartment_repository(db: Session = Depends(get_db)) -> IApartmentRepository:
+    """Repositorio de apartamentos."""
+    return SQLAlchemyApartmentRepository(db)
+
+
+@dataclass
+class ApartmentUseCases:
+    """Casos de uso de apartamentos."""
+
+    search_apartments: SearchApartments
+    get_apartment_by_booking_id: GetApartmentByBookingId
+
+
+def get_apartment_use_cases(
+    repository: IApartmentRepository = Depends(get_apartment_repository),
+) -> ApartmentUseCases:
+    """Inyección de dependencias para los casos de uso de apartamentos."""
+    return ApartmentUseCases(
+        search_apartments=SearchApartments(repository),
+        get_apartment_by_booking_id=GetApartmentByBookingId(repository),
     )
