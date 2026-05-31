@@ -20,14 +20,14 @@ class ApartmentORM(Base):
     community: Mapped[str | None] = mapped_column("Comunidad", String(25), nullable=True)
     booking_name: Mapped[str | None] = mapped_column("Booking Name", String(255), nullable=True)
     address: Mapped[str | None] = mapped_column("Direccion", String(255), nullable=True)
-    bedrooms: Mapped[int] = mapped_column("Nº Habitaciones", Integer, nullable=False, default=0)
+    rooms: Mapped[int] = mapped_column("Nº Habitaciones", Integer, nullable=False, default=0)
     bathrooms: Mapped[int] = mapped_column("Nº Banos", Integer, nullable=False, default=0)
     parking: Mapped[str] = mapped_column("Nº Parking", String(10), nullable=False, default="N/A")
-    total_occupancy: Mapped[int] = mapped_column(
+    total_occupants: Mapped[int] = mapped_column(
         "Ocupacion Total", Integer, nullable=False, default=0
     )
 
     # Contacto del propietario
     owner_name: Mapped[str | None] = mapped_column("Owner Name", String(50), nullable=True)
-    owner_email: Mapped[str | None] = mapped_column("Email", String(35), nullable=True)
-    owner_phone: Mapped[str | None] = mapped_column("Nº Telefono", String(15), nullable=True)
+    email: Mapped[str | None] = mapped_column("Email", String(35), nullable=True)
+    phone: Mapped[str | None] = mapped_column("Nº Telefono", String(15), nullable=True)
