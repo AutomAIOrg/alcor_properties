@@ -61,7 +61,10 @@ def search_apartments(
     except ValueError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
 
-    return use_cases.search_apartments.execute(filters)
+    return [
+        ApartmentResponse.model_validate(apt.model_dump())
+        for apt in use_cases.search_apartments.execute(filters)
+    ]
 
 
 @router.get("/{booking_id}", response_model=ApartmentResponse)
@@ -84,4 +87,4 @@ def get_apartment_by_booking_id(
             detail="Apartamento no encontrado",
         )
 
-    return apartment
+    return ApartmentResponse.model_validate(apartment.model_dump())
