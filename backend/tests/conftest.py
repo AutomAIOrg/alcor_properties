@@ -17,8 +17,10 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 from starlette.testclient import TestClient
 
+import infrastructure.models.apartment  # noqa: F401 — registra ApartmentORM en Base.metadata
 import infrastructure.models.booking  # noqa: F401 — registra BookingORM en Base.metadata
 import infrastructure.models.user  # noqa: F401 — registra UserORM en Base.metadata
+from domain.apartments.repository import IApartmentRepository
 from domain.auth.token_payload_entity import TokenPayload
 from domain.auth.user_entity import Role
 from domain.bookings.repository import IBookingRepository
@@ -34,6 +36,12 @@ from infrastructure.models.user import UserORM
 def mock_repo() -> MagicMock:
     """Repositorio mockeado con spec de IBookingRepository."""
     return MagicMock(spec=IBookingRepository)
+
+
+@pytest.fixture
+def mock_apartment_repo() -> MagicMock:
+    """Repositorio mockeado con spec de IApartmentRepository."""
+    return MagicMock(spec=IApartmentRepository)
 
 
 # ---------------------------------------------------------------------------
@@ -104,11 +112,43 @@ def api_client(mock_use_cases: MagicMock) -> TestClient:
     app.dependency_overrides[get_booking_use_cases] = lambda: mock_use_cases
     app.dependency_overrides[get_current_user] = lambda: admin_payload
 
+
     try:
         with TestClient(app, raise_server_exceptions=True) as client:
             yield client
     finally:
         app.dependency_overrides.pop(get_booking_use_cases, None)
+        app.dependency_overrides.pop(get_current_user, None)
+
+
+@pytest.fixture
+def mock_apartment_use_cases() -> MagicMock:
+    """ApartmentUseCases completamente mockeado para tests de API."""
+    return MagicMock()
+
+
+@pytest.fixture
+def apartment_api_client(mock_apartment_use_cases: MagicMock) -> TestClient:
+    from api.dependencies import get_apartment_use_cases, get_current_user
+    from main import app
+
+    now = datetime.now(UTC)
+    admin_payload = TokenPayload(
+        subject="1",
+        expires_at=now + timedelta(minutes=30),
+        issued_at=now,
+        username="admin",
+        role=Role.ADMIN,
+    )
+
+    app.dependency_overrides[get_apartment_use_cases] = lambda: mock_apartment_use_cases
+    app.dependency_overrides[get_current_user] = lambda: admin_payload
+
+    try:
+        with TestClient(app, raise_server_exceptions=True) as client:
+            yield client
+    finally:
+        app.dependency_overrides.pop(get_apartment_use_cases, None)
         app.dependency_overrides.pop(get_current_user, None)
 
 

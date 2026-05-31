@@ -5,6 +5,7 @@ No contiene fixtures de pytest — solo funciones de fábrica puras.
 
 from datetime import date
 
+from domain.apartments.entity import Apartment
 from domain.auth.user_entity import Role, User
 from domain.bookings.entity import Booking
 
@@ -33,3 +34,21 @@ def make_user(**overrides) -> User:
         "role": Role.ADMIN,
     }
     return User(**{**defaults, **overrides})
+
+
+def make_apartment(**overrides) -> Apartment:
+    """Devuelve un Apartment válido con valores por defecto, aplicando los overrides dados."""
+    defaults: dict = {
+        "booking_id": "R180",
+        "community": "Alta Entinas",
+        "booking_name": "Apartamento familiar",
+        "address": "Calle Glaucio 15",
+        "rooms": 2,
+        "bathrooms": 2,
+        "parking": "63",
+        "total_occupants": 6,
+        "owner_name": "Katarzyna Tokarska",
+        "email": "owner@example.com",
+        "phone": "+34 600 000 000",
+    }
+    return Apartment(**{**defaults, **overrides})
