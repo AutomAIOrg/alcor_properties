@@ -295,12 +295,12 @@ export class CalendarComponent implements OnInit {
 
   // Limpia todos los filtros a la vez.
   clearAllFilters(): void {
-  this.filterBookingIds.set([]);
-  this.filterBookingStates.set([]);
-  this.searchQuery.set('');
+    this.filterBookingIds.set([]);
+    this.filterBookingStates.set([]);
+    this.searchQuery.set('');
 
-  this.goToToday();
-}
+    this.goToToday();
+  }
 
   // ─── Buscador con autocompletado ──────────────────────────────────────────────
   onSearchInputEvent(event: Event): void {

@@ -158,39 +158,39 @@ export class BookingCreateModalComponent {
   });
 
   loadAvailableApartmentsForSelectedDates(): void {
-  const d = this.draft();
+    const d = this.draft();
 
-  if (!d.check_in || !d.check_out || this.nights() <= 0) {
-    this.availableApartmentIds.set([]);
-    this.availableApartmentsError.set(null);
-    return;
-  }
-
-  this.loadingAvailableApartments.set(true);
-  this.availableApartmentsError.set(null);
-
-  this.apartmentService.getAvailableApartmentIds(d.check_in, d.check_out).subscribe({
-    next: apartmentIds => {
-      this.availableApartmentIds.set(apartmentIds);
-
-      const selectedApartment = this.draft().booking_id;
-
-      if (selectedApartment && !apartmentIds.includes(selectedApartment)) {
-        this.draft.update(current => ({
-          ...current,
-          booking_id: null,
-        }));
-      }
-
-      this.loadingAvailableApartments.set(false);
-    },
-    error: () => {
+    if (!d.check_in || !d.check_out || this.nights() <= 0) {
       this.availableApartmentIds.set([]);
-      this.availableApartmentsError.set('No se pudieron cargar los pisos disponibles.');
-      this.loadingAvailableApartments.set(false);
-    },
-  });
-}
+      this.availableApartmentsError.set(null);
+      return;
+    }
+
+    this.loadingAvailableApartments.set(true);
+    this.availableApartmentsError.set(null);
+
+    this.apartmentService.getAvailableApartmentIds(d.check_in, d.check_out).subscribe({
+      next: apartmentIds => {
+        this.availableApartmentIds.set(apartmentIds);
+
+        const selectedApartment = this.draft().booking_id;
+
+        if (selectedApartment && !apartmentIds.includes(selectedApartment)) {
+          this.draft.update(current => ({
+            ...current,
+            booking_id: null,
+          }));
+        }
+
+        this.loadingAvailableApartments.set(false);
+      },
+      error: () => {
+        this.availableApartmentIds.set([]);
+        this.availableApartmentsError.set('No se pudieron cargar los pisos disponibles.');
+        this.loadingAvailableApartments.set(false);
+      },
+    });
+  }
 
   openRangeCalendar(): void {
     const d = this.draft();
@@ -292,22 +292,22 @@ export class BookingCreateModalComponent {
     this.patch(field, input.value === '' ? null : Number(input.value));
   }
 
- patchSelect(field: SelectField, event: Event): void {
-  const select = event.target as HTMLSelectElement;
-  const value = select.value;
+  patchSelect(field: SelectField, event: Event): void {
+    const select = event.target as HTMLSelectElement;
+    const value = select.value;
 
-  if (field === 'booking_id') {
-    this.draft.update(d => ({
-      ...d,
-      booking_id: value,
-    }));
+    if (field === 'booking_id') {
+      this.draft.update(d => ({
+        ...d,
+        booking_id: value,
+      }));
 
-    this.rangeHoverIso.set(null);
-    return;
+      this.rangeHoverIso.set(null);
+      return;
+    }
+
+    this.patch(field, value);
   }
-
-  this.patch(field, value);
-}
 
   patchTextarea(field: TextareaField, event: Event): void {
     const textarea = event.target as HTMLTextAreaElement;

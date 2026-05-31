@@ -11,25 +11,32 @@
       <div class="field-row">
         <div class="field">
           <label>Referencia piso *</label>
-          <select (change)="patchSelect('booking_id', $event)" [disabled]="loadingAvailableApartments()">
-          <option value="" disabled [selected]="!draft().booking_id">
-            {{ apartmentPlaceholder() }}
-          </option>
-
-          @for (apt of apartmentOptions(); track apt) {
-            <option [value]="apt" [selected]="draft().booking_id === apt">
-              {{ apt }}
+          <select
+            (change)="patchSelect('booking_id', $event)"
+            [disabled]="loadingAvailableApartments()"
+          >
+            <option value="" disabled [selected]="!draft().booking_id">
+              {{ apartmentPlaceholder() }}
             </option>
+
+            @for (apt of apartmentOptions(); track apt) {
+              <option [value]="apt" [selected]="draft().booking_id === apt">
+                {{ apt }}
+              </option>
+            }
+          </select>
+
+          @if (availableApartmentsError()) {
+            <p class="field-error">{{ availableApartmentsError() }}</p>
           }
-        </select>
 
-        @if (availableApartmentsError()) {
-          <p class="field-error">{{ availableApartmentsError() }}</p>
-        }
-
-        @if (hasCompleteDateRange() && !loadingAvailableApartments() && apartmentOptions().length === 0) {
-          <p class="field-warning">No hay pisos disponibles para esas fechas.</p>
-        }
+          @if (
+            hasCompleteDateRange() &&
+            !loadingAvailableApartments() &&
+            apartmentOptions().length === 0
+          ) {
+            <p class="field-warning">No hay pisos disponibles para esas fechas.</p>
+          }
         </div>
 
         <div class="field">
@@ -86,7 +93,8 @@
 
           @if (!draft().booking_id) {
             <p class="range-message">
-              Puedes seleccionar fechas primero. Después el desplegable mostrará solo los pisos disponibles.
+              Puedes seleccionar fechas primero. Después el desplegable mostrará solo los pisos
+              disponibles.
             </p>
           }
 
