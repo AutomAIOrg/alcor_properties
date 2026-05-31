@@ -34,7 +34,7 @@ class BookingResponse(BaseModel):
 class BookingCreateRequest(BaseModel):
     """DTO de entrada para POST /bookings/."""
 
-    booking_id: str = Field(..., description="Referencia única de la reserva")
+    booking_id: str = Field(..., description="Identificador del apartamento")
     guest_name: str = Field(..., min_length=1, description="Nombre completo del huésped")
     check_in: date = Field(..., description="Fecha de check-in")
     check_out: date = Field(..., description="Fecha de check-out")
