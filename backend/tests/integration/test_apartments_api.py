@@ -56,17 +56,23 @@ class TestSearchApartments:
         filters = mock_apartment_use_cases.search_apartments.execute.call_args[0][0]
         assert filters.q == "entinas"
 
-    def test_numeric_filters_are_forwarded_to_use_case(self, apartment_api_client, mock_apartment_use_cases):
+    def test_numeric_filters_are_forwarded_to_use_case(
+        self, apartment_api_client, mock_apartment_use_cases
+    ):
         mock_apartment_use_cases.search_apartments.execute.return_value = []
 
-        apartment_api_client.get("/api/v1/apartments/search?min_rooms=2&max_rooms=4&min_occupants=4")
+        apartment_api_client.get(
+            "/api/v1/apartments/search?min_rooms=2&max_rooms=4&min_occupants=4"
+        )
 
         filters = mock_apartment_use_cases.search_apartments.execute.call_args[0][0]
         assert filters.min_rooms == 2
         assert filters.max_rooms == 4
         assert filters.min_occupants == 4
 
-    def test_date_filters_are_forwarded_to_use_case(self, apartment_api_client, mock_apartment_use_cases):
+    def test_date_filters_are_forwarded_to_use_case(
+        self, apartment_api_client, mock_apartment_use_cases
+    ):
         from datetime import date
 
         mock_apartment_use_cases.search_apartments.execute.return_value = []
@@ -80,17 +86,13 @@ class TestSearchApartments:
         assert filters.available_to == date(2026, 6, 30)
 
     def test_returns_400_when_only_available_from_provided(self, apartment_api_client):
-        response = apartment_api_client.get(
-            "/api/v1/apartments/search?available_from=2026-06-01"
-        )
+        response = apartment_api_client.get("/api/v1/apartments/search?available_from=2026-06-01")
 
         assert response.status_code == 400
         assert "juntas" in response.json()["detail"]
 
     def test_returns_400_when_min_rooms_greater_than_max_rooms(self, apartment_api_client):
-        response = apartment_api_client.get(
-            "/api/v1/apartments/search?min_rooms=5&max_rooms=2"
-        )
+        response = apartment_api_client.get("/api/v1/apartments/search?min_rooms=5&max_rooms=2")
 
         assert response.status_code == 400
 
@@ -121,7 +123,9 @@ class TestGetApartmentByBookingId:
         assert data["community"] == "Alta Entinas"
         assert data["address"] == "Calle Glaucio 15"
 
-    def test_returns_404_when_apartment_not_found(self, apartment_api_client, mock_apartment_use_cases):
+    def test_returns_404_when_apartment_not_found(
+        self, apartment_api_client, mock_apartment_use_cases
+    ):
         mock_apartment_use_cases.get_apartment_by_booking_id.execute.return_value = None
 
         response = apartment_api_client.get("/api/v1/apartments/UNKNOWN")
@@ -129,7 +133,9 @@ class TestGetApartmentByBookingId:
         assert response.status_code == 404
         assert "no encontrado" in response.json()["detail"]
 
-    def test_returns_400_when_use_case_raises_value_error(self, apartment_api_client, mock_apartment_use_cases):
+    def test_returns_400_when_use_case_raises_value_error(
+        self, apartment_api_client, mock_apartment_use_cases
+    ):
         mock_apartment_use_cases.get_apartment_by_booking_id.execute.side_effect = ValueError(
             "El booking_id no puede estar vacío"
         )
@@ -152,5 +158,6 @@ class TestGetApartmentByBookingId:
         # Esto ya lo cubre test_auth_dependencies.py; aquí solo verificamos
         # que el router declara la dependencia (comprobación estructural).
         from api.v1.apartments.router import router
+
         dep_names = [d.dependency.__name__ for d in router.dependencies]
         assert "require_admin" in dep_names

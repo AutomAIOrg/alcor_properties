@@ -87,6 +87,7 @@ class TestApartmentSearchFiltersRanges:
         filters = ApartmentSearchFilters(min_rooms=2, max_rooms=2)
         assert filters.min_rooms == 2
         assert filters.max_rooms == 2
+
     def test_min_bathrooms_greater_than_max_bathrooms_raises(self):
         with pytest.raises(ValueError, match="min_bathrooms no puede ser mayor"):
             ApartmentSearchFilters(min_bathrooms=3, max_bathrooms=1)

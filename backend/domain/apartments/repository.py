@@ -22,7 +22,7 @@ class IApartmentRepository(ABC):
     def search_apartments(
         self,
         filters: ApartmentSearchFilters,
-        ) -> list[Apartment]:
+    ) -> list[Apartment]:
         """
         Devuelve la lista de apartamentos disponibles.
         """

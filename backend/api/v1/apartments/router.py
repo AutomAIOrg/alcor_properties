@@ -10,11 +10,7 @@ from api.dependencies import ApartmentUseCases, get_apartment_use_cases, require
 from api.v1.apartments.schemas import ApartmentResponse
 from domain.apartments.filters import ApartmentSearchFilters
 
-router = APIRouter(
-    prefix="/apartments",
-    tags=["Apartments"],
-    dependencies=[Depends(require_admin)]
-)
+router = APIRouter(prefix="/apartments", tags=["Apartments"], dependencies=[Depends(require_admin)])
 
 
 @router.get("/search", response_model=list[ApartmentResponse])

@@ -8,15 +8,11 @@ from domain.apartments.repository import IApartmentRepository
 
 
 class SearchApartments:
-
-    def __init__(
-            self,
-            apartment_repository: IApartmentRepository
-        ) -> None:
-            self.apartment_repository = apartment_repository
+    def __init__(self, apartment_repository: IApartmentRepository) -> None:
+        self.apartment_repository = apartment_repository
 
     def execute(
-            self,
-            filters: ApartmentSearchFilters,
+        self,
+        filters: ApartmentSearchFilters,
     ) -> list[Apartment]:
-          return self.apartment_repository.search_apartments(filters)
+        return self.apartment_repository.search_apartments(filters)

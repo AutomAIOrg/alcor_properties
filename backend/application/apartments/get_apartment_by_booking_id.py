@@ -7,17 +7,10 @@ from domain.apartments.repository import IApartmentRepository
 
 
 class GetApartmentByBookingId:
-
-    def __init__(
-            self,
-            apartment_repository: IApartmentRepository
-            ) -> None:
+    def __init__(self, apartment_repository: IApartmentRepository) -> None:
         self.apartment_repository = apartment_repository
 
-    def execute(
-            self,
-            booking_id: str
-    ) -> Apartment | None:
+    def execute(self, booking_id: str) -> Apartment | None:
         booking_id = booking_id.strip()
 
         if not booking_id:

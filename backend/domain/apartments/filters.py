@@ -16,91 +16,63 @@ class ApartmentSearchFilters(BaseModel):
     # Búqueda libre
     q: str | None = Field(
         default=None,
-        description="Término de búsqueda libre aplicado a varios campos del apartamento"
-        )
+        description="Término de búsqueda libre aplicado a varios campos del apartamento",
+    )
 
     # Campos de texto de la tabla Apartamentos
     booking_id: str | None = Field(
-        default=None,
-        description="Filtra por ID (booking_id) del apartamento"
+        default=None, description="Filtra por ID (booking_id) del apartamento"
     )
 
-    community: str | None = Field(
-        default=None,
-        description="Filtra por comunidad del apartamento"
-    )
+    community: str | None = Field(default=None, description="Filtra por comunidad del apartamento")
 
     booking_name: str | None = Field(
-        default=None,
-        description="Filtra por nombre de reserva del apartamento"
+        default=None, description="Filtra por nombre de reserva del apartamento"
     )
 
-    address: str | None = Field(
-        default=None,
-        description="Filtra por dirección del apartamento"
-    )
+    address: str | None = Field(default=None, description="Filtra por dirección del apartamento")
 
-    parking: str | None = Field(
-        default=None,
-        description="Filtra por identificador de parking"
-    )
+    parking: str | None = Field(default=None, description="Filtra por identificador de parking")
 
     owner_name: str | None = Field(
-        default=None,
-        description="Filtra por nombre del propietario del apartamento"
+        default=None, description="Filtra por nombre del propietario del apartamento"
     )
     email: str | None = Field(
-        default=None,
-        description="Filtra por email del propietario del apartamento"
+        default=None, description="Filtra por email del propietario del apartamento"
     )
     phone: str | None = Field(
-        default=None,
-        description="Filtra por teléfono del propietario del apartamento"
+        default=None, description="Filtra por teléfono del propietario del apartamento"
     )
 
     # Campos numéricos de la tabla Apartamentos
     min_rooms: int | None = Field(
-        default=None,
-        ge=0,
-        description="Filtra por número mínimo de habitaciones"
+        default=None, ge=0, description="Filtra por número mínimo de habitaciones"
     )
 
     max_rooms: int | None = Field(
-        default=None,
-        ge=0,
-        description="Filtra por número máximo de habitaciones"
+        default=None, ge=0, description="Filtra por número máximo de habitaciones"
     )
 
     min_bathrooms: int | None = Field(
-        default=None,
-        ge=0,
-        description="Filtra por número mínimo de baños"
+        default=None, ge=0, description="Filtra por número mínimo de baños"
     )
     max_bathrooms: int | None = Field(
-        default=None,
-        ge=0,
-        description="Filtra por número máximo de baños"
+        default=None, ge=0, description="Filtra por número máximo de baños"
     )
 
     min_occupants: int | None = Field(
-        default=None,
-        ge=0,
-        description="Filtra por número mínimo de ocupantes"
+        default=None, ge=0, description="Filtra por número mínimo de ocupantes"
     )
     max_occupants: int | None = Field(
-        default=None,
-        ge=0,
-        description="Filtra por número máximo de ocupantes"
+        default=None, ge=0, description="Filtra por número máximo de ocupantes"
     )
 
     available_from: date | None = Field(
-        default=None,
-        description="Filtra por fecha de disponibilidad desde"
+        default=None, description="Filtra por fecha de disponibilidad desde"
     )
 
     available_to: date | None = Field(
-        default=None,
-        description="Filtra por fecha de disponibilidad hasta"
+        default=None, description="Filtra por fecha de disponibilidad hasta"
     )
 
     @model_validator(mode="after")

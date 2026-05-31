@@ -112,7 +112,6 @@ def api_client(mock_use_cases: MagicMock) -> TestClient:
     app.dependency_overrides[get_booking_use_cases] = lambda: mock_use_cases
     app.dependency_overrides[get_current_user] = lambda: admin_payload
 
-
     try:
         with TestClient(app, raise_server_exceptions=True) as client:
             yield client

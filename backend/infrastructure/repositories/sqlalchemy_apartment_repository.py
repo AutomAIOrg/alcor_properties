@@ -22,9 +22,7 @@ class SQLAlchemyApartmentRepository(IApartmentRepository):
         self._db = db
 
     def get_by_booking_id(self, booking_id: str) -> Apartment | None:
-        stmt = select(ApartmentORM).where(
-            ApartmentORM.booking_id == booking_id
-        )
+        stmt = select(ApartmentORM).where(ApartmentORM.booking_id == booking_id)
 
         row = self._db.execute(stmt).scalar_one_or_none()
 
@@ -33,11 +31,7 @@ class SQLAlchemyApartmentRepository(IApartmentRepository):
 
         return self._to_domain(row)
 
-    def search_apartments(
-            self,
-            filters: ApartmentSearchFilters
-    ) -> list[Apartment]:
-
+    def search_apartments(self, filters: ApartmentSearchFilters) -> list[Apartment]:
         stmt = select(ApartmentORM)
 
         stmt = self._apply_text_filters(stmt, filters)
@@ -55,9 +49,9 @@ class SQLAlchemyApartmentRepository(IApartmentRepository):
     # ------------------------------------------------------------------ #
 
     def _apply_text_filters(
-            self,
-            stmt: Select[tuple[ApartmentORM]],
-            filters: ApartmentSearchFilters,
+        self,
+        stmt: Select[tuple[ApartmentORM]],
+        filters: ApartmentSearchFilters,
     ) -> Select[tuple[ApartmentORM]]:
         if filters.q:
             q = f"%{filters.q.strip().lower()}%"
@@ -71,22 +65,18 @@ class SQLAlchemyApartmentRepository(IApartmentRepository):
                     func.lower(ApartmentORM.parking).like(q),
                     func.lower(ApartmentORM.owner_name).like(q),
                     func.lower(ApartmentORM.email).like(q),
-                    func.lower(ApartmentORM.phone).like(q)
+                    func.lower(ApartmentORM.phone).like(q),
                 )
             )
 
         if filters.booking_id:
             stmt = stmt.where(
-                func.lower(ApartmentORM.booking_id).like(
-                    f"%{filters.booking_id.strip().lower()}%"
-                )
+                func.lower(ApartmentORM.booking_id).like(f"%{filters.booking_id.strip().lower()}%")
             )
 
         if filters.community:
             stmt = stmt.where(
-                func.lower(ApartmentORM.community).like(
-                    f"%{filters.community.strip().lower()}%"
-                )
+                func.lower(ApartmentORM.community).like(f"%{filters.community.strip().lower()}%")
             )
 
         if filters.booking_name:
@@ -98,45 +88,35 @@ class SQLAlchemyApartmentRepository(IApartmentRepository):
 
         if filters.address:
             stmt = stmt.where(
-                func.lower(ApartmentORM.address).like(
-                    f"%{filters.address.strip().lower()}%"
-                )
+                func.lower(ApartmentORM.address).like(f"%{filters.address.strip().lower()}%")
             )
 
         if filters.parking:
             stmt = stmt.where(
-                func.lower(ApartmentORM.parking).like(
-                    f"%{filters.parking.strip().lower()}%"
-                )
+                func.lower(ApartmentORM.parking).like(f"%{filters.parking.strip().lower()}%")
             )
 
         if filters.owner_name:
             stmt = stmt.where(
-                func.lower(ApartmentORM.owner_name).like(
-                    f"%{filters.owner_name.strip().lower()}%"
-                )
+                func.lower(ApartmentORM.owner_name).like(f"%{filters.owner_name.strip().lower()}%")
             )
 
         if filters.email:
             stmt = stmt.where(
-                func.lower(ApartmentORM.email).like(
-                    f"%{filters.email.strip().lower()}%"
-                )
+                func.lower(ApartmentORM.email).like(f"%{filters.email.strip().lower()}%")
             )
 
         if filters.phone:
             stmt = stmt.where(
-                func.lower(ApartmentORM.phone).like(
-                    f"%{filters.phone.strip().lower()}%"
-                )
+                func.lower(ApartmentORM.phone).like(f"%{filters.phone.strip().lower()}%")
             )
 
         return stmt
 
     def _apply_number_filters(
-            self,
-            stmt: Select[tuple[ApartmentORM]],
-            filters: ApartmentSearchFilters,
+        self,
+        stmt: Select[tuple[ApartmentORM]],
+        filters: ApartmentSearchFilters,
     ) -> Select[tuple[ApartmentORM]]:
         if filters.min_rooms is not None:
             stmt = stmt.where(ApartmentORM.rooms >= filters.min_rooms)
@@ -159,9 +139,9 @@ class SQLAlchemyApartmentRepository(IApartmentRepository):
         return stmt
 
     def _apply_availability_filter(
-            self,
-            stmt: Select[tuple[ApartmentORM]],
-            filters: ApartmentSearchFilters,
+        self,
+        stmt: Select[tuple[ApartmentORM]],
+        filters: ApartmentSearchFilters,
     ) -> Select[tuple[ApartmentORM]]:
         if not filters.available_from or not filters.available_to:
             return stmt
@@ -194,5 +174,5 @@ class SQLAlchemyApartmentRepository(IApartmentRepository):
             total_occupants=row.total_occupants,
             owner_name=row.owner_name,
             email=row.email,
-            phone=row.phone
+            phone=row.phone,
         )
