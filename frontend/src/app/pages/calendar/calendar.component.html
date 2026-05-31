@@ -33,7 +33,7 @@
     <!-- Agrupamos los filtros para que actúen como un bloque frente al view-toggle -->
     <div class="filter-group">
       <!-- Filtro: Piso -->
-      <div class="filter-dropdown" [class.open]="showIdDropdown()">
+      <div class="filter-dropdown id-filter-dropdown" [class.open]="showIdDropdown()">
         <button class="filter-trigger" (click)="showIdDropdown.set(!showIdDropdown())">
           Piso
           @if (filterBookingIds().length) {
@@ -58,7 +58,7 @@
       </div>
 
       <!-- Filtro: Estado -->
-      <div class="filter-dropdown" [class.open]="showStateDropdown()">
+      <div class="filter-dropdown state-filter-dropdown" [class.open]="showStateDropdown()">
         <button class="filter-trigger" (click)="showStateDropdown.set(!showStateDropdown())">
           Estado
           @if (filterBookingStates().length) {
@@ -172,6 +172,7 @@
 @if (showCreateModal()) {
   <app-booking-create-modal
     [apartments]="bookingIdOptions()"
+    [bookings]="bookings()"
     (close)="showCreateModal.set(false)"
     (created)="onBookingCreated($event)"
   />
