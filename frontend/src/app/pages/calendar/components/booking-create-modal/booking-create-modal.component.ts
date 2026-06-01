@@ -267,6 +267,7 @@ export class BookingCreateModalComponent {
 
     this.availableApartmentIds.set([]);
     this.availableApartmentsError.set(null);
+    this.rangeCalendarMonth.set(this.currentMonthDate());
     this.rangeHoverIso.set(null);
   }
 
@@ -433,5 +434,11 @@ export class BookingCreateModalComponent {
     const [year, month, day] = iso.split('-').map(Number);
 
     return new Date(year, month - 1, day);
+  }
+
+  private currentMonthDate(): Date {
+    const today = new Date();
+
+    return new Date(today.getFullYear(), today.getMonth(), 1);
   }
 }

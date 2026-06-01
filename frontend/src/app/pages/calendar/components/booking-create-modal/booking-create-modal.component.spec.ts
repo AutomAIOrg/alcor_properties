@@ -80,6 +80,10 @@ describe('BookingCreateModalComponent', () => {
     fixture.detectChanges();
   });
 
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
   // ── nights ────────────────────────────────────────────────────────────────────
 
   describe('nights', () => {
@@ -130,11 +134,13 @@ describe('BookingCreateModalComponent', () => {
       expect(component.rangeCalendarOpen()).toBe(true);
     });
 
-    it('clearRangeDates limpia check_in, check_out y disponibilidad', () => {
+    it('clearRangeDates limpia check_in, check_out, disponibilidad y vuelve al mes actual', () => {
+      jest.useFakeTimers().setSystemTime(new Date(2026, 5, 15));
       component.patch('check_in', '2025-07-01');
       component.patch('check_out', '2025-07-05');
       component.availableApartmentIds.set(['R180']);
       component.availableApartmentsError.set('Error');
+      component.rangeCalendarMonth.set(new Date(2025, 6, 1));
 
       component.clearRangeDates();
 
@@ -142,6 +148,7 @@ describe('BookingCreateModalComponent', () => {
       expect(component.draft().check_out).toBeNull();
       expect(component.availableApartmentIds()).toEqual([]);
       expect(component.availableApartmentsError()).toBeNull();
+      expect(component.rangeCalendarMonth()).toEqual(new Date(2026, 5, 1));
     });
 
     it('primer click en una fecha establece check_in y deja check_out en null', () => {
