@@ -29,9 +29,7 @@ class Booking(BaseModel):
         default=None,
         description="Clave primaria de base de datos. None para entidades aún no persistidas.",
     )
-    booking_id: str = Field(
-        ..., description="Identificador único de la reserva (ej. referencia Airbnb)"
-    )
+    booking_id: str = Field(..., description="Identificador único del Apartamento")
     guest_name: str = Field(..., min_length=1, description="Nombre completo del huésped")
     check_in: date = Field(..., description="Fecha de entrada (inclusiva)")
     check_out: date = Field(..., description="Fecha de salida (exclusiva)")

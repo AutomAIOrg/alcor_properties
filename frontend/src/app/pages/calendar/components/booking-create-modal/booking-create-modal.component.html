@@ -7,16 +7,38 @@
 
     <div class="modal-body">
       <p class="section-title">Datos generales</p>
+
       <div class="field-row">
         <div class="field">
           <label>Referencia piso *</label>
-          <select (change)="patchSelect('booking_id', $event)">
-            <option value="" disabled [selected]="!draft().booking_id">Selecciona un piso</option>
-            @for (apt of apartments(); track apt) {
-              <option [value]="apt" [selected]="draft().booking_id === apt">{{ apt }}</option>
+          <select
+            (change)="patchSelect('booking_id', $event)"
+            [disabled]="loadingAvailableApartments()"
+          >
+            <option value="" disabled [selected]="!draft().booking_id">
+              {{ apartmentPlaceholder() }}
+            </option>
+
+            @for (apt of apartmentOptions(); track apt) {
+              <option [value]="apt" [selected]="draft().booking_id === apt">
+                {{ apt }}
+              </option>
             }
           </select>
+
+          @if (availableApartmentsError()) {
+            <p class="field-error">{{ availableApartmentsError() }}</p>
+          }
+
+          @if (
+            hasCompleteDateRange() &&
+            !loadingAvailableApartments() &&
+            apartmentOptions().length === 0
+          ) {
+            <p class="field-warning">No hay pisos disponibles para esas fechas.</p>
+          }
         </div>
+
         <div class="field">
           <label>Estado</label>
           <select (change)="patchSelect('status', $event)">
@@ -44,37 +66,99 @@
       <div class="field-row">
         <div class="field">
           <label>Entrada *</label>
-          <input
-            type="date"
-            [value]="draft().check_in ?? ''"
-            (input)="patchInput('check_in', $event)"
-          />
+          <button type="button" class="date-range-input" (click)="openRangeCalendar()">
+            {{ formatDisplayDate(draft().check_in) || 'Seleccionar entrada' }}
+          </button>
         </div>
+
         <div class="field">
           <label>Salida *</label>
-          <input
-            type="date"
-            [value]="draft().check_out ?? ''"
-            (input)="patchInput('check_out', $event)"
-          />
+          <button type="button" class="date-range-input" (click)="openRangeCalendar()">
+            {{ formatDisplayDate(draft().check_out) || 'Seleccionar salida' }}
+          </button>
         </div>
       </div>
+
+      @if (rangeCalendarOpen()) {
+        <div class="range-calendar" (mouseleave)="rangeHoverIso.set(null)">
+          <div class="range-calendar-header">
+            <button type="button" class="calendar-nav-btn" (click)="prevRangeMonth()">‹</button>
+
+            <span class="range-calendar-title">
+              {{ rangeCalendarTitle() }}
+            </span>
+
+            <button type="button" class="calendar-nav-btn" (click)="nextRangeMonth()">›</button>
+          </div>
+
+          @if (!draft().booking_id) {
+            <p class="range-message">
+              Puedes seleccionar fechas primero. Después el desplegable mostrará solo los pisos
+              disponibles.
+            </p>
+          }
+
+          <div class="range-weekdays">
+            @for (day of WEEKDAYS; track day) {
+              <span>{{ day }}</span>
+            }
+          </div>
+
+          <div class="range-days">
+            @for (day of rangeCalendarDays(); track day.iso) {
+              <button
+                type="button"
+                class="range-day"
+                [class.outside]="!day.inCurrentMonth"
+                [class.start]="day.isStart"
+                [class.end]="day.isEnd"
+                [class.in-range]="day.inRange"
+                [class.booked]="day.isBooked"
+                [class.disabled]="!day.canSelect"
+                [class.selectable-boundary]="day.isBooked && day.canSelect"
+                [disabled]="!day.canSelect"
+                (click)="selectRangeDate(day.iso)"
+                (mouseenter)="onRangeDayHover(day)"
+              >
+                {{ day.label }}
+              </button>
+            }
+          </div>
+
+          <div class="range-calendar-footer">
+            <div class="range-summary">
+              <span>Entrada: {{ formatDisplayDate(draft().check_in) || '—' }}</span>
+              <span>Salida: {{ formatDisplayDate(draft().check_out) || '—' }}</span>
+            </div>
+
+            <button type="button" class="clear-dates-btn" (click)="clearRangeDates()">
+              Borrar fechas
+            </button>
+          </div>
+        </div>
+      }
+
+      @if (selectedRangeHasConflicts()) {
+        <p class="range-error">El piso ya tiene una reserva en ese rango de fechas.</p>
+      }
 
       @if (nights() > 0) {
         <p class="nights-info">{{ nights() }} noche{{ nights() !== 1 ? 's' : '' }}</p>
       }
 
       <p class="section-title">Huéspedes</p>
+
       <div class="field-row">
         <div class="field">
           <label>Adultos</label>
           <input
             type="number"
-            min="0"
+            min="1"
             [value]="draft().adults ?? 1"
             (input)="patchNumber('adults', $event)"
           />
         </div>
+
         <div class="field">
           <label>Niños</label>
           <input
@@ -87,7 +171,8 @@
       </div>
 
       <p class="section-title">Económico</p>
-      <div class="field-row field-row--3">
+
+      <div class="field-row">
         <div class="field">
           <label>Precio total (€)</label>
           <input
@@ -99,6 +184,7 @@
             (input)="patchNumber('price', $event)"
           />
         </div>
+
         <div class="field">
           <label>Cargos extra (€)</label>
           <input
@@ -110,20 +196,10 @@
             (input)="patchNumber('charges', $event)"
           />
         </div>
-        <div class="field">
-          <label>Luz incluida (€)</label>
-          <input
-            type="number"
-            min="0"
-            step="0.01"
-            placeholder="—"
-            [value]="draft().electric_allowance ?? ''"
-            (input)="patchNumber('electric_allowance', $event)"
-          />
-        </div>
       </div>
 
       <p class="section-title">Contacto</p>
+
       <div class="field-row">
         <div class="field">
           <label>Email</label>
@@ -134,6 +210,7 @@
             (input)="patchInput('email', $event)"
           />
         </div>
+
         <div class="field">
           <label>Teléfono</label>
           <input
@@ -146,9 +223,10 @@
       </div>
 
       <p class="section-title">Referencias</p>
+
       <div class="field-row">
         <div class="field field--full">
-          <label>Nº reserva (plataforma)</label>
+          <label>Nº reserva plataforma</label>
           <input
             type="text"
             placeholder="—"
@@ -159,6 +237,7 @@
       </div>
 
       <p class="section-title">Comentarios</p>
+
       <div class="field">
         <textarea
           rows="3"
@@ -170,6 +249,7 @@
 
       <div class="edit-actions">
         <button class="btn-cancel" (click)="close.emit()" [disabled]="saving()">Cancelar</button>
+
         <button class="btn-save" (click)="save()" [disabled]="saving() || !isValid()">
           {{ saving() ? 'Guardando…' : 'Crear reserva' }}
         </button>

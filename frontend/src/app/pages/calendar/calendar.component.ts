@@ -265,11 +265,13 @@ export class CalendarComponent implements OnInit {
   }
 
   // ─── Métodos de filtro ────────────────────────────────────────────────────────
-  // Cierra ambos desplegables si el click fue fuera de un .filter-dropdown.
+  // Cierra cada desplegable si el click fue fuera de su propio contenedor.
   @HostListener('document:click', ['$event.target'])
   onDocumentClick(target: HTMLElement): void {
-    if (!target.closest('.filter-dropdown')) {
+    if (!target.closest('.id-filter-dropdown')) {
       this.showIdDropdown.set(false);
+    }
+    if (!target.closest('.state-filter-dropdown')) {
       this.showStateDropdown.set(false);
     }
     if (!target.closest('.search-wrapper')) {
@@ -296,6 +298,8 @@ export class CalendarComponent implements OnInit {
     this.filterBookingIds.set([]);
     this.filterBookingStates.set([]);
     this.searchQuery.set('');
+
+    this.goToToday();
   }
 
   // ─── Buscador con autocompletado ──────────────────────────────────────────────
