@@ -12,7 +12,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 def _env_file() -> str | None:
     if os.getenv("ALCOR_IGNORE_ENV_FILE") == "1":
         return None
-    return str(Path(__file__).resolve().parent.parent / ".env")
+    return str(Path(__file__).parent / ".env")
 
 
 class Settings(BaseSettings):

@@ -5,8 +5,15 @@ FastAPI TestClient con use cases inyectados como MagicMock.
 Sin base de datos real: la dependencia get_apartment_use_cases se sobreescribe.
 """
 
+from sys import exc_info
+
+from sys import exc_info
+
 import pytest
 
+from pydantic import ValidationError
+
+from backend.tests.conftest import apartment_api_client
 from tests.helpers import make_apartment
 
 pytestmark = pytest.mark.integration
@@ -85,16 +92,20 @@ class TestSearchApartments:
         assert filters.available_from == date(2026, 6, 1)
         assert filters.available_to == date(2026, 6, 30)
 
-    def test_returns_400_when_only_available_from_provided(self, apartment_api_client):
-        response = apartment_api_client.get("/api/v1/apartments/search?available_from=2026-06-01")
+    def test_raises_validation_error_when_only_available_from_provided(self, apartment_api_client):
+        with pytest.raises(ValidationError) as exc_info:
+            apartment_api_client.get("/api/v1/apartments/search?available_from=2026-06-01")
 
-        assert response.status_code == 400
-        assert "juntas" in response.json()["detail"]
+        assert "available_from y available_to deben informarse juntas" in str(exc_info.value)
 
-    def test_returns_400_when_min_rooms_greater_than_max_rooms(self, apartment_api_client):
-        response = apartment_api_client.get("/api/v1/apartments/search?min_rooms=5&max_rooms=2")
+    def test_raises_validation_error_when_min_rooms_greater_than_max_rooms(
+        self,
+        apartment_api_client,
+    ):
+        with pytest.raises(ValidationError) as exc_info:
+            apartment_api_client.get("/api/v1/apartments/search?min_rooms=5&max_rooms=2")
 
-        assert response.status_code == 400
+        assert "min_rooms no puede ser mayor que max_rooms" in str(exc_info.value)
 
     def test_returns_422_when_min_rooms_is_negative(self, apartment_api_client):
         response = apartment_api_client.get("/api/v1/apartments/search?min_rooms=-1")
