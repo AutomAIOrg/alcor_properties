@@ -9,9 +9,9 @@ from unittest.mock import MagicMock
 import pytest
 
 from application.auth.login_use_case import LoginCredentials, LoginUseCase
-from application.auth.password_verifier_interface import IPasswordVerifier
 from application.auth.token_manager_interface import ITokenManager
-from application.auth.user_repository_interface import IUserRepository
+from application.shared.password_manager_interface import IPasswordManager
+from application.shared.user_repository_interface import IUserRepository
 from domain.auth.user_entity import Role
 from domain.exceptions import InvalidCredentials
 from tests.helpers import make_user
@@ -22,7 +22,7 @@ pytestmark = pytest.mark.unit
 class TestLoginUseCase:
     def test_valid_credentials_create_token_with_user_claims(self):
         user_repository = MagicMock(spec=IUserRepository)
-        password_verifier = MagicMock(spec=IPasswordVerifier)
+        password_verifier = MagicMock(spec=IPasswordManager)
         token_manager = MagicMock(spec=ITokenManager)
         user_repository.get_by_username.return_value = make_user()
         password_verifier.verify.return_value = True
@@ -47,7 +47,7 @@ class TestLoginUseCase:
 
     def test_unknown_username_raises_invalid_credentials(self):
         user_repository = MagicMock(spec=IUserRepository)
-        password_verifier = MagicMock(spec=IPasswordVerifier)
+        password_verifier = MagicMock(spec=IPasswordManager)
         token_manager = MagicMock(spec=ITokenManager)
         user_repository.get_by_username.return_value = None
 
@@ -62,7 +62,7 @@ class TestLoginUseCase:
 
     def test_wrong_password_raises_invalid_credentials(self):
         user_repository = MagicMock(spec=IUserRepository)
-        password_verifier = MagicMock(spec=IPasswordVerifier)
+        password_verifier = MagicMock(spec=IPasswordManager)
         token_manager = MagicMock(spec=ITokenManager)
         user_repository.get_by_username.return_value = make_user()
         password_verifier.verify.return_value = False
