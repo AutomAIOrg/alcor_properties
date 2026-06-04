@@ -58,3 +58,31 @@ class InvalidCredentials(DomainException):
 
     def __init__(self) -> None:
         super().__init__("Usuario o contraseña inválidos")
+
+
+class UserAlreadyExists(DomainException):
+    """Se lanza cuando un usuario ya existe."""
+
+    def __init__(self, username: str) -> None:
+        super().__init__(f"El usuario {username} ya existe")
+
+
+class IntegrityError(DomainException):
+    """Se lanza cuando ocurre un error de integridad."""
+
+    def __init__(self, message: str) -> None:
+        super().__init__(message)
+
+
+class UserNotFound(DomainException):
+    """Se lanza cuando un usuario no existe."""
+
+    def __init__(self) -> None:
+        super().__init__("Usuario no encontrado")
+
+
+class UserDatabaseError(DomainException):
+    """Se lanza cuando ocurre un error al interactuar con la base de datos de usuarios."""
+
+    def __init__(self, message: str) -> None:
+        super().__init__(message)

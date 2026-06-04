@@ -5,7 +5,7 @@ Configuración de ajustes para la aplicación backend.
 import os
 from pathlib import Path
 
-from pydantic import model_validator
+from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -53,6 +53,9 @@ class Settings(BaseSettings):
     JWT_ALGORITHM: str = "HS256"
     JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
     JWT_REFRESH_TOKEN_EXPIRE_DAYS: int = 1
+
+    # Contraseña por defecto para nuevos usuarios
+    DEFAULT_PASSWORD: str = Field(...)
 
     @model_validator(mode="after")
     def _resolve_db_aliases(self) -> "Settings":

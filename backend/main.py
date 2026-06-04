@@ -2,6 +2,8 @@
 Aplicación FastAPI del proyecto.
 """
 
+import logging
+
 from fastapi import FastAPI, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -11,9 +13,13 @@ from api.error_handlers import (
     booking_conflict_handler,
     booking_not_found_handler,
     domain_validation_error_handler,
+    integrity_error_handler,
     invalid_credentials_handler,
     invalid_token_handler,
     token_expired_handler,
+    user_already_exists_handler,
+    user_database_error_handler,
+    user_not_found_handler,
 )
 from api.v1.router import router as v1_router
 from config import settings
@@ -21,11 +27,22 @@ from domain.exceptions import (
     BookingConflict,
     BookingNotFound,
     DomainValidationError,
+    IntegrityError,
     InvalidCredentials,
     InvalidToken,
     TokenExpired,
+    UserAlreadyExists,
+    UserDatabaseError,
+    UserNotFound,
 )
 from infrastructure.database.session import check_database_connection
+
+# Configure logging
+logger = logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
 
 app = FastAPI(
     title=settings.APP_NAME,
@@ -51,6 +68,10 @@ app.add_exception_handler(DomainValidationError, domain_validation_error_handler
 app.add_exception_handler(InvalidCredentials, invalid_credentials_handler)
 app.add_exception_handler(InvalidToken, invalid_token_handler)
 app.add_exception_handler(TokenExpired, token_expired_handler)
+app.add_exception_handler(UserAlreadyExists, user_already_exists_handler)
+app.add_exception_handler(IntegrityError, integrity_error_handler)
+app.add_exception_handler(UserNotFound, user_not_found_handler)
+app.add_exception_handler(UserDatabaseError, user_database_error_handler)
 
 # Rutas de la API
 app.include_router(v1_router)
