@@ -1,4 +1,4 @@
-export type Role = 'admin' | 'employee' | 'viewer';
+export type Role = 'admin' | 'limpiadora';
 
 export type Permission =
   | 'bookings:read'
@@ -6,7 +6,9 @@ export type Permission =
   | 'bookings:update'
   | 'bookings:delete'
   | 'searches:access'
-  | 'admin:access';
+  | 'admin:access'
+  | 'users:manage'
+  | 'properties:manage';
 
 export interface User {
   sub: string;
