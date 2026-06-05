@@ -6,7 +6,7 @@ No se conecta a MySQL. El mismo Base.metadata crea la tabla users en SQLite.
 
 import pytest
 
-from domain.auth.user_entity import Role, User
+from domain.auth.user_entity import NewUser, Role, User
 from domain.exceptions import UserNotFound
 from infrastructure.models.user import UserORM
 from infrastructure.repositories.sqlalchemy_user_repository import SQLAlchemyUserRepository
@@ -90,7 +90,7 @@ class TestCreateUser:
         repository = SQLAlchemyUserRepository(sqlite_session)
 
         repository.create_user(
-            User(
+            NewUser(
                 username="cleaner",
                 password="$2b$12$newhash",
                 name="Cleaner",

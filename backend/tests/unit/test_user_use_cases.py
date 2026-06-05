@@ -11,9 +11,9 @@ import pytest
 
 from application.shared.password_manager_interface import IPasswordManager
 from application.shared.user_repository_interface import IUserRepository
-from application.users.create_user_use_case import CreateUserUseCase
+from application.users.create_user_use_case import CreateUserData, CreateUserUseCase
 from application.users.delete_user_use_case import DeleteUserUseCase
-from application.users.update_user_use_case import UpdateUserUseCase
+from application.users.update_user_use_case import UpdateUserData, UpdateUserUseCase
 from domain.auth.user_entity import Role
 from domain.exceptions import IntegrityError, UserAlreadyExists, UserNotFound
 from tests.helpers import make_user
@@ -38,7 +38,14 @@ def password_manager() -> MagicMock:
 
 class TestCreateUserUseCase:
     def test_hashes_password_and_persists_new_user(self, user_repository, password_manager):
-        user = make_user(id=None, username="cleaner", password="initial-password")
+        user = CreateUserData(
+            username="cleaner",
+            initial_password="initial-password",
+            name="Cleaner",
+            lastname="User",
+            email="admin@example.com",
+            role=Role.LIMPIADORA,
+        )
         user_repository.get_by_username.return_value = None
         user_repository.get_by_email.return_value = None
         password_manager.hash.return_value = "hashed-password"
@@ -57,7 +64,12 @@ class TestCreateUserUseCase:
 
         with pytest.raises(UserAlreadyExists):
             CreateUserUseCase(user_repository, password_manager).execute(
-                make_user(username="cleaner", password="initial-password")
+                CreateUserData(
+                    username="cleaner",
+                    initial_password="initial-password",
+                    name="Cleaner",
+                    role=Role.LIMPIADORA,
+                )
             )
 
         user_repository.get_by_email.assert_not_called()
@@ -70,7 +82,13 @@ class TestCreateUserUseCase:
 
         with pytest.raises(IntegrityError):
             CreateUserUseCase(user_repository, password_manager).execute(
-                make_user(id=None, email="used@example.com", password="initial-password")
+                CreateUserData(
+                    username="cleaner",
+                    initial_password="initial-password",
+                    name="Cleaner",
+                    email="used@example.com",
+                    role=Role.LIMPIADORA,
+                )
             )
 
         password_manager.hash.assert_not_called()
@@ -81,7 +99,13 @@ class TestCreateUserUseCase:
         password_manager.hash.return_value = "hashed-password"
 
         CreateUserUseCase(user_repository, password_manager).execute(
-            make_user(id=None, email=None, password="initial-password")
+            CreateUserData(
+                username="cleaner",
+                initial_password="initial-password",
+                name="Cleaner",
+                email=None,
+                role=Role.LIMPIADORA,
+            )
         )
 
         user_repository.get_by_email.assert_not_called()
@@ -109,10 +133,9 @@ class TestUpdateUserUseCase:
         user_repository.get_by_email.return_value = existing
 
         UpdateUserUseCase(user_repository).execute(
-            make_user(
-                id=1,
+            UpdateUserData(
+                user_id=1,
                 username="admin",
-                password=None,
                 name="Admin Updated",
                 lastname="New",
                 email="admin@example.com",
@@ -130,7 +153,14 @@ class TestUpdateUserUseCase:
         user_repository.get_by_id.return_value = None
 
         with pytest.raises(UserNotFound):
-            UpdateUserUseCase(user_repository).execute(make_user(id=404))
+            UpdateUserUseCase(user_repository).execute(
+                UpdateUserData(
+                    user_id=404,
+                    username="admin",
+                    name="Admin",
+                    role=Role.ADMIN,
+                )
+            )
 
         user_repository.update_user.assert_not_called()
 
@@ -139,7 +169,14 @@ class TestUpdateUserUseCase:
         user_repository.get_by_username.return_value = make_user(id=2, username="other")
 
         with pytest.raises(IntegrityError):
-            UpdateUserUseCase(user_repository).execute(make_user(id=1, username="other"))
+            UpdateUserUseCase(user_repository).execute(
+                UpdateUserData(
+                    user_id=1,
+                    username="other",
+                    name="Admin",
+                    role=Role.ADMIN,
+                )
+            )
 
         user_repository.update_user.assert_not_called()
 
@@ -149,7 +186,15 @@ class TestUpdateUserUseCase:
         user_repository.get_by_email.return_value = make_user(id=2, email="used@example.com")
 
         with pytest.raises(IntegrityError):
-            UpdateUserUseCase(user_repository).execute(make_user(id=1, email="used@example.com"))
+            UpdateUserUseCase(user_repository).execute(
+                UpdateUserData(
+                    user_id=1,
+                    username="admin",
+                    name="Admin",
+                    email="used@example.com",
+                    role=Role.ADMIN,
+                )
+            )
 
         user_repository.update_user.assert_not_called()
 
@@ -158,7 +203,15 @@ class TestUpdateUserUseCase:
         user_repository.get_by_id.return_value = existing
         user_repository.get_by_username.return_value = existing
 
-        UpdateUserUseCase(user_repository).execute(make_user(id=1, email=None, role=Role.ADMIN))
+        UpdateUserUseCase(user_repository).execute(
+            UpdateUserData(
+                user_id=1,
+                username="admin",
+                name="Admin",
+                email=None,
+                role=Role.ADMIN,
+            )
+        )
 
         user_repository.get_by_email.assert_not_called()
         user_repository.update_user.assert_called_once()
@@ -169,7 +222,14 @@ class TestUpdateUserUseCase:
         user_repository.get_by_email.return_value = make_user(id=1, email="admin@example.com")
 
         with pytest.raises(IntegrityError):
-            UpdateUserUseCase(user_repository).execute(make_user(id=1, role=Role.LIMPIADORA))
+            UpdateUserUseCase(user_repository).execute(
+                UpdateUserData(
+                    user_id=1,
+                    username="admin",
+                    name="Admin",
+                    role=Role.LIMPIADORA,
+                )
+            )
 
         user_repository.update_user.assert_not_called()
 
