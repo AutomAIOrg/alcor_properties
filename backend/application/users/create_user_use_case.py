@@ -1,7 +1,21 @@
+from dataclasses import dataclass
+
 from application.shared.password_manager_interface import IPasswordManager
 from application.shared.user_repository_interface import IUserRepository
-from domain.auth.user_entity import User
+from domain.auth.user_entity import NewUser, Role
 from domain.exceptions import IntegrityError, UserAlreadyExists
+
+
+@dataclass(frozen=True)
+class CreateUserData:
+    """Datos necesarios para crear un usuario desde la capa de aplicación."""
+
+    username: str
+    name: str
+    role: Role
+    initial_password: str
+    lastname: str | None = None
+    email: str | None = None
 
 
 class CreateUserUseCase:
@@ -11,7 +25,7 @@ class CreateUserUseCase:
         self.user_repository = user_repository
         self.password_manager = password_manager
 
-    def execute(self, user: User):
+    def execute(self, user: CreateUserData):
 
         # Verificar si el usuario ya existe
         if self.user_repository.get_by_username(user.username) is not None:
@@ -24,5 +38,13 @@ class CreateUserUseCase:
                 raise IntegrityError(f"El email {user.email} ya está en uso")
 
         # Crear el usuario
-        user.password = self.password_manager.hash(user.password)
-        self.user_repository.create_user(user)
+        self.user_repository.create_user(
+            NewUser(
+                username=user.username,
+                password=self.password_manager.hash(user.initial_password),
+                name=user.name,
+                lastname=user.lastname,
+                email=user.email,
+                role=user.role,
+            )
+        )

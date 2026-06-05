@@ -11,11 +11,11 @@ from api.dependencies import (
     get_update_user_use_case,
     require_admin,
 )
-from api.v1.users.schemas import UserModel, UserResponse
-from application.users.create_user_use_case import CreateUserUseCase
+from api.v1.users.schemas import CreateUserRequest, UpdateUserRequest, UserResponse
+from application.users.create_user_use_case import CreateUserData, CreateUserUseCase
 from application.users.delete_user_use_case import DeleteUserUseCase
 from application.users.get_all_users_user_case import GetAllUsersUseCase
-from application.users.update_user_use_case import UpdateUserUseCase
+from application.users.update_user_use_case import UpdateUserData, UpdateUserUseCase
 from config import settings
 from domain.auth.user_entity import User
 
@@ -26,18 +26,18 @@ logger = logging.getLogger(__name__)
 
 @router.post("/")
 async def create_user(
-    user: UserModel,
+    user: CreateUserRequest,
     create_user_use_case: Annotated[CreateUserUseCase, Depends(get_create_user_use_case)],
 ):
     logger.info(f"Creando usuario: {user}")
     create_user_use_case.execute(
-        User(
+        CreateUserData(
             username=user.username,
-            password=settings.DEFAULT_PASSWORD,
             name=user.name,
+            role=user.role,
+            initial_password=settings.DEFAULT_PASSWORD,
             lastname=user.lastname,
             email=user.email,
-            role=user.role,
         )
     )
     logger.info("Usuario creado correctamente")
@@ -60,18 +60,18 @@ async def delete_user(
 @router.put("/{user_id}")
 async def update_user(
     user_id: int,
-    user: UserModel,
+    user: UpdateUserRequest,
     update_user_use_case: Annotated[UpdateUserUseCase, Depends(get_update_user_use_case)],
 ):
     logger.info(f"Actualizando usuario: {user}")
     update_user_use_case.execute(
-        User(
-            id=user_id,
+        UpdateUserData(
+            user_id=user_id,
             username=user.username,
             name=user.name,
+            role=user.role,
             lastname=user.lastname,
             email=user.email,
-            role=user.role,
         )
     )
     logger.info("Usuario actualizado correctamente")

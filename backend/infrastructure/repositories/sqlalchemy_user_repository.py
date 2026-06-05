@@ -7,7 +7,7 @@ import logging
 from sqlalchemy.orm import Session
 
 from application.shared.user_repository_interface import IUserRepository
-from domain.auth.user_entity import Role, User
+from domain.auth.user_entity import NewUser, Role, User
 from domain.exceptions import UserDatabaseError, UserNotFound
 from infrastructure.models.user import UserORM
 
@@ -48,7 +48,7 @@ class SQLAlchemyUserRepository(IUserRepository):
             return None
         return self._to_entity(orm)
 
-    def create_user(self, user: User):
+    def create_user(self, user: NewUser) -> User:
         """Crea un nuevo usuario."""
         orm = UserORM(
             username=user.username,
@@ -61,10 +61,12 @@ class SQLAlchemyUserRepository(IUserRepository):
         self._db.add(orm)
         try:
             self._db.commit()
+            self._db.refresh(orm)
         except Exception as e:
             self._db.rollback()
             logger.exception(f"Error al crear el usuario: {e}")
             raise UserDatabaseError("Error al crear el usuario.") from e
+        return self._to_entity(orm)
 
     def delete_user(self, user_id: int):
         """Elimina un usuario."""

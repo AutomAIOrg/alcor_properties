@@ -1,6 +1,20 @@
+from dataclasses import dataclass
+
 from application.shared.user_repository_interface import IUserRepository
-from domain.auth.user_entity import Role, User
+from domain.auth.user_entity import Role
 from domain.exceptions import IntegrityError, UserNotFound
+
+
+@dataclass(frozen=True)
+class UpdateUserData:
+    """Datos editables de un usuario existente."""
+
+    user_id: int
+    username: str
+    name: str
+    role: Role
+    lastname: str | None = None
+    email: str | None = None
 
 
 class UpdateUserUseCase:
@@ -9,8 +23,8 @@ class UpdateUserUseCase:
     def __init__(self, user_repository: IUserRepository):
         self.user_repository = user_repository
 
-    def execute(self, user_update: User):
-        user = self.user_repository.get_by_id(user_update.id)
+    def execute(self, user_update: UpdateUserData):
+        user = self.user_repository.get_by_id(user_update.user_id)
 
         # Verificar si el usuario existe
         if user is None:
@@ -35,7 +49,6 @@ class UpdateUserUseCase:
 
         # Actualizar los datos del usuario
         user.username = user_update.username
-        user.password = user.password
         user.name = user_update.name
         user.lastname = user_update.lastname
         user.email = user_update.email

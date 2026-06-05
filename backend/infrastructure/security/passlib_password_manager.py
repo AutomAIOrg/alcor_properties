@@ -1,3 +1,5 @@
+from typing import cast
+
 from passlib.context import CryptContext
 from passlib.exc import UnknownHashError
 
@@ -12,7 +14,7 @@ class PasslibPasswordManager(IPasswordManager):
 
     def hash(self, password: str) -> str:
         """Hashea una contraseña."""
-        return self._pwd_context.hash(password)
+        return cast(str, self._pwd_context.hash(password))
 
     def verify(self, plain_password: str, stored_password: str) -> bool:
         """Valida la contraseña recibida contra su hash almacenado."""

@@ -4,7 +4,7 @@ Interfaz abstracta de repositorio para usuarios.
 
 from abc import ABC, abstractmethod
 
-from domain.auth.user_entity import User
+from domain.auth.user_entity import NewUser, User
 
 
 class IUserRepository(ABC):
@@ -26,7 +26,7 @@ class IUserRepository(ABC):
         pass
 
     @abstractmethod
-    def create_user(self, user: User):
+    def create_user(self, user: NewUser) -> User:
         """Crea un nuevo usuario."""
         pass
 
