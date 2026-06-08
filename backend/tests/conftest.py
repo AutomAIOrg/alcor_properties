@@ -49,6 +49,7 @@ def mock_get_apartment_by_id_query() -> MagicMock:
     """GetApartmentByIdQuery mockeado para tests de API."""
     return MagicMock()
 
+
 # ---------------------------------------------------------------------------
 # Infraestructura SQLite compartida
 # ---------------------------------------------------------------------------

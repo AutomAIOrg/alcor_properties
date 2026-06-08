@@ -2,7 +2,6 @@
 Enrutador para los apartamentos.
 """
 
-
 from fastapi import APIRouter, Depends, HTTPException
 
 from api.dependencies import get_apartment_by_id_query, get_search_apartments_query, require_admin

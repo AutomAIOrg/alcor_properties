@@ -71,7 +71,9 @@ class SQLAlchemyApartmentRepository(IApartmentRepository):
 
         if filters.apartment_id:
             stmt = stmt.where(
-                func.lower(ApartmentORM.apartment_id).like(f"%{filters.apartment_id.strip().lower()}%")
+                func.lower(ApartmentORM.apartment_id).like(
+                    f"%{filters.apartment_id.strip().lower()}%"
+                )
             )
 
         if filters.community:

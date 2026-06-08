@@ -27,7 +27,8 @@ class ApartmentSearchFilters(BaseModel):
     community: str | None = Field(default=None, description="Filtra por comunidad del apartamento")
 
     apartment_description: str | None = Field(
-        default=None, description="Filtra por la descripción del apartamento en la plataforma de reservas"
+        default=None,
+        description="Filtra por la descripción del apartamento en la plataforma de reservas",
     )
 
     address: str | None = Field(default=None, description="Filtra por dirección del apartamento")

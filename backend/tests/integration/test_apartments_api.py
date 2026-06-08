@@ -5,8 +5,6 @@ FastAPI TestClient con use cases inyectados como MagicMock.
 Sin base de datos real: la dependencia get_apartment_use_cases se sobreescribe.
 """
 
-
-
 import pytest
 from pydantic import ValidationError
 
@@ -29,7 +27,9 @@ class TestSearchApartments:
         assert response.status_code == 200
         assert response.json() == []
 
-    def test_returns_200_with_correct_schema(self, apartment_api_client, mock_search_apartments_query):
+    def test_returns_200_with_correct_schema(
+        self, apartment_api_client, mock_search_apartments_query
+    ):
         mock_search_apartments_query.execute.return_value = [
             make_apartment(
                 apartment_id="R180",
@@ -51,7 +51,9 @@ class TestSearchApartments:
         assert data[0]["rooms"] == 2
         assert data[0]["parking"] == "63"
 
-    def test_q_param_is_forwarded_to_use_case(self, apartment_api_client, mock_search_apartments_query):
+    def test_q_param_is_forwarded_to_use_case(
+        self, apartment_api_client, mock_search_apartments_query
+    ):
         mock_search_apartments_query.execute.return_value = []
 
         apartment_api_client.get("/api/v1/apartments/search?q=entinas")
@@ -115,7 +117,9 @@ class TestSearchApartments:
 
 
 class TestGetApartmentByApartmentId:
-    def test_returns_200_with_correct_schema(self, apartment_api_client, mock_get_apartment_by_id_query):
+    def test_returns_200_with_correct_schema(
+        self, apartment_api_client, mock_get_apartment_by_id_query
+    ):
         mock_get_apartment_by_id_query.execute.return_value = make_apartment(
             apartment_id="R180",
             community="Alta Entinas",
