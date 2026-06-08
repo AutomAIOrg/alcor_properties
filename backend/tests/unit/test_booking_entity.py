@@ -23,14 +23,14 @@ pytestmark = pytest.mark.unit
 class TestBookingCreation:
     def test_valid_booking_is_created(self):
         b = make_booking()
-        assert b.booking_id == "TEST-001"
+        assert b.apartment_id == "TEST-001"
         assert b.guest_name == "Ana García"
         assert b.nights == 4
 
     def test_check_out_before_check_in_raises_value_error(self):
         with pytest.raises(ValueError, match="check_out debe ser estrictamente posterior"):
             Booking(
-                booking_id="B",
+                apartment_id="B",
                 guest_name="X",
                 check_in=date(2026, 6, 5),
                 check_out=date(2026, 6, 1),
@@ -40,7 +40,7 @@ class TestBookingCreation:
     def test_check_out_equal_check_in_raises_value_error(self):
         with pytest.raises(ValueError):
             Booking(
-                booking_id="B",
+                apartment_id="B",
                 guest_name="X",
                 check_in=date(2026, 6, 1),
                 check_out=date(2026, 6, 1),
@@ -50,7 +50,7 @@ class TestBookingCreation:
     def test_nights_auto_corrected_to_real_date_diff(self):
         """nights siempre se deriva de las fechas, ignorando el valor suministrado."""
         b = Booking(
-            booking_id="B",
+            apartment_id="B",
             guest_name="X",
             check_in=date(2026, 6, 1),
             check_out=date(2026, 6, 4),

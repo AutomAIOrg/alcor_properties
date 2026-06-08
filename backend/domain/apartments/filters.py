@@ -20,14 +20,14 @@ class ApartmentSearchFilters(BaseModel):
     )
 
     # Campos de texto de la tabla Apartamentos
-    booking_id: str | None = Field(
-        default=None, description="Filtra por ID (booking_id) del apartamento"
+    apartment_id: str | None = Field(
+        default=None, description="Filtra por ID (apartment_id) del apartamento"
     )
 
     community: str | None = Field(default=None, description="Filtra por comunidad del apartamento")
 
-    booking_name: str | None = Field(
-        default=None, description="Filtra por nombre de reserva del apartamento"
+    apartment_description: str | None = Field(
+        default=None, description="Filtra por la descripción del apartamento en la plataforma de reservas"
     )
 
     address: str | None = Field(default=None, description="Filtra por dirección del apartamento")

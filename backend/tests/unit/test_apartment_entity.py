@@ -24,21 +24,21 @@ pytestmark = pytest.mark.unit
 class TestApartmentCreation:
     def test_valid_apartment_is_created(self):
         apt = make_apartment()
-        assert apt.booking_id == "R180"
+        assert apt.apartment_id == "R180"
         assert apt.rooms == 2
         assert apt.bathrooms == 2
 
-    def test_empty_booking_id_raises_value_error(self):
-        with pytest.raises(ValueError, match="booking_id no puede estar vacío"):
-            make_apartment(booking_id="")
+    def test_empty_apartment_id_raises_value_error(self):
+        with pytest.raises(ValueError, match="apartment_id no puede estar vacío"):
+            make_apartment(apartment_id="")
 
-    def test_whitespace_booking_id_raises_value_error(self):
-        with pytest.raises(ValueError, match="booking_id no puede estar vacío"):
-            make_apartment(booking_id="   ")
+    def test_whitespace_apartment_id_raises_value_error(self):
+        with pytest.raises(ValueError, match="apartment_id no puede estar vacío"):
+            make_apartment(apartment_id="   ")
 
-    def test_booking_id_is_stripped(self):
-        apt = make_apartment(booking_id="  R180  ")
-        assert apt.booking_id == "R180"
+    def test_apartment_id_is_stripped(self):
+        apt = make_apartment(apartment_id="  R180  ")
+        assert apt.apartment_id == "R180"
 
     def test_negative_rooms_raises_value_error(self):
         with pytest.raises(ValueError):
@@ -53,9 +53,9 @@ class TestApartmentCreation:
             make_apartment(total_occupants=-1)
 
     def test_optional_fields_default_to_none(self):
-        apt = Apartment(booking_id="R999")
+        apt = Apartment(apartment_id="R999")
         assert apt.community is None
-        assert apt.booking_name is None
+        assert apt.apartment_description is None
         assert apt.owner_name is None
         assert apt.email is None
         assert apt.phone is None

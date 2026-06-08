@@ -13,7 +13,7 @@ class BookingResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     record_id: int
-    booking_id: str
+    apartment_id: str
     guest_name: str
     check_in: date
     check_out: date
@@ -34,7 +34,7 @@ class BookingResponse(BaseModel):
 class BookingCreateRequest(BaseModel):
     """DTO de entrada para POST /bookings/."""
 
-    booking_id: str = Field(..., description="Referencia única de la reserva")
+    apartment_id: str = Field(..., description="Referencia única del apartamento")
     guest_name: str = Field(..., min_length=1, description="Nombre completo del huésped")
     check_in: date = Field(..., description="Fecha de check-in")
     check_out: date = Field(..., description="Fecha de check-out")
@@ -54,7 +54,7 @@ class BookingCreateRequest(BaseModel):
 class BookingUpdateRequest(BaseModel):
     """DTO de entrada para actualización de una reserva. Todos los campos son opcionales."""
 
-    booking_id: str | None = None
+    apartment_id: str | None = None
     guest_name: str | None = None
     check_in: date | None = None
     check_out: date | None = None

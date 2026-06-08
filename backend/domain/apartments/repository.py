@@ -12,9 +12,9 @@ class IApartmentRepository(ABC):
     """Puerto para las operaciones de persistencia de apartamentos."""
 
     @abstractmethod
-    def get_by_booking_id(self, booking_id: str) -> Apartment | None:
+    def get_by_apartment_id(self, apartment_id: str) -> Apartment | None:
         """
-        Devuelve el apartamento asociado a booking_id.
+        Devuelve el apartamento asociado a apartment_id.
         """
         pass
 

@@ -1,13 +1,13 @@
 <div class="modal-backdrop" (click)="close.emit()">
   <div class="modal-card" (click)="$event.stopPropagation()" role="dialog" aria-modal="true">
     <!-- HERO HEADER -->
-    <div class="modal-hero" [style.background]="booking().booking_id | bookingColor">
+    <div class="modal-hero" [style.background]="booking().apartment_id | bookingColor">
       <button class="close-btn" (click)="close.emit()" aria-label="Cerrar">&#10005;</button>
       <div class="hero-avatar">{{ initials() }}</div>
       <div class="hero-info">
         <span class="hero-name">{{ booking().guest_name }}</span>
         <div class="hero-meta">
-          <span class="apt-badge">{{ booking().booking_id }}</span>
+          <span class="apt-badge">{{ booking().apartment_id }}</span>
           <span class="status-badge" [attr.data-status]="booking().status">{{
             booking().status
           }}</span>

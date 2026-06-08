@@ -6,7 +6,7 @@ import { Booking } from '../models/booking.model';
 function makeBooking(overrides: Partial<Booking> = {}): Booking {
   return {
     record_id: 1,
-    booking_id: 'R180',
+    apartment_id: 'R180',
     guest_name: 'Ana García',
     check_in: '2025-06-01',
     check_out: '2025-06-07',
@@ -190,7 +190,7 @@ describe('CalendarLayoutService', () => {
       const b1 = makeBooking({ record_id: 1, check_in: '2025-06-02', check_out: '2025-06-06' });
       const b2 = makeBooking({
         record_id: 2,
-        booking_id: 'R101',
+        apartment_id: 'R101',
         check_in: '2025-06-03',
         check_out: '2025-06-05',
       });

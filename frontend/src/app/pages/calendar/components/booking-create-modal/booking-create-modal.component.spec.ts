@@ -9,7 +9,7 @@ import { Booking } from '../../../../models/booking.model';
 function makeCreatedBooking(overrides: Partial<Booking> = {}): Booking {
   return {
     record_id: 99,
-    booking_id: 'R180',
+    apartment_id: 'R180',
     guest_name: 'Juan Pérez',
     check_in: '2025-07-01',
     check_out: '2025-07-05',
@@ -99,7 +99,7 @@ describe('BookingCreateModalComponent', () => {
 
   describe('isValid', () => {
     function fillValid(): void {
-      component.patch('booking_id', 'R180');
+      component.patch('apartment_id', 'R180');
       component.patch('guest_name', 'Juan Pérez');
       component.patch('check_in', '2025-07-01');
       component.patch('check_out', '2025-07-05');
@@ -110,9 +110,9 @@ describe('BookingCreateModalComponent', () => {
       expect(component.isValid()).toBe(true);
     });
 
-    it('sin booking_id → false', () => {
+    it('sin apartment_id → false', () => {
       fillValid();
-      component.patch('booking_id', '');
+      component.patch('apartment_id', '');
       expect(component.isValid()).toBe(false);
     });
 
@@ -139,7 +139,7 @@ describe('BookingCreateModalComponent', () => {
 
   describe('save — happy path', () => {
     beforeEach(() => {
-      component.patch('booking_id', 'R180');
+      component.patch('apartment_id', 'R180');
       component.patch('guest_name', 'Juan Pérez');
       component.patch('check_in', '2025-07-01');
       component.patch('check_out', '2025-07-05');
@@ -149,7 +149,7 @@ describe('BookingCreateModalComponent', () => {
       component.save();
       expect(bookingServiceSpy.createBooking).toHaveBeenCalledTimes(1);
       const payload = bookingServiceSpy.createBooking.mock.calls[0][0];
-      expect(payload.booking_id).toBe('R180');
+      expect(payload.apartment_id).toBe('R180');
       expect(payload.guest_name).toBe('Juan Pérez');
       expect(payload.nights).toBe(4);
       expect(payload.persons).toBe(component.draft().adults! + component.draft().children!);
@@ -176,7 +176,7 @@ describe('BookingCreateModalComponent', () => {
   describe('save — error de red', () => {
     beforeEach(() => {
       bookingServiceSpy.createBooking.mockReturnValue(throwError(() => new Error('net')));
-      component.patch('booking_id', 'R180');
+      component.patch('apartment_id', 'R180');
       component.patch('guest_name', 'Juan Pérez');
       component.patch('check_in', '2025-07-01');
       component.patch('check_out', '2025-07-05');
@@ -205,7 +205,7 @@ describe('BookingCreateModalComponent', () => {
 
   describe('save — guard de doble envío', () => {
     it('saving=true previene una segunda llamada', () => {
-      component.patch('booking_id', 'R180');
+      component.patch('apartment_id', 'R180');
       component.patch('guest_name', 'Juan Pérez');
       component.patch('check_in', '2025-07-01');
       component.patch('check_out', '2025-07-05');
@@ -274,7 +274,7 @@ describe('BookingCreateModalComponent', () => {
     });
 
     it('botón "Crear reserva" se habilita cuando el formulario es válido', () => {
-      component.patch('booking_id', 'R180');
+      component.patch('apartment_id', 'R180');
       component.patch('guest_name', 'Juan Pérez');
       component.patch('check_in', '2025-07-01');
       component.patch('check_out', '2025-07-05');

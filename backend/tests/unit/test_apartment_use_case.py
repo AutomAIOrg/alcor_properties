@@ -6,7 +6,7 @@ El repositorio se sustituye por un MagicMock en todos los tests.
 
 import pytest
 
-from application.apartments.queries import GetApartmentByBookingIdQuery, SearchApartmentsQuery
+from application.apartments.queries import GetApartmentByIdQuery, SearchApartmentsQuery
 from domain.apartments.filters import ApartmentSearchFilters
 from tests.helpers import make_apartment
 
@@ -44,39 +44,39 @@ class TestSearchApartments:
 
 
 # ---------------------------------------------------------------------------
-# GetApartmentByBookingIdQuery
+# GetApartmentByIdQuery
 # ---------------------------------------------------------------------------
 
 
-class TestGetApartmentByBookingIdQuery:
+class TestGetApartmentByIdQuery:
     def test_returns_apartment_when_found(self, mock_apartment_repo):
-        apt = make_apartment(booking_id="R180")
-        mock_apartment_repo.get_by_booking_id.return_value = apt
+        apt = make_apartment(apartment_id="R180")
+        mock_apartment_repo.get_by_apartment_id.return_value = apt
 
-        result = GetApartmentByBookingIdQuery(mock_apartment_repo).execute("R180")
+        result = GetApartmentByIdQuery(mock_apartment_repo).execute("R180")
 
-        mock_apartment_repo.get_by_booking_id.assert_called_once_with("R180")
+        mock_apartment_repo.get_by_apartment_id.assert_called_once_with("R180")
         assert result == apt
 
     def test_returns_none_when_not_found(self, mock_apartment_repo):
-        mock_apartment_repo.get_by_booking_id.return_value = None
+        mock_apartment_repo.get_by_apartment_id.return_value = None
 
-        result = GetApartmentByBookingIdQuery(mock_apartment_repo).execute("UNKNOWN")
+        result = GetApartmentByIdQuery(mock_apartment_repo).execute("UNKNOWN")
 
         assert result is None
 
-    def test_empty_booking_id_raises_value_error(self, mock_apartment_repo):
+    def test_empty_apartment_id_raises_value_error(self, mock_apartment_repo):
         with pytest.raises(ValueError):
-            GetApartmentByBookingIdQuery(mock_apartment_repo).execute("")
+            GetApartmentByIdQuery(mock_apartment_repo).execute("")
 
-    def test_whitespace_booking_id_raises_value_error(self, mock_apartment_repo):
+    def test_whitespace_apartment_id_raises_value_error(self, mock_apartment_repo):
         with pytest.raises(ValueError):
-            GetApartmentByBookingIdQuery(mock_apartment_repo).execute("   ")
+            GetApartmentByIdQuery(mock_apartment_repo).execute("   ")
 
-    def test_booking_id_is_stripped_before_calling_repository(self, mock_apartment_repo):
-        apt = make_apartment(booking_id="R180")
-        mock_apartment_repo.get_by_booking_id.return_value = apt
+    def test_apartment_id_is_stripped_before_calling_repository(self, mock_apartment_repo):
+        apt = make_apartment(apartment_id="R180")
+        mock_apartment_repo.get_by_apartment_id.return_value = apt
 
-        GetApartmentByBookingIdQuery(mock_apartment_repo).execute("  R180  ")
+        GetApartmentByIdQuery(mock_apartment_repo).execute("  R180  ")
 
-        mock_apartment_repo.get_by_booking_id.assert_called_once_with("R180")
+        mock_apartment_repo.get_by_apartment_id.assert_called_once_with("R180")

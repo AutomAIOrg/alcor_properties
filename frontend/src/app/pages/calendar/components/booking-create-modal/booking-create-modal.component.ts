@@ -6,7 +6,7 @@ import { BookingService } from '../../../../services/booking.service';
 type BookingCreate = Omit<Booking, 'record_id'>;
 type InputField = 'guest_name' | 'check_in' | 'check_out' | 'email' | 'phone' | 'booking_number';
 type NumberField = 'adults' | 'children' | 'price' | 'charges' | 'electric_allowance';
-type SelectField = 'booking_id' | 'status';
+type SelectField = 'apartment_id' | 'status';
 type TextareaField = 'notes';
 
 @Component({
@@ -69,7 +69,7 @@ export class BookingCreateModalComponent {
   isValid(): boolean {
     const d = this.draft();
     return !!(
-      d.booking_id?.trim() &&
+      d.apartment_id?.trim() &&
       d.guest_name?.trim() &&
       d.check_in &&
       d.check_out &&
@@ -82,7 +82,7 @@ export class BookingCreateModalComponent {
     this.saving.set(true);
     const d = this.draft();
     const payload: BookingCreate = {
-      booking_id: d.booking_id!,
+      apartment_id: d.apartment_id!,
       guest_name: d.guest_name!,
       check_in: d.check_in!,
       check_out: d.check_out!,

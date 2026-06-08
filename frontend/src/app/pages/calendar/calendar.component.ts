@@ -80,7 +80,7 @@ export class CalendarComponent implements OnInit {
   showStateDropdown = signal(false);
 
   // Lista de IDs únicos de reserva para las opciones del filtro.
-  bookingIdOptions = computed(() => [...new Set(this.bookings().map(b => b.booking_id))].sort());
+  bookingIdOptions = computed(() => [...new Set(this.bookings().map(b => b.apartment_id))].sort());
 
   // Estados posibles — viene del modelo, éditalos en booking.model.ts.
   readonly BASE_STATUSES = BASE_STATUSES;
@@ -132,7 +132,7 @@ export class CalendarComponent implements OnInit {
     if (!ids.length && !states.length && !query) return this.bookings();
 
     return this.bookings().filter(b => {
-      const matchesId = !ids.length || ids.includes(b.booking_id);
+      const matchesId = !ids.length || ids.includes(b.apartment_id);
       const matchesState =
         !states.length || states.some(s => s.toUpperCase() === b.status?.toUpperCase());
       const matchesQuery =
@@ -277,7 +277,7 @@ export class CalendarComponent implements OnInit {
     }
   }
 
-  // Añade o quita un booking_id del filtro activo.
+  // Añade o quita un apartment_id del filtro activo.
   toggleBookingId(id: string): void {
     this.filterBookingIds.update(ids =>
       ids.includes(id) ? ids.filter(i => i !== id) : [...ids, id]

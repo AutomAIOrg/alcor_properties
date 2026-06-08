@@ -13,7 +13,7 @@ from domain.bookings.entity import Booking
 def make_booking(**overrides) -> Booking:
     """Devuelve una Booking válida con valores por defecto, aplicando los overrides dados."""
     defaults: dict = {
-        "booking_id": "TEST-001",
+        "apartment_id": "TEST-001",
         "guest_name": "Ana García",
         "check_in": date(2026, 6, 1),
         "check_out": date(2026, 6, 5),
@@ -39,9 +39,9 @@ def make_user(**overrides) -> User:
 def make_apartment(**overrides) -> Apartment:
     """Devuelve un Apartment válido con valores por defecto, aplicando los overrides dados."""
     defaults: dict = {
-        "booking_id": "R180",
+        "apartment_id": "R180",
         "community": "Alta Entinas",
-        "booking_name": "Apartamento familiar",
+        "apartment_description": "Apartamento familiar",
         "address": "Calle Glaucio 15",
         "rooms": 2,
         "bathrooms": 2,

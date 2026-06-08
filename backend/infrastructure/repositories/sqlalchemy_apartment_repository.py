@@ -21,8 +21,8 @@ class SQLAlchemyApartmentRepository(IApartmentRepository):
     def __init__(self, db: Session) -> None:
         self._db = db
 
-    def get_by_booking_id(self, booking_id: str) -> Apartment | None:
-        stmt = select(ApartmentORM).where(ApartmentORM.booking_id == booking_id)
+    def get_by_apartment_id(self, apartment_id: str) -> Apartment | None:
+        stmt = select(ApartmentORM).where(ApartmentORM.apartment_id == apartment_id)
 
         row = self._db.execute(stmt).scalar_one_or_none()
 
@@ -38,7 +38,7 @@ class SQLAlchemyApartmentRepository(IApartmentRepository):
         stmt = self._apply_number_filters(stmt, filters)
         stmt = self._apply_availability_filter(stmt, filters)
 
-        stmt = stmt.order_by(ApartmentORM.booking_id.asc())
+        stmt = stmt.order_by(ApartmentORM.apartment_id.asc())
 
         rows = self._db.execute(stmt).scalars().all()
 
@@ -58,9 +58,9 @@ class SQLAlchemyApartmentRepository(IApartmentRepository):
 
             stmt = stmt.where(
                 or_(
-                    func.lower(ApartmentORM.booking_id).like(q),
+                    func.lower(ApartmentORM.apartment_id).like(q),
                     func.lower(ApartmentORM.community).like(q),
-                    func.lower(ApartmentORM.booking_name).like(q),
+                    func.lower(ApartmentORM.apartment_description).like(q),
                     func.lower(ApartmentORM.address).like(q),
                     func.lower(ApartmentORM.parking).like(q),
                     func.lower(ApartmentORM.owner_name).like(q),
@@ -69,9 +69,9 @@ class SQLAlchemyApartmentRepository(IApartmentRepository):
                 )
             )
 
-        if filters.booking_id:
+        if filters.apartment_id:
             stmt = stmt.where(
-                func.lower(ApartmentORM.booking_id).like(f"%{filters.booking_id.strip().lower()}%")
+                func.lower(ApartmentORM.apartment_id).like(f"%{filters.apartment_id.strip().lower()}%")
             )
 
         if filters.community:
@@ -79,10 +79,10 @@ class SQLAlchemyApartmentRepository(IApartmentRepository):
                 func.lower(ApartmentORM.community).like(f"%{filters.community.strip().lower()}%")
             )
 
-        if filters.booking_name:
+        if filters.apartment_description:
             stmt = stmt.where(
-                func.lower(ApartmentORM.booking_name).like(
-                    f"%{filters.booking_name.strip().lower()}%"
+                func.lower(ApartmentORM.apartment_description).like(
+                    f"%{filters.apartment_description.strip().lower()}%"
                 )
             )
 
@@ -147,7 +147,7 @@ class SQLAlchemyApartmentRepository(IApartmentRepository):
             return stmt
 
         overlapping_booking_exists = exists().where(
-            BookingORM.booking_id == ApartmentORM.booking_id,
+            BookingORM.apartment_id == ApartmentORM.apartment_id,
             BookingORM.check_in < filters.available_to,
             BookingORM.check_out > filters.available_from,
             or_(
@@ -164,9 +164,9 @@ class SQLAlchemyApartmentRepository(IApartmentRepository):
 
     def _to_domain(self, row: ApartmentORM) -> Apartment:
         return Apartment(
-            booking_id=row.booking_id,
+            apartment_id=row.apartment_id,
             community=row.community,
-            booking_name=row.booking_name,
+            apartment_description=row.apartment_description,
             address=row.address,
             rooms=row.rooms,
             bathrooms=row.bathrooms,
