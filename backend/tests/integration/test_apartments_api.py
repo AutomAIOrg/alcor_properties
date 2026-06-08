@@ -5,15 +5,11 @@ FastAPI TestClient con use cases inyectados como MagicMock.
 Sin base de datos real: la dependencia get_apartment_use_cases se sobreescribe.
 """
 
-from sys import exc_info
 
-from sys import exc_info
 
 import pytest
-
 from pydantic import ValidationError
 
-from backend.tests.conftest import apartment_api_client
 from tests.helpers import make_apartment
 
 pytestmark = pytest.mark.integration
@@ -25,18 +21,18 @@ pytestmark = pytest.mark.integration
 
 
 class TestSearchApartments:
-    def test_returns_200_with_empty_list(self, apartment_api_client, mock_apartment_use_cases):
-        mock_apartment_use_cases.search_apartments.execute.return_value = []
+    def test_returns_200_with_empty_list(self, apartment_api_client, mock_search_apartments_query):
+        mock_search_apartments_query.execute.return_value = []
 
         response = apartment_api_client.get("/api/v1/apartments/search")
 
         assert response.status_code == 200
         assert response.json() == []
 
-    def test_returns_200_with_correct_schema(self, apartment_api_client, mock_apartment_use_cases):
-        mock_apartment_use_cases.search_apartments.execute.return_value = [
+    def test_returns_200_with_correct_schema(self, apartment_api_client, mock_search_apartments_query):
+        mock_search_apartments_query.execute.return_value = [
             make_apartment(
-                booking_id="R180",
+                apartment_id="R180",
                 community="Alta Entinas",
                 rooms=2,
                 bathrooms=2,
@@ -50,45 +46,45 @@ class TestSearchApartments:
         assert response.status_code == 200
         data = response.json()
         assert len(data) == 1
-        assert data[0]["booking_id"] == "R180"
+        assert data[0]["apartment_id"] == "R180"
         assert data[0]["community"] == "Alta Entinas"
         assert data[0]["rooms"] == 2
         assert data[0]["parking"] == "63"
 
-    def test_q_param_is_forwarded_to_use_case(self, apartment_api_client, mock_apartment_use_cases):
-        mock_apartment_use_cases.search_apartments.execute.return_value = []
+    def test_q_param_is_forwarded_to_use_case(self, apartment_api_client, mock_search_apartments_query):
+        mock_search_apartments_query.execute.return_value = []
 
         apartment_api_client.get("/api/v1/apartments/search?q=entinas")
 
-        filters = mock_apartment_use_cases.search_apartments.execute.call_args[0][0]
+        filters = mock_search_apartments_query.execute.call_args[0][0]
         assert filters.q == "entinas"
 
     def test_numeric_filters_are_forwarded_to_use_case(
-        self, apartment_api_client, mock_apartment_use_cases
+        self, apartment_api_client, mock_search_apartments_query
     ):
-        mock_apartment_use_cases.search_apartments.execute.return_value = []
+        mock_search_apartments_query.execute.return_value = []
 
         apartment_api_client.get(
             "/api/v1/apartments/search?min_rooms=2&max_rooms=4&min_occupants=4"
         )
 
-        filters = mock_apartment_use_cases.search_apartments.execute.call_args[0][0]
+        filters = mock_search_apartments_query.execute.call_args[0][0]
         assert filters.min_rooms == 2
         assert filters.max_rooms == 4
         assert filters.min_occupants == 4
 
     def test_date_filters_are_forwarded_to_use_case(
-        self, apartment_api_client, mock_apartment_use_cases
+        self, apartment_api_client, mock_search_apartments_query
     ):
         from datetime import date
 
-        mock_apartment_use_cases.search_apartments.execute.return_value = []
+        mock_search_apartments_query.execute.return_value = []
 
         apartment_api_client.get(
             "/api/v1/apartments/search?available_from=2026-06-01&available_to=2026-06-30"
         )
 
-        filters = mock_apartment_use_cases.search_apartments.execute.call_args[0][0]
+        filters = mock_search_apartments_query.execute.call_args[0][0]
         assert filters.available_from == date(2026, 6, 1)
         assert filters.available_to == date(2026, 6, 30)
 
@@ -114,14 +110,14 @@ class TestSearchApartments:
 
 
 # ---------------------------------------------------------------------------
-# GET /api/v1/apartments/{booking_id}
+# GET /api/v1/apartments/{apartment_id}
 # ---------------------------------------------------------------------------
 
 
-class TestGetApartmentByBookingId:
-    def test_returns_200_with_correct_schema(self, apartment_api_client, mock_apartment_use_cases):
-        mock_apartment_use_cases.get_apartment_by_booking_id.execute.return_value = make_apartment(
-            booking_id="R180",
+class TestGetApartmentByApartmentId:
+    def test_returns_200_with_correct_schema(self, apartment_api_client, mock_get_apartment_by_id_query):
+        mock_get_apartment_by_id_query.execute.return_value = make_apartment(
+            apartment_id="R180",
             community="Alta Entinas",
             address="Calle Glaucio 15",
         )
@@ -130,14 +126,14 @@ class TestGetApartmentByBookingId:
 
         assert response.status_code == 200
         data = response.json()
-        assert data["booking_id"] == "R180"
+        assert data["apartment_id"] == "R180"
         assert data["community"] == "Alta Entinas"
         assert data["address"] == "Calle Glaucio 15"
 
     def test_returns_404_when_apartment_not_found(
-        self, apartment_api_client, mock_apartment_use_cases
+        self, apartment_api_client, mock_get_apartment_by_id_query
     ):
-        mock_apartment_use_cases.get_apartment_by_booking_id.execute.return_value = None
+        mock_get_apartment_by_id_query.execute.return_value = None
 
         response = apartment_api_client.get("/api/v1/apartments/UNKNOWN")
 
@@ -145,30 +141,35 @@ class TestGetApartmentByBookingId:
         assert "no encontrado" in response.json()["detail"]
 
     def test_returns_400_when_use_case_raises_value_error(
-        self, apartment_api_client, mock_apartment_use_cases
+        self, apartment_api_client, mock_get_apartment_by_id_query
     ):
-        mock_apartment_use_cases.get_apartment_by_booking_id.execute.side_effect = ValueError(
-            "El booking_id no puede estar vacío"
+        mock_get_apartment_by_id_query.execute.side_effect = ValueError(
+            "El apartment_id no puede estar vacío"
         )
 
         response = apartment_api_client.get("/api/v1/apartments/%20")  # espacio URL-encoded
 
         assert response.status_code == 400
-        assert "booking_id" in response.json()["detail"]
+        assert "apartment_id" in response.json()["detail"]
 
-    def test_returns_403_without_admin_role(self, apartment_api_client, monkeypatch):
-        from fastapi import HTTPException
+    def test_returns_403_when_user_is_not_admin(self, apartment_api_client):
+        from datetime import UTC, datetime, timedelta
 
-        monkeypatch.setattr(
-            "api.v1.apartments.router.require_admin",
-            lambda: (_ for _ in ()).throw(HTTPException(status_code=403)),
+        from api.dependencies import get_current_user
+        from domain.auth.token_payload_entity import TokenPayload
+        from domain.auth.user_entity import Role
+        from main import app
+
+        now = datetime.now(UTC)
+        cleaner_payload = TokenPayload(
+            subject="2",
+            expires_at=now + timedelta(minutes=30),
+            issued_at=now,
+            username="cleaner",
+            role=Role.LIMPIADORA,
         )
+        app.dependency_overrides[get_current_user] = lambda: cleaner_payload
 
-        # La forma más limpia es usar un cliente sin override de auth
-        # y verificar que el router protege el endpoint con require_admin.
-        # Esto ya lo cubre test_auth_dependencies.py; aquí solo verificamos
-        # que el router declara la dependencia (comprobación estructural).
-        from api.v1.apartments.router import router
+        response = apartment_api_client.get("/api/v1/apartments/search")
 
-        dep_names = [d.dependency.__name__ for d in router.dependencies]
-        assert "require_admin" in dep_names
+        assert response.status_code == 403
