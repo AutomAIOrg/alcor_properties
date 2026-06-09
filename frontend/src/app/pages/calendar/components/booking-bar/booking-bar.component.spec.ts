@@ -9,7 +9,7 @@ import { Booking } from '../../../../models/booking.model';
 function makeBooking(overrides: Partial<Booking> = {}): Booking {
   return {
     record_id: 1,
-    booking_id: 'R180',
+    apartment_id: 'R180',
     guest_name: 'Ana García',
     check_in: '2025-06-01',
     check_out: '2025-06-07',
@@ -165,8 +165,8 @@ describe('BookingBarComponent', () => {
   // ── Atributo title ───────────────────────────────────────────────────────────
 
   describe('title', () => {
-    it('muestra "booking_id — guest_name"', () => {
-      const booking = makeBooking({ booking_id: 'R180', guest_name: 'Juan García' });
+    it('muestra "apartment_id — guest_name"', () => {
+      const booking = makeBooking({ apartment_id: 'R180', guest_name: 'Juan García' });
       fixture.componentRef.setInput('bar', makeBar({ booking }));
       fixture.detectChanges();
       const el: HTMLElement = fixture.nativeElement.querySelector('.booking-bar');

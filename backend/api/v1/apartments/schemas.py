@@ -10,9 +10,9 @@ class ApartmentResponse(BaseModel):
     Respuesta HTTP con la información de un apartamento
     """
 
-    booking_id: str = Field(description="Identificador único del apartamento")
+    apartment_id: str = Field(description="Identificador único del apartamento")
     community: str | None = Field(default=None, description="Comunidad del apartamento")
-    booking_name: str | None = Field(
+    apartment_description: str | None = Field(
         default=None, description="Descripción del apartamento en la plataforma de reservas"
     )
     address: str | None = Field(default=None, description="Dirección del apartamento")

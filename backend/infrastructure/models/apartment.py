@@ -14,11 +14,13 @@ class ApartmentORM(Base):
     __tablename__ = "Apartamentos"
 
     # Clave primaria
-    booking_id: Mapped[str] = mapped_column("Booking ID", String(255), primary_key=True)
+    apartment_id: Mapped[str] = mapped_column("Booking ID", String(255), primary_key=True)
 
     # Características del apartamento
     community: Mapped[str | None] = mapped_column("Comunidad", String(25), nullable=True)
-    booking_name: Mapped[str | None] = mapped_column("Booking Name", String(255), nullable=True)
+    apartment_description: Mapped[str | None] = mapped_column(
+        "Booking Name", String(255), nullable=True
+    )
     address: Mapped[str | None] = mapped_column("Direccion", String(255), nullable=True)
     rooms: Mapped[int] = mapped_column("Nº Habitaciones", Integer, nullable=False, default=0)
     bathrooms: Mapped[int] = mapped_column("Nº Banos", Integer, nullable=False, default=0)

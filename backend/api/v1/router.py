@@ -11,6 +11,6 @@ from config import settings
 
 router = APIRouter(prefix=settings.API_PREFIX)
 
-router.include_router(bookings_router)
 router.include_router(auth_router)
+router.include_router(bookings_router)
 router.include_router(apartments_router)

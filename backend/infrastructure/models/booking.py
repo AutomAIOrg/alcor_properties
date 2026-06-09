@@ -20,7 +20,7 @@ class BookingORM(Base):
     record_id: Mapped[int] = mapped_column("ID", Integer, primary_key=True, autoincrement=True)
 
     # Identificación de la reserva
-    booking_id: Mapped[str] = mapped_column("Booking ID", String(255), nullable=False)
+    apartment_id: Mapped[str] = mapped_column("Booking ID", String(255), nullable=False)
     booking_number: Mapped[str | None] = mapped_column("Nº Booking", String(255), nullable=True)
 
     # Huésped

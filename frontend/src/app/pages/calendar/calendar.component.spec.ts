@@ -71,7 +71,7 @@ class StubBookingCreateModalComponent {
 function makeBooking(overrides: Partial<Booking> = {}): Booking {
   return {
     record_id: 1,
-    booking_id: 'R180',
+    apartment_id: 'R180',
     guest_name: 'Ana García',
     check_in: '2025-06-01',
     check_out: '2025-06-07',
@@ -258,9 +258,9 @@ describe('CalendarComponent', () => {
   // ── D: Filtros ───────────────────────────────────────────────────────────────
 
   describe('D — filtros', () => {
-    const b1 = makeBooking({ record_id: 1, booking_id: 'R180', status: 'Confirmed' });
-    const b2 = makeBooking({ record_id: 2, booking_id: 'R101', status: 'Pending' });
-    const b3 = makeBooking({ record_id: 3, booking_id: 'R180', status: 'Cancelled' });
+    const b1 = makeBooking({ record_id: 1, apartment_id: 'R180', status: 'Confirmed' });
+    const b2 = makeBooking({ record_id: 2, apartment_id: 'R101', status: 'Pending' });
+    const b3 = makeBooking({ record_id: 3, apartment_id: 'R180', status: 'Cancelled' });
 
     beforeEach(() => {
       component.bookings.set([b1, b2, b3]);
@@ -315,11 +315,11 @@ describe('CalendarComponent', () => {
       expect(component.filterBookingStates()).toEqual([]);
     });
 
-    it('filtrado por ID: solo pasan las reservas con ese booking_id', () => {
+    it('filtrado por ID: solo pasan las reservas con ese apartment_id', () => {
       component.toggleBookingId('R101');
       const allBars = component.weeks().flatMap(w => w.bars);
       expect(allBars.length).toBeGreaterThan(0);
-      allBars.forEach(bar => expect(bar.booking.booking_id).toBe('R101'));
+      allBars.forEach(bar => expect(bar.booking.apartment_id).toBe('R101'));
     });
 
     it('filtrado por estado es case-insensitive', () => {
@@ -335,7 +335,7 @@ describe('CalendarComponent', () => {
       const allBars = component.weeks().flatMap(w => w.bars);
       expect(allBars.length).toBeGreaterThan(0);
       allBars.forEach(bar => {
-        expect(bar.booking.booking_id).toBe('R180');
+        expect(bar.booking.apartment_id).toBe('R180');
         expect(bar.booking.status).toBe('Cancelled');
       });
     });
@@ -576,13 +576,13 @@ describe('CalendarComponent', () => {
     it('respeta los filtros activos', () => {
       const b1 = makeBooking({
         record_id: 1,
-        booking_id: 'R180',
+        apartment_id: 'R180',
         check_in: '2025-06-01',
         check_out: '2025-06-07',
       });
       const b2 = makeBooking({
         record_id: 2,
-        booking_id: 'R101',
+        apartment_id: 'R101',
         check_in: '2025-06-01',
         check_out: '2025-06-07',
       });
@@ -590,7 +590,7 @@ describe('CalendarComponent', () => {
       component.currentDate.set(new Date(2025, 5, 3));
       component.toggleBookingId('R180');
       expect(component.currentDayBookings().length).toBe(1);
-      expect(component.currentDayBookings()[0].booking_id).toBe('R180');
+      expect(component.currentDayBookings()[0].apartment_id).toBe('R180');
     });
   });
 });

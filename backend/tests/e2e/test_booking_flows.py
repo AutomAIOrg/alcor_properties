@@ -13,7 +13,7 @@ pytestmark = pytest.mark.e2e
 
 # Payload reutilizable para crear una reserva válida
 _BASE_PAYLOAD = {
-    "booking_id": "E2E-001",
+    "apartment_id": "E2E-001",
     "guest_name": "Pedro E2E",
     "check_in": "2026-08-01",
     "check_out": "2026-08-05",
@@ -73,7 +73,7 @@ class TestActiveBookingsFlow:
     def test_booking_covering_today_appears_in_active_list(self, e2e_client, admin_auth_headers):
         today = date.today()
         payload = {
-            "booking_id": "ACTIVE-E2E",
+            "apartment_id": "ACTIVE-E2E",
             "guest_name": "Huésped Activo",
             "check_in": (today - timedelta(days=1)).isoformat(),
             "check_out": (today + timedelta(days=2)).isoformat(),
@@ -99,7 +99,7 @@ class TestActiveBookingsFlow:
 
 class TestCalendarFlow:
     def test_confirmed_booking_appears_in_calendar_events(self, e2e_client, admin_auth_headers):
-        payload = {**_BASE_PAYLOAD, "booking_id": "CAL-E2E", "status": "Confirmed"}
+        payload = {**_BASE_PAYLOAD, "apartment_id": "CAL-E2E", "status": "Confirmed"}
         e2e_client.post("/api/v1/bookings/", json=payload, headers=admin_auth_headers)
 
         r = e2e_client.get(
@@ -108,15 +108,15 @@ class TestCalendarFlow:
         )
 
         assert r.status_code == 200
-        booking_ids = [ev["extendedProps"]["booking_id"] for ev in r.json()]
-        assert "CAL-E2E" in booking_ids
+        apartment_ids = [ev["extendedProps"]["apartment_id"] for ev in r.json()]
+        assert "CAL-E2E" in apartment_ids
 
     def test_recently_cancelled_booking_excluded_from_calendar(
         self, e2e_client, admin_auth_headers
     ):
         today = date.today()
         cancelled_payload = {
-            "booking_id": "CANCELLED-E2E",
+            "apartment_id": "CANCELLED-E2E",
             "guest_name": "Cancelado",
             "check_in": (today + timedelta(days=1)).isoformat(),
             "check_out": (today + timedelta(days=4)).isoformat(),
@@ -135,8 +135,8 @@ class TestCalendarFlow:
         )
 
         assert r.status_code == 200
-        booking_ids = [ev["extendedProps"]["booking_id"] for ev in r.json()]
-        assert "CANCELLED-E2E" not in booking_ids
+        apartment_ids = [ev["extendedProps"]["apartment_id"] for ev in r.json()]
+        assert "CANCELLED-E2E" not in apartment_ids
 
 
 # ---------------------------------------------------------------------------
@@ -145,7 +145,7 @@ class TestCalendarFlow:
 
 
 class TestElectricAllowanceFlow:
-    def test_electric_allowance_calculated_when_booking_id_in_electric_setting(
+    def test_electric_allowance_calculated_when_apartment_id_in_electric_setting(
         self, e2e_client, admin_auth_headers, monkeypatch
     ):
         from config import settings
@@ -153,7 +153,7 @@ class TestElectricAllowanceFlow:
         monkeypatch.setattr(settings, "ELECTRIC", "ELEC-E2E-001")
 
         payload = {
-            "booking_id": "ELEC-E2E-001",
+            "apartment_id": "ELEC-E2E-001",
             "guest_name": "Huésped Eléctrico",
             "check_in": "2026-09-01",
             "check_out": "2026-09-04",

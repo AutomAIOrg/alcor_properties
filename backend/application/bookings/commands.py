@@ -11,7 +11,7 @@ from domain.bookings.repository import IBookingRepository
 
 @dataclass
 class BookingUpdateData:
-    booking_id: str | None = None
+    apartment_id: str | None = None
     guest_name: str | None = None
     check_in: date | None = None
     check_out: date | None = None
@@ -29,7 +29,7 @@ class BookingUpdateData:
 
 def _apply_electric_allowance(booking: Booking, electric_ids: set[str]) -> Booking:
     """Establece electric_allowance en una reserva según los IDs configurados."""
-    if booking.booking_id.strip() in electric_ids:
+    if booking.apartment_id.strip() in electric_ids:
         booking.electric_allowance = booking.nights * 4.0
     else:
         booking.electric_allowance = None
@@ -42,10 +42,10 @@ class CreateBookingUseCase:
     def __init__(
         self,
         repository: IBookingRepository,
-        electric_booking_ids: set[str],
+        electric_apartment_ids: set[str],
     ) -> None:
         self._repo = repository
-        self._electric_ids = electric_booking_ids
+        self._electric_ids = electric_apartment_ids
 
     def execute(self, booking: Booking) -> Booking:
         created = self._repo.create(booking)
@@ -58,10 +58,10 @@ class UpdateBookingUseCase:
     def __init__(
         self,
         repository: IBookingRepository,
-        electric_booking_ids: set[str],
+        electric_apartment_ids: set[str],
     ) -> None:
         self._repo = repository
-        self._electric_ids = electric_booking_ids
+        self._electric_ids = electric_apartment_ids
 
     def execute(self, record_id: int, data: BookingUpdateData) -> Booking:
         existing = self._repo.get_by_id(record_id)  # lanza BookingNotFound si no existe

@@ -1,6 +1,6 @@
 export interface Booking {
   record_id: number; // ID único por reserva en DB
-  booking_id: string; // Identificador del apartamento (ej: R180) — NO único entre reservas
+  apartment_id: string; // Identificador del apartamento (ej: R180) — NO único entre reservas
   guest_name: string;
   check_in: string; // "YYYY-MM-DD"
   check_out: string; // "YYYY-MM-DD"

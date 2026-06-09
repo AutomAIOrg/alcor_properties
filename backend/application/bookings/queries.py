@@ -11,7 +11,7 @@ from domain.bookings.repository import IBookingRepository
 
 def _apply_electric_allowance(booking: Booking, electric_ids: set[str]) -> Booking:
     """Establece electric_allowance en una reserva según los IDs configurados."""
-    if booking.booking_id.strip() in electric_ids:
+    if booking.apartment_id.strip() in electric_ids:
         booking.electric_allowance = booking.nights * 4.0
     else:
         booking.electric_allowance = None
@@ -35,10 +35,10 @@ class ListBookingsQuery:
     def __init__(
         self,
         repository: IBookingRepository,
-        electric_booking_ids: set[str],
+        electric_apartment_ids: set[str],
     ) -> None:
         self._repo = repository
-        self._electric_ids = electric_booking_ids
+        self._electric_ids = electric_apartment_ids
 
     def execute(
         self,
@@ -64,10 +64,10 @@ class GetBookingByIdQuery:
     def __init__(
         self,
         repository: IBookingRepository,
-        electric_booking_ids: set[str],
+        electric_apartment_ids: set[str],
     ) -> None:
         self._repo = repository
-        self._electric_ids = electric_booking_ids
+        self._electric_ids = electric_apartment_ids
 
     def execute(self, record_id: int) -> Booking:
         booking = self._repo.get_by_id(record_id)  # lanza BookingNotFound si no existe
@@ -80,10 +80,10 @@ class GetActiveBookingsQuery:
     def __init__(
         self,
         repository: IBookingRepository,
-        electric_booking_ids: set[str],
+        electric_apartment_ids: set[str],
     ) -> None:
         self._repo = repository
-        self._electric_ids = electric_booking_ids
+        self._electric_ids = electric_apartment_ids
 
     def execute(self) -> list[Booking]:
         today = date.today()
@@ -98,10 +98,10 @@ class GetUpcomingCheckinsQuery:
     def __init__(
         self,
         repository: IBookingRepository,
-        electric_booking_ids: set[str],
+        electric_apartment_ids: set[str],
     ) -> None:
         self._repo = repository
-        self._electric_ids = electric_booking_ids
+        self._electric_ids = electric_apartment_ids
 
     def execute(self, days: int = 7) -> list[Booking]:
         today = date.today()
@@ -118,10 +118,10 @@ class GetUpcomingCheckoutsQuery:
     def __init__(
         self,
         repository: IBookingRepository,
-        electric_booking_ids: set[str],
+        electric_apartment_ids: set[str],
     ) -> None:
         self._repo = repository
-        self._electric_ids = electric_booking_ids
+        self._electric_ids = electric_apartment_ids
 
     def execute(self, days: int = 7) -> list[Booking]:
         today = date.today()
@@ -142,10 +142,10 @@ class GetCalendarEventsQuery:
     def __init__(
         self,
         repository: IBookingRepository,
-        electric_booking_ids: set[str],
+        electric_apartment_ids: set[str],
     ) -> None:
         self._repo = repository
-        self._electric_ids = electric_booking_ids
+        self._electric_ids = electric_apartment_ids
 
     def execute(
         self,
@@ -165,14 +165,14 @@ class GetCalendarEventsQuery:
             events.append(
                 {
                     "id": f"booking-{booking.record_id}",
-                    "title": f"{booking.booking_id} - {booking.guest_name}",
+                    "title": f"{booking.apartment_id} - {booking.guest_name}",
                     "start": booking.check_in.isoformat(),
                     "end": booking.check_out.isoformat(),
                     "allDay": True,
                     "classNames": ["reserva"] + (["cancelled"] if booking.is_cancelled() else []),
                     "extendedProps": {
                         "record_id": booking.record_id,
-                        "booking_id": booking.booking_id,
+                        "apartment_id": booking.apartment_id,
                         "booking_number": booking.booking_number,
                         "guest_name": booking.guest_name,
                         "check_in": booking.check_in.isoformat(),

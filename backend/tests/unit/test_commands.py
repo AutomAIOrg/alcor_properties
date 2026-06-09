@@ -26,9 +26,9 @@ pytestmark = pytest.mark.unit
 
 
 class TestCreateBookingUseCase:
-    def test_electric_allowance_applied_when_booking_id_matches(self, mock_repo):
+    def test_electric_allowance_applied_when_apartment_id_matches(self, mock_repo):
         booking = make_booking(
-            booking_id="ELEC-001",
+            apartment_id="ELEC-001",
             check_in=date(2026, 6, 1),
             check_out=date(2026, 6, 4),
         )
@@ -38,8 +38,8 @@ class TestCreateBookingUseCase:
 
         assert result.electric_allowance == booking.nights * 4.0
 
-    def test_electric_allowance_is_none_when_booking_id_not_in_electric_ids(self, mock_repo):
-        booking = make_booking(booking_id="NORMAL-001")
+    def test_electric_allowance_is_none_when_apartment_id_not_in_electric_ids(self, mock_repo):
+        booking = make_booking(apartment_id="NORMAL-001")
         mock_repo.create.return_value = booking
 
         result = CreateBookingUseCase(mock_repo, {"ELEC-001"}).execute(booking)

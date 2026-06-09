@@ -11,18 +11,10 @@
       <div class="field-row">
         <div class="field">
           <label>Referencia piso *</label>
-          <select
-            (change)="patchSelect('booking_id', $event)"
-            [disabled]="loadingAvailableApartments()"
-          >
-            <option value="" disabled [selected]="!draft().booking_id">
-              {{ apartmentPlaceholder() }}
-            </option>
-
-            @for (apt of apartmentOptions(); track apt) {
-              <option [value]="apt" [selected]="draft().booking_id === apt">
-                {{ apt }}
-              </option>
+          <select (change)="patchSelect('apartment_id', $event)">
+            <option value="" disabled [selected]="!draft().apartment_id">Selecciona un piso</option>
+            @for (apt of apartments(); track apt) {
+              <option [value]="apt" [selected]="draft().apartment_id === apt">{{ apt }}</option>
             }
           </select>
 

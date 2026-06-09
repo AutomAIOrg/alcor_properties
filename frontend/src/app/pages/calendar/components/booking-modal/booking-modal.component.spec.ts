@@ -10,7 +10,7 @@ import { Booking, BASE_STATUSES } from '../../../../models/booking.model';
 function makeBooking(overrides: Partial<Booking> = {}): Booking {
   return {
     record_id: 1,
-    booking_id: 'R180',
+    apartment_id: 'R180',
     guest_name: 'Ana García',
     check_in: '2025-06-01',
     check_out: '2025-06-07',

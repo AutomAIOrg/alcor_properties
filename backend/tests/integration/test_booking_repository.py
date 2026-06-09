@@ -26,7 +26,7 @@ pytestmark = pytest.mark.integration
 def _insert_orm(session, **overrides) -> BookingORM:
     """Inserta un BookingORM con valores por defecto aplicando los overrides dados."""
     defaults = {
-        "booking_id": "TEST-001",
+        "apartment_id": "TEST-001",
         "guest_name": "Ana García",
         "check_in": date(2026, 6, 1),
         "check_out": date(2026, 6, 5),
@@ -54,7 +54,7 @@ class TestGetById:
         result = SQLAlchemyBookingRepository(sqlite_session).get_by_id(orm.record_id)
 
         assert result.record_id == orm.record_id
-        assert result.booking_id == "TEST-001"
+        assert result.apartment_id == "TEST-001"
 
     def test_raises_booking_not_found_for_missing_id(self, sqlite_session):
         with pytest.raises(BookingNotFound):
@@ -76,8 +76,8 @@ class TestGetById:
 
 class TestList:
     def test_returns_all_bookings_without_filters(self, sqlite_session):
-        _insert_orm(sqlite_session, booking_id="B1")
-        _insert_orm(sqlite_session, booking_id="B2")
+        _insert_orm(sqlite_session, apartment_id="B1")
+        _insert_orm(sqlite_session, apartment_id="B2")
 
         results = SQLAlchemyBookingRepository(sqlite_session).list()
 
@@ -86,14 +86,14 @@ class TestList:
     def test_date_range_filter_returns_overlapping_bookings_only(self, sqlite_session):
         _insert_orm(
             sqlite_session,
-            booking_id="OVERLAPS",
+            apartment_id="OVERLAPS",
             check_in=date(2026, 5, 28),
             check_out=date(2026, 6, 3),
             nights=6,
         )
         _insert_orm(
             sqlite_session,
-            booking_id="OUTSIDE",
+            apartment_id="OUTSIDE",
             check_in=date(2026, 7, 1),
             check_out=date(2026, 7, 5),
             nights=4,
@@ -103,13 +103,13 @@ class TestList:
             start_date=date(2026, 6, 1), end_date=date(2026, 6, 30)
         )
 
-        booking_ids = [r.booking_id for r in results]
-        assert "OVERLAPS" in booking_ids
-        assert "OUTSIDE" not in booking_ids
+        apartment_ids = [r.apartment_id for r in results]
+        assert "OVERLAPS" in apartment_ids
+        assert "OUTSIDE" not in apartment_ids
 
     def test_limit_restricts_result_count(self, sqlite_session):
         for i in range(5):
-            _insert_orm(sqlite_session, booking_id=f"B{i}")
+            _insert_orm(sqlite_session, apartment_id=f"B{i}")
 
         results = SQLAlchemyBookingRepository(sqlite_session).list(limit=3)
 
@@ -127,7 +127,7 @@ class TestCreate:
         result = SQLAlchemyBookingRepository(sqlite_session).create(booking)
 
         assert result.record_id is not None
-        assert result.booking_id == "TEST-001"
+        assert result.apartment_id == "TEST-001"
 
 
 # ---------------------------------------------------------------------------

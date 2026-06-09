@@ -23,7 +23,7 @@ class StubBookingBarComponent {
 function makeBooking(overrides: Partial<Booking> = {}): Booking {
   return {
     record_id: 1,
-    booking_id: 'R180',
+    apartment_id: 'R180',
     guest_name: 'Ana García',
     check_in: '2025-06-02',
     check_out: '2025-06-06',

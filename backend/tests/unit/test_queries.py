@@ -155,7 +155,7 @@ class TestGetCalendarEventsQuery:
     def test_event_has_required_fields(self, mock_repo):
         booking = make_booking(
             record_id=10,
-            booking_id="CAL-001",
+            apartment_id="CAL-001",
             guest_name="Test User",
             check_in=date(2026, 6, 1),
             check_out=date(2026, 6, 5),

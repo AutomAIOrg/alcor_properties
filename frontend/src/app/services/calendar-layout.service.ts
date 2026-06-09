@@ -37,7 +37,7 @@ export class CalendarLayoutService {
   /**
    * Asigna a cada reserva (record_id) un índice de carril fijo
    * usando un algoritmo greedy: busca el primer carril libre.
-   * Usa record_id (único en BD) como clave, NO booking_id (identificador de piso).
+   * Usa record_id (único en BD) como clave, NO apartment_id (identificador de piso).
    */
   buildLaneAssignment(bookings: Booking[]): Map<number, number> {
     const sorted = [...bookings].sort((a, b) => a.check_in.localeCompare(b.check_in));
@@ -162,7 +162,7 @@ export class CalendarLayoutService {
 
     if (widthPct <= 0) return null;
 
-    const background = this.buildBackground(b.booking_id, isCheckin, isCheckout, widthPct);
+    const background = this.buildBackground(b.apartment_id, isCheckin, isCheckout, widthPct);
 
     return { booking: b, laneIndex, leftPct, widthPct, isCheckin, isCheckout, background };
   }
