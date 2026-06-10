@@ -77,6 +77,10 @@ class TestListBookings:
             end_date=date(2026, 6, 30),
             days=None,
             limit=10,
+            apartment_id=None,
+            status=None,
+            guest_name=None,
+            booking_number=None,
         )
 
 

@@ -33,7 +33,14 @@ class TestListBookingsQuery:
 
         ListBookingsQuery(mock_repo, set()).execute(start_date=start, end_date=end)
 
-        mock_repo.list.assert_called_once_with(start_date=start, end_date=end)
+        mock_repo.list.assert_called_once_with(
+            start_date=start,
+            end_date=end,
+            apartment_id=None,
+            status=None,
+            guest_name=None,
+            booking_number=None,
+        )
 
     def test_with_days_calculates_end_date_from_start(self, mock_repo):
         mock_repo.list.return_value = []
@@ -42,7 +49,12 @@ class TestListBookingsQuery:
         ListBookingsQuery(mock_repo, set()).execute(start_date=start, days=10)
 
         mock_repo.list.assert_called_once_with(
-            start_date=start, end_date=start + timedelta(days=10)
+            start_date=start,
+            end_date=start + timedelta(days=10),
+            apartment_id=None,
+            status=None,
+            guest_name=None,
+            booking_number=None,
         )
 
     def test_without_filters_passes_limit_to_repo(self, mock_repo):
@@ -50,7 +62,13 @@ class TestListBookingsQuery:
 
         ListBookingsQuery(mock_repo, set()).execute(limit=5)
 
-        mock_repo.list.assert_called_once_with(limit=5)
+        mock_repo.list.assert_called_once_with(
+            limit=5,
+            apartment_id=None,
+            status=None,
+            guest_name=None,
+            booking_number=None,
+        )
 
 
 # ---------------------------------------------------------------------------
