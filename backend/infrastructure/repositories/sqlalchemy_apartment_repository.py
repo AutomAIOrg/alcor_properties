@@ -94,9 +94,16 @@ class SQLAlchemyApartmentRepository(IApartmentRepository):
             )
 
         if filters.parking:
-            stmt = stmt.where(
-                func.lower(ApartmentORM.parking).like(f"%{filters.parking.strip().lower()}%")
-            )
+            parking_filter = filters.parking.strip().lower()
+
+            if parking_filter == "yes":
+                stmt = stmt.where(func.lower(ApartmentORM.parking) != "n/a")
+            elif parking_filter == "no":
+                stmt = stmt.where(func.lower(ApartmentORM.parking) == "n/a")
+            else:
+                stmt = stmt.where(
+                    func.lower(ApartmentORM.parking).like(f"%{filters.parking.strip().lower()}%")
+                )
 
         if filters.owner_name:
             stmt = stmt.where(

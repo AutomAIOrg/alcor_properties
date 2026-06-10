@@ -4,7 +4,7 @@ Implementación de IBookingRepository usando SQLAlchemy.
 
 from datetime import date
 
-from sqlalchemy import and_
+from sqlalchemy import and_, func
 from sqlalchemy.orm import Session
 
 from domain.bookings.entity import Booking
@@ -37,6 +37,10 @@ class SQLAlchemyBookingRepository(IBookingRepository):
         start_date: date | None = None,
         end_date: date | None = None,
         limit: int | None = None,
+        apartment_id: str | None = None,
+        status: str | None = None,
+        guest_name: str | None = None,
+        booking_number: str | None = None,
     ) -> list[Booking]:
         query = self._db.query(BookingORM)
 
@@ -49,6 +53,22 @@ class SQLAlchemyBookingRepository(IBookingRepository):
                     BookingORM.check_out >= start_date,
                 )
             ).order_by(BookingORM.check_in)
+
+        if apartment_id is not None:
+            query = query.filter(BookingORM.apartment_id == apartment_id)
+
+        if status is not None:
+            query = query.filter(func.lower(BookingORM.status) == status.lower())
+
+        if guest_name is not None:
+            query = query.filter(
+                func.lower(BookingORM.guest_name).like(f"%{guest_name.strip().lower()}%")
+            )
+
+        if booking_number is not None:
+            query = query.filter(
+                func.lower(BookingORM.booking_number).like(f"%{booking_number.strip().lower()}%")
+            )
 
         if limit is not None:
             query = query.limit(limit)
