@@ -10,7 +10,7 @@ import { Booking } from '../../models/booking.model';
 import { CalendarWeek } from '../../models/calendar.model';
 import { CalendarHeaderComponent } from './components/calendar-header/calendar-header.component';
 import { WeekRowComponent } from './components/week-row/week-row.component';
-import { BookingModalComponent } from './components/booking-modal/booking-modal.component';
+import { BookingModalComponent } from '../../shared/components/booking-modal/booking-modal.component';
 import { BookingCreateModalComponent } from './components/booking-create-modal/booking-create-modal.component';
 import { BookingColorPipe } from '../../pipes/booking-color.pipe';
 
@@ -45,23 +45,13 @@ class StubWeekRowComponent {
 }
 
 @Component({
-  selector: 'app-booking-modal',
-  standalone: true,
-  template: '',
-})
-class StubBookingModalComponent {
-  @Input() booking!: Booking;
-  @Output() close = new EventEmitter<void>();
-  @Output() saved = new EventEmitter<Booking>();
-}
-
-@Component({
   selector: 'app-booking-create-modal',
   standalone: true,
   template: '',
 })
 class StubBookingCreateModalComponent {
   @Input() apartments!: string[];
+  @Input() bookings!: Booking[];
   @Output() close = new EventEmitter<void>();
   @Output() created = new EventEmitter<Booking>();
 }
@@ -125,7 +115,6 @@ describe('CalendarComponent', () => {
           imports: [
             CalendarHeaderComponent,
             WeekRowComponent,
-            BookingModalComponent,
             BookingCreateModalComponent,
             BookingColorPipe,
           ],
@@ -134,7 +123,6 @@ describe('CalendarComponent', () => {
           imports: [
             StubCalendarHeaderComponent,
             StubWeekRowComponent,
-            StubBookingModalComponent,
             StubBookingCreateModalComponent,
           ],
         },
@@ -406,19 +394,19 @@ describe('CalendarComponent', () => {
       expect(component.showCreateModal()).toBe(false);
     });
 
-    it('el output close del stub booking-modal cierra selectedBooking', () => {
+    it('el output close de booking-modal cierra selectedBooking', () => {
       component.openBooking(makeBooking());
       fixture.detectChanges();
 
       const modalEl = fixture.debugElement.query(
         el => el.nativeElement.tagName === 'APP-BOOKING-MODAL'
       );
-      (modalEl?.componentInstance as StubBookingModalComponent).close.emit();
+      (modalEl?.componentInstance as BookingModalComponent).close.emit();
 
       expect(component.selectedBooking()).toBeNull();
     });
 
-    it('el output saved del stub booking-modal llama a onBookingSaved', () => {
+    it('el output saved de booking-modal llama a onBookingSaved', () => {
       const b = makeBooking({ record_id: 1, guest_name: 'Original' });
       component.bookings.set([b]);
       component.openBooking(b);
@@ -427,7 +415,7 @@ describe('CalendarComponent', () => {
       const modalEl = fixture.debugElement.query(
         el => el.nativeElement.tagName === 'APP-BOOKING-MODAL'
       );
-      (modalEl?.componentInstance as StubBookingModalComponent).saved.emit(
+      (modalEl?.componentInstance as BookingModalComponent).saved.emit(
         makeBooking({ record_id: 1, guest_name: 'Actualizado por output' })
       );
 

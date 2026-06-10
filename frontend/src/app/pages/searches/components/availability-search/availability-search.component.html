@@ -1,0 +1,152 @@
+<section class="tab-content">
+  <div class="filter-card">
+    <div class="filter-grid">
+      <app-date-range-picker
+        #availDateRange
+        [from]="avail.from()"
+        [to]="avail.to()"
+        [required]="true"
+        (rangeChange)="setAvailabilityRange($event)"
+        (rangeComplete)="completeAvailabilityRange($event)"
+      />
+      <div class="field">
+        <label>Búsqueda libre</label>
+        <input
+          type="text"
+          placeholder="ID, nombre, dirección…"
+          [value]="avail.q()"
+          (input)="avail.q.set(inputValue($event))"
+        />
+      </div>
+      <div class="field">
+        <label>Comunidad</label>
+        <input
+          type="text"
+          placeholder="Comunidad"
+          [value]="avail.community()"
+          (input)="avail.community.set(inputValue($event))"
+        />
+      </div>
+    </div>
+
+    <details class="advanced-toggle">
+      <summary>Filtros avanzados</summary>
+      <div class="filter-grid filter-grid--advanced">
+        <div class="field">
+          <label>Hab. mín.</label>
+          <input
+            type="number"
+            min="0"
+            [value]="avail.minRooms() ?? ''"
+            (input)="avail.minRooms.set(inputNumberOrNull($event))"
+          />
+        </div>
+        <div class="field">
+          <label>Baños mín.</label>
+          <input
+            type="number"
+            min="0"
+            [value]="avail.minBathrooms() ?? ''"
+            (input)="avail.minBathrooms.set(inputNumberOrNull($event))"
+          />
+        </div>
+        <div class="field">
+          <label>Ocup. mín.</label>
+          <input
+            type="number"
+            min="0"
+            [value]="avail.minOccupants() ?? ''"
+            (input)="avail.minOccupants.set(inputNumberOrNull($event))"
+          />
+        </div>
+        <div class="field">
+          <label>Parking</label>
+          <select [value]="avail.parking()" (change)="updateAvailabilityParking($event)">
+            <option value="">Todos</option>
+            <option value="yes">Sí</option>
+            <option value="no">No</option>
+          </select>
+        </div>
+      </div>
+    </details>
+
+    <div class="filter-actions">
+      <button
+        class="btn-secondary"
+        (click)="clearAvailability(); availDateRange.closeCalendar()"
+      >
+        Limpiar
+      </button>
+      <button
+        class="btn-primary"
+        [disabled]="!avail.from() || !avail.to() || avail.loading()"
+        (click)="searchAvailability()"
+      >
+        @if (avail.loading()) {
+          <span class="spinner"></span>
+        }
+        Buscar pisos disponibles
+      </button>
+    </div>
+  </div>
+
+  @if (avail.error()) {
+    <div class="error-banner">{{ avail.error() }}</div>
+  }
+
+  @if (avail.results().length > 0) {
+    <div class="results-header">
+      <span class="results-count">
+        {{ avail.results().length }} piso{{ avail.results().length !== 1 ? 's' : '' }}
+        disponible{{ avail.results().length !== 1 ? 's' : '' }}
+      </span>
+      <span class="results-hint">Haz clic en un piso para ver su detalle</span>
+    </div>
+    <div class="table-wrapper">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>ID Piso</th>
+            <th>Comunidad</th>
+            <th>Dirección</th>
+            <th class="text-center">Hab.</th>
+            <th class="text-center">Baños</th>
+            <th class="text-center">Ocup.</th>
+            <th>Parking</th>
+            <th>Propietario</th>
+            <th>Teléfono</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (apt of avail.results(); track apt.apartment_id) {
+            <tr class="clickable-row" (click)="selectApartment(apt)">
+              <td>
+                <span class="apt-badge" [style.background]="apt.apartment_id | bookingColor">
+                  {{ apt.apartment_id }}
+                </span>
+              </td>
+              <td>{{ apt.community ?? '—' }}</td>
+              <td>{{ apt.address ?? '—' }}</td>
+              <td class="text-center">{{ apt.rooms }}</td>
+              <td class="text-center">{{ apt.bathrooms }}</td>
+              <td class="text-center">{{ apt.total_occupants }}</td>
+              <td>{{ apt.parking }}</td>
+              <td>{{ apt.owner_name ?? '—' }}</td>
+              <td>{{ apt.phone ?? '—' }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+
+  @if (!avail.loading() && !avail.error() && avail.results().length === 0 && avail.from() && avail.to()) {
+    <div class="empty-state">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <circle cx="11" cy="11" r="8" />
+        <path d="m21 21-4.35-4.35" />
+      </svg>
+      <p>No hay pisos disponibles para esas fechas y filtros.</p>
+    </div>
+  }
+</section>

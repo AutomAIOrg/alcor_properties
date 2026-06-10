@@ -11,7 +11,7 @@ type BookingCreateDraft = Partial<{
 }>;
 
 type InputField = 'guest_name' | 'check_in' | 'check_out' | 'email' | 'phone' | 'booking_number';
-type NumberField = 'adults' | 'children' | 'price' | 'charges' | 'electric_allowance';
+type NumberField = 'adults' | 'children' | 'price' | 'charges';
 type SelectField = 'apartment_id' | 'status';
 type TextareaField = 'notes';
 
@@ -60,7 +60,7 @@ export class BookingCreateModalComponent {
   selectedRangeHasConflicts = computed(() => {
     const d = this.draft();
 
-    if (!d.booking_id || !d.check_in || !d.check_out) {
+    if (!d.apartment_id || !d.check_in || !d.check_out) {
       return false;
     }
 
@@ -173,12 +173,12 @@ export class BookingCreateModalComponent {
       next: apartmentIds => {
         this.availableApartmentIds.set(apartmentIds);
 
-        const selectedApartment = this.draft().booking_id;
+        const selectedApartment = this.draft().apartment_id;
 
         if (selectedApartment && !apartmentIds.includes(selectedApartment)) {
           this.draft.update(current => ({
             ...current,
-            booking_id: null,
+            apartment_id: null,
           }));
         }
 
@@ -297,10 +297,10 @@ export class BookingCreateModalComponent {
     const select = event.target as HTMLSelectElement;
     const value = select.value;
 
-    if (field === 'booking_id') {
+    if (field === 'apartment_id') {
       this.draft.update(d => ({
         ...d,
-        booking_id: value,
+        apartment_id: value,
       }));
 
       this.rangeHoverIso.set(null);
@@ -370,7 +370,7 @@ export class BookingCreateModalComponent {
 
     // Si todavía no hay piso, dejamos seleccionar fechas libremente.
     // Después usaremos esas fechas para filtrar pisos disponibles desde backend.
-    if (!d.booking_id) {
+    if (!d.apartment_id) {
       if (!start || end) {
         return true;
       }
@@ -408,13 +408,13 @@ export class BookingCreateModalComponent {
   }
 
   private blockingBookingsForSelectedApartment(): Booking[] {
-    const apartment = this.draft().booking_id?.trim();
+    const apartment = this.draft().apartment_id?.trim();
 
     if (!apartment) return [];
 
     return this.bookings().filter(
       booking =>
-        booking.booking_id?.trim() === apartment && !this.isNonBlockingStatus(booking.status)
+        booking.apartment_id?.trim() === apartment && !this.isNonBlockingStatus(booking.status)
     );
   }
 

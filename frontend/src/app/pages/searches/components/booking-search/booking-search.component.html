@@ -1,0 +1,224 @@
+<section class="tab-content">
+  <div class="filter-card">
+    <div class="filter-grid">
+      <app-date-range-picker
+        #bookingDateRange
+        [from]="bkg.from()"
+        [to]="bkg.to()"
+        (rangeChange)="setBookingRange($event)"
+      />
+      <div class="field">
+        <label>ID del piso</label>
+        <input
+          type="text"
+          list="apt-ids-list-bkg"
+          placeholder="R180…"
+          [value]="bkg.apartmentId()"
+          (input)="bkg.apartmentId.set(inputValue($event))"
+        />
+        <datalist id="apt-ids-list-bkg">
+          @for (id of allApartmentIds; track id) {
+            <option [value]="id"></option>
+          }
+        </datalist>
+      </div>
+      <div class="field">
+        <label>Estado</label>
+        <select [value]="bkg.status()" (change)="bkg.status.set(selectValue($event))">
+          @for (status of STATUS_OPTIONS; track status) {
+            <option [value]="status">{{ status || 'Todos' }}</option>
+          }
+        </select>
+      </div>
+      <div class="field">
+        <label>Huésped</label>
+        <input
+          type="text"
+          placeholder="Nombre del huésped…"
+          [value]="bkg.guestName()"
+          (input)="bkg.guestName.set(inputValue($event))"
+        />
+      </div>
+      <div class="field">
+        <label>Nº Reserva</label>
+        <input
+          type="text"
+          placeholder="Referencia…"
+          [value]="bkg.bookingNumber()"
+          (input)="bkg.bookingNumber.set(inputValue($event))"
+        />
+      </div>
+    </div>
+
+    <div class="filter-actions">
+      <button
+        class="btn-secondary"
+        (click)="clearBookings(); bookingDateRange.closeCalendar()"
+      >
+        Limpiar
+      </button>
+      <button class="btn-primary" [disabled]="bkg.loading()" (click)="searchBookings()">
+        @if (bkg.loading()) {
+          <span class="spinner"></span>
+        }
+        Buscar reservas
+      </button>
+    </div>
+  </div>
+
+  @if (bkg.error()) {
+    <div class="error-banner">{{ bkg.error() }}</div>
+  }
+
+  @if (bkg.stats(); as stats) {
+    <div class="section-title">Estadísticas</div>
+    <div class="stats-grid">
+      <div class="stat-card">
+        <span class="stat-label">Total reservas</span>
+        <span class="stat-value">{{ stats.total_bookings }}</span>
+      </div>
+      <div class="stat-card stat-card--green">
+        <span class="stat-label">Activas</span>
+        <span class="stat-value">{{ stats.active_bookings }}</span>
+      </div>
+      <div class="stat-card stat-card--red">
+        <span class="stat-label">Canceladas</span>
+        <span class="stat-value">{{ stats.cancelled_bookings }}</span>
+        @if (stats.cancellation_rate != null) {
+          <span class="stat-sub">{{ stats.cancellation_rate | number:'1.1-1' }}% cancelación</span>
+        }
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">Noches totales</span>
+        <span class="stat-value">{{ stats.total_nights }}</span>
+        @if (stats.avg_nights_per_booking != null) {
+          <span class="stat-sub">{{ stats.avg_nights_per_booking | number:'1.1-1' }} media/reserva</span>
+        }
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">Total personas</span>
+        <span class="stat-value">{{ stats.total_persons }}</span>
+        @if (stats.avg_persons_per_booking != null) {
+          <span class="stat-sub">{{ stats.avg_persons_per_booking | number:'1.1-1' }} media/reserva</span>
+        }
+      </div>
+      @if (stats.occupancy_pct != null) {
+        <div class="stat-card stat-card--blue">
+          <span class="stat-label">% Ocupación rango</span>
+          <span class="stat-value">{{ stats.occupancy_pct | number:'1.1-1' }}%</span>
+        </div>
+      }
+      @if (stats.total_revenue != null) {
+        <div class="stat-card stat-card--gold">
+          <span class="stat-label">Ingresos totales</span>
+          <span class="stat-value">{{ stats.total_revenue | currency:'EUR':'symbol':'1.0-0' }}</span>
+          @if (stats.avg_revenue_per_booking != null) {
+            <span class="stat-sub">
+              {{ stats.avg_revenue_per_booking | currency:'EUR':'symbol':'1.0-0' }}
+              media/reserva
+            </span>
+          }
+        </div>
+      }
+      @if (stats.avg_revenue_per_night != null) {
+        <div class="stat-card">
+          <span class="stat-label">Precio medio/noche</span>
+          <span class="stat-value">{{ stats.avg_revenue_per_night | currency:'EUR':'symbol':'1.0-0' }}</span>
+        </div>
+      }
+      @if (stats.total_charges != null) {
+        <div class="stat-card">
+          <span class="stat-label">Cargos extra</span>
+          <span class="stat-value">{{ stats.total_charges | currency:'EUR':'symbol':'1.0-0' }}</span>
+        </div>
+      }
+      @if (stats.total_electric_allowance != null) {
+        <div class="stat-card stat-card--electric">
+          <span class="stat-label">Electricidad</span>
+          <span class="stat-value">
+            {{ stats.total_electric_allowance | currency:'EUR':'symbol':'1.0-0' }}
+          </span>
+        </div>
+      }
+    </div>
+
+    <div class="breakdown-row">
+      @for (entry of statusBreakdownEntries(stats.status_breakdown); track entry.key) {
+        <span class="status-chip" [attr.data-status]="entry.key.toLowerCase()">
+          {{ entry.key }}: {{ entry.value }}
+        </span>
+      }
+    </div>
+  }
+
+  @if (bkg.results().length > 0) {
+    <div class="results-header">
+      <span class="results-count">
+        {{ bkg.results().length }} reserva{{ bkg.results().length !== 1 ? 's' : '' }}
+      </span>
+      <span class="results-hint">Haz clic en una fila para ver el detalle</span>
+    </div>
+    <div class="table-wrapper">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Piso</th>
+            <th>Huésped</th>
+            <th>Check-in</th>
+            <th>Check-out</th>
+            <th class="text-center">Noches</th>
+            <th class="text-center">Personas</th>
+            <th>Estado</th>
+            <th class="text-right">Precio</th>
+            <th class="text-right">Cargos</th>
+            <th class="text-right">Luz</th>
+            <th>Nº Reserva</th>
+            <th>Notas</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (booking of bkg.results(); track booking.record_id) {
+            <tr class="clickable-row" (click)="openModal(booking)">
+              <td>
+                <span class="apt-badge" [style.background]="booking.apartment_id | bookingColor">
+                  {{ booking.apartment_id }}
+                </span>
+              </td>
+              <td class="guest-name">{{ booking.guest_name }}</td>
+              <td>{{ booking.check_in | date:'d MMM y' }}</td>
+              <td>{{ booking.check_out | date:'d MMM y' }}</td>
+              <td class="text-center">{{ booking.nights }}</td>
+              <td class="text-center">{{ booking.persons }}</td>
+              <td>
+                <span class="status-pill" [attr.data-status]="booking.status.toLowerCase()">
+                  {{ booking.status }}
+                </span>
+              </td>
+              <td class="text-right">
+                {{ booking.price != null ? (booking.price | currency:'EUR':'symbol':'1.0-0') : '—' }}
+              </td>
+              <td class="text-right">
+                {{ booking.charges != null ? (booking.charges | currency:'EUR':'symbol':'1.0-0') : '—' }}
+              </td>
+              <td class="text-right">
+                {{ booking.electric_allowance != null ? (booking.electric_allowance | currency:'EUR':'symbol':'1.0-0') : '—' }}
+              </td>
+              <td class="text-muted">{{ booking.booking_number ?? '—' }}</td>
+              <td class="notes-cell">{{ booking.notes ?? '' }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+
+  @if (!bkg.loading() && !bkg.error() && bkg.stats() && bkg.results().length === 0) {
+    <div class="empty-state">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <circle cx="11" cy="11" r="8" />
+        <path d="m21 21-4.35-4.35" />
+      </svg>
+      <p>Sin reservas para los filtros aplicados.</p>
+    </div>
+  }
+</section>

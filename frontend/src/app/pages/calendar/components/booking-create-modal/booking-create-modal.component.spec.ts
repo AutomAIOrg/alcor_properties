@@ -64,14 +64,14 @@ describe('BookingCreateModalComponent', () => {
     fixture.componentRef.setInput('bookings', [
       makeCreatedBooking({
         record_id: 1,
-        booking_id: 'R180',
+        apartment_id: 'R180',
         check_in: '2025-07-10',
         check_out: '2025-07-15',
         status: 'Confirmed',
       }),
       makeCreatedBooking({
         record_id: 2,
-        booking_id: 'R101',
+        apartment_id: 'R101',
         check_in: '2025-07-20',
         check_out: '2025-07-25',
         status: 'Cancelled',
@@ -183,7 +183,7 @@ describe('BookingCreateModalComponent', () => {
 
   describe('booked days', () => {
     it('marca como booked los días ocupados del piso seleccionado', () => {
-      component.patch('booking_id', 'R180');
+      component.patch('apartment_id', 'R180');
       component.rangeCalendarMonth.set(new Date(2025, 6, 1)); // julio 2025
 
       const days = component.rangeCalendarDays();
@@ -196,7 +196,7 @@ describe('BookingCreateModalComponent', () => {
     });
 
     it('no marca como booked el día de check_out porque es fecha de salida', () => {
-      component.patch('booking_id', 'R180');
+      component.patch('apartment_id', 'R180');
       component.rangeCalendarMonth.set(new Date(2025, 6, 1));
 
       const days = component.rangeCalendarDays();
@@ -208,7 +208,7 @@ describe('BookingCreateModalComponent', () => {
     });
 
     it('no bloquea reservas canceladas', () => {
-      component.patch('booking_id', 'R101');
+      component.patch('apartment_id', 'R101');
       component.rangeCalendarMonth.set(new Date(2025, 6, 1));
 
       const days = component.rangeCalendarDays();
@@ -221,7 +221,7 @@ describe('BookingCreateModalComponent', () => {
     });
 
     it('no permite seleccionar un rango que atraviesa una reserva existente', () => {
-      component.patch('booking_id', 'R180');
+      component.patch('apartment_id', 'R180');
       component.rangeCalendarMonth.set(new Date(2025, 6, 1));
       component.selectRangeDate('2025-07-08');
 
@@ -273,16 +273,16 @@ describe('BookingCreateModalComponent', () => {
       expect(component.loadingAvailableApartments()).toBe(false);
     });
 
-    it('si el piso seleccionado deja de estar disponible, limpia booking_id', () => {
+    it('si el piso seleccionado deja de estar disponible, limpia apartment_id', () => {
       apartmentServiceSpy.getAvailableApartmentIds.mockReturnValue(of(['R101']));
 
-      component.patch('booking_id', 'R180');
+      component.patch('apartment_id', 'R180');
       component.patch('check_in', '2025-07-01');
       component.patch('check_out', '2025-07-05');
 
       component.loadAvailableApartmentsForSelectedDates();
 
-      expect(component.draft().booking_id).toBeNull();
+      expect(component.draft().apartment_id).toBeNull();
     });
 
     it('si falla la carga de apartamentos, guarda mensaje de error', () => {
@@ -411,7 +411,7 @@ describe('BookingCreateModalComponent', () => {
     });
 
     it('no guarda si el rango seleccionado tiene conflictos', () => {
-      component.patch('booking_id', 'R180');
+      component.patch('apartment_id', 'R180');
       component.patch('guest_name', 'Juan Pérez');
       component.patch('check_in', '2025-07-08');
       component.patch('check_out', '2025-07-12');
@@ -529,7 +529,7 @@ describe('BookingCreateModalComponent', () => {
     });
 
     it('renderiza días disabled cuando hay reserva del piso seleccionado', () => {
-      component.patch('booking_id', 'R180');
+      component.patch('apartment_id', 'R180');
       component.openRangeCalendar();
       component.rangeCalendarMonth.set(new Date(2025, 6, 1));
 

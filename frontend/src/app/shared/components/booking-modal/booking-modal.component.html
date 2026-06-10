@@ -1,0 +1,337 @@
+<div class="modal-backdrop" (click)="close.emit()">
+  <div class="modal-card" (click)="$event.stopPropagation()" role="dialog" aria-modal="true">
+    <!-- HERO HEADER -->
+    <div class="modal-hero" [style.background]="booking().apartment_id | bookingColor">
+      <button class="close-btn" (click)="close.emit()" aria-label="Cerrar">&#10005;</button>
+      <div class="hero-avatar">{{ initials() }}</div>
+      <div class="hero-info">
+        <span class="hero-name">{{ booking().guest_name }}</span>
+        <div class="hero-meta">
+          <span class="apt-badge">{{ booking().apartment_id }}</span>
+          <span class="status-badge" [attr.data-status]="booking().status">{{
+            booking().status
+          }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- STATS ROW -->
+    <div class="stats-row">
+      <div class="stat">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <rect x="3" y="4" width="18" height="18" rx="2" />
+          <line x1="16" y1="2" x2="16" y2="6" />
+          <line x1="8" y1="2" x2="8" y2="6" />
+          <line x1="3" y1="10" x2="21" y2="10" />
+        </svg>
+        <span class="stat-value">{{ booking().check_in | date: 'd MMM' }}</span>
+        <span class="stat-label">Entrada</span>
+      </div>
+      <div class="stat-divider">→</div>
+      <div class="stat">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <rect x="3" y="4" width="18" height="18" rx="2" />
+          <line x1="16" y1="2" x2="16" y2="6" />
+          <line x1="8" y1="2" x2="8" y2="6" />
+          <line x1="3" y1="10" x2="21" y2="10" />
+        </svg>
+        <span class="stat-value">{{ booking().check_out | date: 'd MMM' }}</span>
+        <span class="stat-label">Salida</span>
+      </div>
+      <div class="stat-divider"></div>
+      <div class="stat">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" />
+          <circle cx="12" cy="9" r="2.5" />
+        </svg>
+        <span class="stat-value">{{ booking().nights }}</span>
+        <span class="stat-label">Noches</span>
+      </div>
+      <div class="stat-divider"></div>
+      <div class="stat">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+          <circle cx="9" cy="7" r="4" />
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+          <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+        </svg>
+        <span class="stat-value">{{ booking().persons }}</span>
+        <span class="stat-label">Personas</span>
+      </div>
+    </div>
+
+    <!-- ── VISTA ──────────────────────────────────────────────────────────── -->
+    @if (!editing()) {
+      <div class="modal-body">
+        <!-- ECONOMÍA -->
+        <div class="price-cards">
+          <div class="price-card price-main">
+            <span class="price-label">Precio total</span>
+            <span class="price-value" [class.no-data]="booking().price == null">
+              {{
+                booking().price != null
+                  ? (booking().price! | currency: 'EUR' : 'symbol' : '1.2-2')
+                  : '— €'
+              }}
+            </span>
+          </div>
+          <div class="price-card">
+            <span class="price-label">Cargos extra</span>
+            <span class="price-value charges" [class.no-data]="booking().charges == null">
+              {{
+                booking().charges != null
+                  ? (booking().charges! | currency: 'EUR' : 'symbol' : '1.2-2')
+                  : '— €'
+              }}
+            </span>
+          </div>
+          <div class="price-card price-electric">
+            <span class="price-label">Luz incluida</span>
+            <span
+              class="price-value electric"
+              [class.no-data]="booking().electric_allowance == null"
+            >
+              {{
+                booking().electric_allowance != null
+                  ? (booking().electric_allowance! | currency: 'EUR' : 'symbol' : '1.2-2')
+                  : '— €'
+              }}
+            </span>
+          </div>
+        </div>
+
+        <!-- HUÉSPEDES -->
+        <div class="guests-row">
+          <div class="guest-chip">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <circle cx="12" cy="8" r="4" />
+              <path d="M4 20c0-4 3.58-7 8-7s8 3 8 7" />
+            </svg>
+            <span>{{ booking().adults }} adulto{{ booking().adults !== 1 ? 's' : '' }}</span>
+          </div>
+          @if (booking().children > 0) {
+            <div class="guest-chip">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <circle cx="12" cy="7" r="3" />
+                <path d="M9 14l-2 7h10l-2-7" />
+              </svg>
+              <span>{{ booking().children }} niño{{ booking().children !== 1 ? 's' : '' }}</span>
+            </div>
+          }
+        </div>
+
+        <!-- CONTACTO -->
+        <div class="contact-section">
+          <p class="section-title">Contacto</p>
+          @if (booking().email) {
+            <a class="contact-row" [href]="'mailto:' + booking().email">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <rect x="2" y="4" width="20" height="16" rx="2" />
+                <polyline points="2,4 12,13 22,4" />
+              </svg>
+              <span>{{ booking().email }}</span>
+            </a>
+          }
+          @if (booking().phone) {
+            <a class="contact-row" [href]="'tel:' + booking().phone">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <path
+                  d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13.5 19.79 19.79 0 0 1 1.62 4.9 2 2 0 0 1 3.59 2.72h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 10.09a16 16 0 0 0 6 6l.92-.92a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21.5 17.5z"
+                />
+              </svg>
+              <span>{{ booking().phone }}</span>
+            </a>
+          }
+          @if (!booking().email && !booking().phone) {
+            <span class="no-contact">Sin datos de contacto</span>
+          }
+        </div>
+
+        <!-- Nº RESERVA + RECORD ID -->
+        <div class="refs-row">
+          <div class="booking-ref">
+            <span class="ref-label">Nº reserva</span>
+            <span class="ref-value" [class.no-data]="!booking().booking_number">
+              {{ booking().booking_number || '—' }}
+            </span>
+          </div>
+          <div class="booking-ref">
+            <span class="ref-label">Record ID</span>
+            <span class="ref-value">{{ booking().record_id }}</span>
+          </div>
+        </div>
+
+        <!-- BOTÓN EDITAR -->
+        @if (authService.hasPermission('bookings:update')) {
+          <button class="edit-btn" (click)="startEdit()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+            </svg>
+            Editar reserva
+          </button>
+        }
+      </div>
+    }
+
+    <!-- ── FORMULARIO EDICIÓN ─────────────────────────────────────────────── -->
+    @if (editing()) {
+      <div class="modal-body edit-form">
+        <p class="edit-section-title">Datos generales</p>
+
+        <div class="field-row">
+          <div class="field">
+            <label>Nombre del huésped</label>
+            <input
+              type="text"
+              [value]="draft().guest_name ?? ''"
+              (input)="patchDraftInput('guest_name', $event)"
+            />
+          </div>
+          <div class="field">
+            <label>Estado</label>
+            <select (change)="patchDraftSelect('status', $event)">
+              @for (s of statusOptions(); track s) {
+                <option [value]="s" [selected]="draft().status === s">{{ s }}</option>
+              }
+            </select>
+          </div>
+        </div>
+
+        <div class="field-row">
+          <div class="field">
+            <label>Entrada</label>
+            <input
+              type="date"
+              [value]="draft().check_in ?? ''"
+              (input)="patchDraftInput('check_in', $event)"
+            />
+          </div>
+          <div class="field">
+            <label>Salida</label>
+            <input
+              type="date"
+              [value]="draft().check_out ?? ''"
+              (input)="patchDraftInput('check_out', $event)"
+            />
+          </div>
+        </div>
+
+        <p class="edit-section-title">Huéspedes</p>
+
+        <div class="field-row field-row--3">
+          <div class="field">
+            <label>Adultos</label>
+            <input
+              type="number"
+              min="1"
+              [value]="draft().adults ?? 1"
+              (input)="patchDraftNumber('adults', $event)"
+            />
+          </div>
+          <div class="field">
+            <label>Niños</label>
+            <input
+              type="number"
+              min="0"
+              [value]="draft().children ?? 0"
+              (input)="patchDraftNumber('children', $event)"
+            />
+          </div>
+          <div class="field">
+            <label>Personas (total)</label>
+            <input
+              type="number"
+              min="1"
+              [value]="draft().persons ?? 1"
+              (input)="patchDraftNumber('persons', $event)"
+            />
+          </div>
+        </div>
+
+        <p class="edit-section-title">Económico</p>
+
+        <div class="field-row field-row--3">
+          <div class="field">
+            <label>Precio total (€)</label>
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              placeholder="—"
+              [value]="draft().price ?? ''"
+              (input)="patchDraftNumber('price', $event)"
+            />
+          </div>
+          <div class="field">
+            <label>Cargos extra (€)</label>
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              placeholder="—"
+              [value]="draft().charges ?? ''"
+              (input)="patchDraftNumber('charges', $event)"
+            />
+          </div>
+          <div class="field">
+            <label>Luz incluida (€)</label>
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              placeholder="—"
+              [value]="draft().electric_allowance ?? ''"
+              (input)="patchDraftNumber('electric_allowance', $event)"
+            />
+          </div>
+        </div>
+
+        <p class="edit-section-title">Contacto</p>
+
+        <div class="field-row">
+          <div class="field">
+            <label>Email</label>
+            <input
+              type="email"
+              placeholder="sin correo"
+              [value]="draft().email ?? ''"
+              (input)="patchDraftInput('email', $event)"
+            />
+          </div>
+          <div class="field">
+            <label>Teléfono</label>
+            <input
+              type="tel"
+              placeholder="sin teléfono"
+              [value]="draft().phone ?? ''"
+              (input)="patchDraftInput('phone', $event)"
+            />
+          </div>
+        </div>
+
+        <p class="edit-section-title">Referencias</p>
+
+        <div class="field-row">
+          <div class="field">
+            <label>Nº reserva (plataforma)</label>
+            <input
+              type="text"
+              placeholder="—"
+              [value]="draft().booking_number ?? ''"
+              (input)="patchDraftInput('booking_number', $event)"
+            />
+          </div>
+        </div>
+
+        <!-- ACCIONES -->
+        <div class="edit-actions">
+          <button class="btn-cancel" (click)="cancelEdit()" [disabled]="saving()">Cancelar</button>
+          <button class="btn-save" (click)="saveEdit()" [disabled]="saving()">
+            {{ saving() ? 'Guardando…' : 'Guardar cambios' }}
+          </button>
+        </div>
+      </div>
+    }
+  </div>
+</div>
