@@ -31,6 +31,28 @@ class BookingResponse(BaseModel):
     electric_allowance: float | None = None
 
 
+class BookingStatsResponse(BaseModel):
+    """Estadísticas agregadas sobre un conjunto de reservas."""
+
+    total_bookings: int
+    active_bookings: int
+    cancelled_bookings: int
+    cancellation_rate: float | None = None
+    total_nights: int
+    avg_nights_per_booking: float | None = None
+    total_persons: int
+    avg_persons_per_booking: float | None = None
+    total_revenue: float | None = None
+    avg_revenue_per_booking: float | None = None
+    avg_revenue_per_night: float | None = None
+    total_charges: float | None = None
+    total_electric_allowance: float | None = None
+    status_breakdown: dict[str, int]
+    start_date: date | None = None
+    end_date: date | None = None
+    occupancy_pct: float | None = None
+
+
 class BookingCreateRequest(BaseModel):
     """DTO de entrada para POST /bookings/."""
 

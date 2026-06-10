@@ -8,6 +8,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.exc import SQLAlchemyError
 
 from api.error_handlers import (
+    apartment_not_found_handler,
     booking_conflict_handler,
     booking_not_found_handler,
     domain_validation_error_handler,
@@ -18,6 +19,7 @@ from api.error_handlers import (
 from api.v1.router import router as v1_router
 from config import settings
 from domain.exceptions import (
+    ApartmentNotFound,
     BookingConflict,
     BookingNotFound,
     DomainValidationError,
@@ -45,6 +47,7 @@ app.add_middleware(
 )
 
 # Excepción de dominio → Respuesta HTTP
+app.add_exception_handler(ApartmentNotFound, apartment_not_found_handler)
 app.add_exception_handler(BookingNotFound, booking_not_found_handler)
 app.add_exception_handler(BookingConflict, booking_conflict_handler)
 app.add_exception_handler(DomainValidationError, domain_validation_error_handler)

@@ -8,7 +8,11 @@ from fastapi import Depends, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
-from application.apartments.queries import GetApartmentByIdQuery, SearchApartmentsQuery
+from application.apartments.queries import (
+    GetApartmentByIdQuery,
+    GetApartmentStatsQuery,
+    SearchApartmentsQuery,
+)
 from application.auth.login_use_case import LoginUseCase
 from application.auth.password_verifier_interface import IPasswordVerifier
 from application.auth.refresh_token_use_case import RefreshTokenUseCase
@@ -22,6 +26,7 @@ from application.bookings.commands import (
 from application.bookings.queries import (
     GetActiveBookingsQuery,
     GetBookingByIdQuery,
+    GetBookingStatsQuery,
     GetCalendarEventsQuery,
     GetUpcomingCheckinsQuery,
     GetUpcomingCheckoutsQuery,
@@ -132,6 +137,7 @@ class BookingUseCases:
     upcoming_checkins_query: GetUpcomingCheckinsQuery
     upcoming_checkouts_query: GetUpcomingCheckoutsQuery
     calendar_events_query: GetCalendarEventsQuery
+    stats_query: GetBookingStatsQuery
     create_command: CreateBookingUseCase
     update_command: UpdateBookingUseCase
     delete_command: DeleteBookingUseCase
@@ -149,6 +155,7 @@ def get_booking_use_cases(
         upcoming_checkins_query=GetUpcomingCheckinsQuery(repo, electric_ids),
         upcoming_checkouts_query=GetUpcomingCheckoutsQuery(repo, electric_ids),
         calendar_events_query=GetCalendarEventsQuery(repo, electric_ids),
+        stats_query=GetBookingStatsQuery(repo, electric_ids),
         create_command=CreateBookingUseCase(repo, electric_ids),
         update_command=UpdateBookingUseCase(repo, electric_ids),
         delete_command=DeleteBookingUseCase(repo),
@@ -167,3 +174,11 @@ def get_search_apartments_query(
 ) -> SearchApartmentsQuery:
     """Inyección de dependencias para el caso de uso de búsqueda de apartamentos."""
     return SearchApartmentsQuery(repository)
+
+def get_apartment_stats_query(
+    apartment_repository: IApartmentRepository = Depends(get_apartment_repository),
+    booking_repository: IBookingRepository = Depends(get_booking_repository),
+    electric_apartment_ids: set[str] = Depends(get_electric_ids),
+) -> GetApartmentStatsQuery:
+    """Inyección de dependencias para el caso de uso de estadísticas de apartamentos."""
+    return GetApartmentStatsQuery(apartment_repository, booking_repository, electric_apartment_ids)
