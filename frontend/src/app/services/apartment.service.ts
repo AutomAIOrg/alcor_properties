@@ -4,10 +4,11 @@ import { map, Observable } from 'rxjs';
 
 import { environment } from '../../environments/environment';
 import { Apartment } from '../models/apartment.model';
+import { ApartmentStatsResponse } from '../models/search.model';
 
 type ApartmentSearchParams = {
   q?: string;
-  booking_id?: string;
+  apartment_id?: string;
   community?: string;
   booking_name?: string;
   address?: string;
@@ -47,6 +48,32 @@ export class ApartmentService {
     return this.searchApartments({
       available_from: checkIn,
       available_to: checkOut,
-    }).pipe(map(apartments => apartments.map(apartment => apartment.booking_id).sort()));
+    }).pipe(map(apartments => apartments.map(apartment => apartment.apartment_id).sort()));
+  }
+
+  getAllApartmentIds(): Observable<string[]> {
+    return this.searchApartments({}).pipe(
+      map(apartments =>
+        apartments
+          .map(apartment => apartment.apartment_id)
+          .filter((bookingId): bookingId is string => bookingId !== undefined && bookingId !== null)
+          .sort()
+      )
+    );
+  }
+
+  getApartmentStats(
+    bookingId: string,
+    startDate?: string,
+    endDate?: string
+  ): Observable<ApartmentStatsResponse> {
+    let params = new HttpParams();
+    if (startDate) params = params.set('start_date', startDate);
+    if (endDate) params = params.set('end_date', endDate);
+
+    return this.http.get<ApartmentStatsResponse>(
+      `${this.API}/stats/${encodeURIComponent(bookingId)}`,
+      { params }
+    );
   }
 }

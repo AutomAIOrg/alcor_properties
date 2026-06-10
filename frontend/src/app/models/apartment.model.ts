@@ -1,5 +1,5 @@
 export interface Apartment {
-  booking_id: string;
+  apartment_id: string;
   community: string | null;
   booking_name: string | null;
   address: string | null;
