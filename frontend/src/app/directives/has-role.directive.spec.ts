@@ -65,11 +65,11 @@ describe('HasRoleDirective', () => {
 
   it('acepta un array de roles permitidos', () => {
     setup(true);
-    component.roles = ['admin', 'employee'];
+    component.roles = ['admin', 'limpiadora'];
 
     fixture.detectChanges();
 
-    expect(authServiceMock.hasRole).toHaveBeenCalledWith(['admin', 'employee']);
+    expect(authServiceMock.hasRole).toHaveBeenCalledWith(['admin', 'limpiadora']);
     expect(protectedContent()).not.toBeNull();
   });
 
@@ -80,10 +80,10 @@ describe('HasRoleDirective', () => {
     expect(protectedContent()).not.toBeNull();
 
     authServiceMock.hasRole.mockReturnValue(false);
-    component.roles = 'viewer';
+    component.roles = 'limpiadora';
     fixture.detectChanges();
 
-    expect(authServiceMock.hasRole).toHaveBeenLastCalledWith('viewer');
+    expect(authServiceMock.hasRole).toHaveBeenLastCalledWith('limpiadora');
     expect(protectedContent()).toBeNull();
   });
 
@@ -94,10 +94,10 @@ describe('HasRoleDirective', () => {
     expect(protectedContent()).toBeNull();
 
     authServiceMock.hasRole.mockReturnValue(true);
-    component.roles = 'employee';
+    component.roles = 'limpiadora';
     fixture.detectChanges();
 
-    expect(authServiceMock.hasRole).toHaveBeenLastCalledWith('employee');
+    expect(authServiceMock.hasRole).toHaveBeenLastCalledWith('limpiadora');
     expect(protectedContent()?.textContent).toContain('Contenido protegido');
   });
 });

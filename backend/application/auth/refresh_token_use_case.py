@@ -5,7 +5,7 @@ Caso de uso para renovar tokens de acceso.
 from dataclasses import dataclass
 
 from application.auth.token_manager_interface import ITokenManager
-from application.auth.user_repository_interface import IUserRepository
+from application.shared.user_repository_interface import IUserRepository
 from domain.exceptions import InvalidToken
 
 

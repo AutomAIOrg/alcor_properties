@@ -7,7 +7,7 @@ Niveles:
   - e2e         → sqlite_engine, e2e_client
 """
 
-from datetime import UTC, datetime, timedelta
+from collections.abc import Iterator
 from unittest.mock import MagicMock
 
 import pytest
@@ -19,8 +19,7 @@ from starlette.testclient import TestClient
 
 import infrastructure.models.booking  # noqa: F401 — registra BookingORM en Base.metadata
 import infrastructure.models.user  # noqa: F401 — registra UserORM en Base.metadata
-from domain.auth.token_payload_entity import TokenPayload
-from domain.auth.user_entity import Role
+from domain.auth.user_entity import Role, User
 from domain.bookings.repository import IBookingRepository
 from infrastructure.database.base import Base
 from infrastructure.models.user import UserORM
@@ -82,7 +81,7 @@ def mock_use_cases() -> MagicMock:
 
 
 @pytest.fixture
-def api_client(mock_use_cases: MagicMock) -> TestClient:
+def api_client(mock_use_cases: MagicMock) -> Iterator[TestClient]:
     """
     TestClient de FastAPI con use cases inyectados como mock.
 
@@ -92,17 +91,18 @@ def api_client(mock_use_cases: MagicMock) -> TestClient:
     from api.dependencies import get_booking_use_cases, get_current_user
     from main import app
 
-    now = datetime.now(UTC)
-    admin_payload = TokenPayload(
-        subject="1",
-        expires_at=now + timedelta(minutes=30),
-        issued_at=now,
+    admin_user = User(
+        id=1,
         username="admin",
+        password="admin-password",
+        name="Admin",
+        lastname="User",
+        email="admin@example.com",
         role=Role.ADMIN,
     )
 
     app.dependency_overrides[get_booking_use_cases] = lambda: mock_use_cases
-    app.dependency_overrides[get_current_user] = lambda: admin_payload
+    app.dependency_overrides[get_current_user] = lambda: admin_user
 
     try:
         with TestClient(app, raise_server_exceptions=True) as client:

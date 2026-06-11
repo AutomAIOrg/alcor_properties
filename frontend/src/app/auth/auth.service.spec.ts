@@ -15,7 +15,7 @@ import { ROLE_PERMISSIONS } from '../config/permissions.config';
 const roles = Object.keys(ROLE_PERMISSIONS) as Role[];
 
 const primaryRole = roles[0];
-const limitedRole: Role = roles.includes('viewer') ? 'viewer' : primaryRole;
+const limitedRole: Role = roles.includes('limpiadora') ? 'limpiadora' : primaryRole;
 const secondaryRole = roles.find(role => role !== primaryRole) ?? ('__OTHER_ROLE__' as Role);
 
 const primaryPermission = ROLE_PERMISSIONS[primaryRole][0] as Permission;

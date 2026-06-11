@@ -20,8 +20,8 @@ class UserORM(Base):
     username: Mapped[str] = mapped_column("Username", String(255), nullable=False, unique=True)
     password: Mapped[str] = mapped_column("Password", String(255), nullable=False)
     name: Mapped[str] = mapped_column("Name", String(255), nullable=False)
-    lastname: Mapped[str] = mapped_column("Lastname", String(255), nullable=False)
-    email: Mapped[str] = mapped_column("Email", String(255), nullable=False, unique=True)
+    lastname: Mapped[str | None] = mapped_column("Lastname", String(255), nullable=True)
+    email: Mapped[str | None] = mapped_column("Email", String(255), nullable=True, unique=True)
 
     # Rol
     role: Mapped[str] = mapped_column("Role", String(100), nullable=False)
