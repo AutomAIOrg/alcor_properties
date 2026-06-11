@@ -14,7 +14,7 @@ from api.dependencies import (
 from api.v1.users.schemas import CreateUserRequest, UpdateUserRequest, UserResponse
 from application.users.create_user_use_case import CreateUserData, CreateUserUseCase
 from application.users.delete_user_use_case import DeleteUserUseCase
-from application.users.get_all_users_user_case import GetAllUsersUseCase
+from application.users.get_all_users_use_case import GetAllUsersUseCase
 from application.users.update_user_use_case import UpdateUserData, UpdateUserUseCase
 from config import settings
 from domain.auth.user_entity import User
@@ -29,7 +29,7 @@ async def create_user(
     user: CreateUserRequest,
     create_user_use_case: Annotated[CreateUserUseCase, Depends(get_create_user_use_case)],
 ):
-    logger.info(f"Creando usuario: {user}")
+    logger.info(f"Creando usuario: {user.username} con rol: {user.role}")
     create_user_use_case.execute(
         CreateUserData(
             username=user.username,
@@ -63,7 +63,7 @@ async def update_user(
     user: UpdateUserRequest,
     update_user_use_case: Annotated[UpdateUserUseCase, Depends(get_update_user_use_case)],
 ):
-    logger.info(f"Actualizando usuario: {user}")
+    logger.info(f"Actualizando usuario: {user.username} con rol: {user.role}")
     update_user_use_case.execute(
         UpdateUserData(
             user_id=user_id,

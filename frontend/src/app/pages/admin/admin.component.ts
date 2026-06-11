@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
 import { Role } from '../../models/user.model';
@@ -53,7 +53,7 @@ interface AdminPropertyDraft {
   templateUrl: './admin.component.html',
   styleUrl: './admin.component.scss',
 })
-export class AdminComponent implements OnInit {
+export class AdminComponent implements OnInit, OnDestroy {
   private adminUserService = inject(AdminUserService);
   private toastTimeout: ReturnType<typeof setTimeout> | null = null;
 
@@ -377,6 +377,13 @@ export class AdminComponent implements OnInit {
       name: '',
       address: '',
     });
+  }
+
+  ngOnDestroy(): void {
+    if (this.toastTimeout) {
+      clearTimeout(this.toastTimeout);
+      this.toastTimeout = null;
+    }
   }
 
   private showToast(type: ToastType, text: string, detail?: string): void {

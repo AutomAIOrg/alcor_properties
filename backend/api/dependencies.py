@@ -2,6 +2,7 @@
 Contenedor de inyección de dependencias para FastAPI.
 """
 
+import logging
 from dataclasses import dataclass
 
 from fastapi import Depends, HTTPException
@@ -28,7 +29,7 @@ from application.shared.password_manager_interface import IPasswordManager
 from application.shared.user_repository_interface import IUserRepository
 from application.users.create_user_use_case import CreateUserUseCase
 from application.users.delete_user_use_case import DeleteUserUseCase
-from application.users.get_all_users_user_case import GetAllUsersUseCase
+from application.users.get_all_users_use_case import GetAllUsersUseCase
 from application.users.update_user_use_case import UpdateUserUseCase
 from config import settings
 from domain.auth.user_entity import Role, User
@@ -43,6 +44,8 @@ from infrastructure.security.jwt_token_manager import JwtTokenManager
 from infrastructure.security.passlib_password_manager import PasslibPasswordManager
 
 bearer_scheme = HTTPBearer(auto_error=False)  # Esquema de autenticación Bearer
+
+logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Dependencias primitivas
@@ -75,7 +78,13 @@ def get_current_user(
 
     token = token_manager.decode_access_token(credentials.credentials)
 
-    user = user_repository.get_by_id(int(token.subject))
+    try:
+        user_id = int(token.subject)
+    except (TypeError, ValueError) as exc:
+        logger.warning("Subject del token no válido")
+        raise InvalidToken("Subject del token no válido.") from exc
+
+    user = user_repository.get_by_id(user_id)
     if user is None:
         raise InvalidToken("Usuario del token no encontrado.")
     return user

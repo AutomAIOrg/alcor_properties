@@ -9,7 +9,4 @@ class GetAllUsersUseCase:
         self.user_repository = user_repository
 
     def execute(self) -> list[User]:
-        user_list = self.user_repository.get_all_users()
-        if user_list is None:
-            raise ValueError("No se encontraron usuarios")
-        return user_list
+        return self.user_repository.get_all_users()
