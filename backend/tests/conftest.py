@@ -45,8 +45,8 @@ def mock_apartment_repo() -> MagicMock:
 
 
 @pytest.fixture
-def mock_get_apartment_by_id_query() -> MagicMock:
-    """GetApartmentByIdQuery mockeado para tests de API."""
+def mock_get_apartment_by_id_use_case() -> MagicMock:
+    """GetApartmentByIdUseCase mockeado para tests de API."""
     return MagicMock()
 
 
@@ -127,20 +127,20 @@ def api_client(mock_use_cases: MagicMock) -> TestClient:
 
 
 @pytest.fixture
-def mock_search_apartments_query() -> MagicMock:
+def mock_search_apartments_use_case() -> MagicMock:
     """ApartmentUseCases completamente mockeado para tests de API."""
     return MagicMock()
 
 
 @pytest.fixture
 def apartment_api_client(
-    mock_search_apartments_query: MagicMock,
-    mock_get_apartment_by_id_query: MagicMock,
+    mock_search_apartments_use_case: MagicMock,
+    mock_get_apartment_by_id_use_case: MagicMock,
 ) -> TestClient:
     from api.dependencies import (
-        get_apartment_by_id_query,
+        get_apartment_by_id_use_case,
         get_current_user,
-        get_search_apartments_query,
+        get_search_apartments_use_case,
     )
     from main import app
 
@@ -153,16 +153,20 @@ def apartment_api_client(
         role=Role.ADMIN,
     )
 
-    app.dependency_overrides[get_search_apartments_query] = lambda: mock_search_apartments_query
-    app.dependency_overrides[get_apartment_by_id_query] = lambda: mock_get_apartment_by_id_query
+    app.dependency_overrides[get_search_apartments_use_case] = lambda: (
+        mock_search_apartments_use_case
+    )
+    app.dependency_overrides[get_apartment_by_id_use_case] = lambda: (
+        mock_get_apartment_by_id_use_case
+    )
     app.dependency_overrides[get_current_user] = lambda: admin_payload
 
     try:
         with TestClient(app, raise_server_exceptions=True) as client:
             yield client
     finally:
-        app.dependency_overrides.pop(get_search_apartments_query, None)
-        app.dependency_overrides.pop(get_apartment_by_id_query, None)
+        app.dependency_overrides.pop(get_search_apartments_use_case, None)
+        app.dependency_overrides.pop(get_apartment_by_id_use_case, None)
         app.dependency_overrides.pop(get_current_user, None)
 
 

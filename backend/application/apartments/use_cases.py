@@ -7,7 +7,7 @@ from domain.apartments.filters import ApartmentSearchFilters
 from domain.apartments.repository import IApartmentRepository
 
 
-class SearchApartmentsQuery:
+class SearchApartmentsUseCase:
     def __init__(self, apartment_repository: IApartmentRepository) -> None:
         self.apartment_repository = apartment_repository
 
@@ -18,7 +18,7 @@ class SearchApartmentsQuery:
         return self.apartment_repository.search_apartments(filters)
 
 
-class GetApartmentByIdQuery:
+class GetApartmentByIdUseCase:
     def __init__(self, apartment_repository: IApartmentRepository) -> None:
         self.apartment_repository = apartment_repository
 

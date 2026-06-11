@@ -8,7 +8,7 @@ from fastapi import Depends, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
-from application.apartments.queries import GetApartmentByIdQuery, SearchApartmentsQuery
+from application.apartments.use_cases import GetApartmentByIdUseCase, SearchApartmentsUseCase
 from application.auth.login_use_case import LoginUseCase
 from application.auth.password_verifier_interface import IPasswordVerifier
 from application.auth.refresh_token_use_case import RefreshTokenUseCase
@@ -155,15 +155,15 @@ def get_booking_use_cases(
     )
 
 
-def get_apartment_by_id_query(
+def get_apartment_by_id_use_case(
     repository: IApartmentRepository = Depends(get_apartment_repository),
-) -> GetApartmentByIdQuery:
+) -> GetApartmentByIdUseCase:
     """Inyección de dependencias para el caso de uso de obtener un apartamento por ID."""
-    return GetApartmentByIdQuery(repository)
+    return GetApartmentByIdUseCase(repository)
 
 
-def get_search_apartments_query(
+def get_search_apartments_use_case(
     repository: IApartmentRepository = Depends(get_apartment_repository),
-) -> SearchApartmentsQuery:
+) -> SearchApartmentsUseCase:
     """Inyección de dependencias para el caso de uso de búsqueda de apartamentos."""
-    return SearchApartmentsQuery(repository)
+    return SearchApartmentsUseCase(repository)
