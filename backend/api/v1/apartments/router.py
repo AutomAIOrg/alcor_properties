@@ -2,7 +2,9 @@
 Enrutador para los apartamentos.
 """
 
-from fastapi import APIRouter, Depends, HTTPException
+from typing import Annotated
+
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 from api.dependencies import (
     get_apartment_by_id_use_case,
@@ -18,7 +20,7 @@ router = APIRouter(prefix="/apartments", tags=["Apartments"], dependencies=[Depe
 
 @router.get("/search", response_model=list[ApartmentResponse])
 def search_apartments(
-    filters: ApartmentSearchFilters = Depends(),
+    filters: Annotated[ApartmentSearchFilters, Query()],
     search_apartments_use_case: SearchApartmentsUseCase = Depends(get_search_apartments_use_case),
 ) -> list[ApartmentResponse]:
     """
