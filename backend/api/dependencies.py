@@ -2,6 +2,7 @@
 Contenedor de inyección de dependencias para FastAPI.
 """
 
+import logging
 from dataclasses import dataclass
 
 from fastapi import Depends, HTTPException
@@ -10,10 +11,8 @@ from sqlalchemy.orm import Session
 
 from application.apartments.use_cases import GetApartmentByIdUseCase, SearchApartmentsUseCase
 from application.auth.login_use_case import LoginUseCase
-from application.auth.password_verifier_interface import IPasswordVerifier
 from application.auth.refresh_token_use_case import RefreshTokenUseCase
 from application.auth.token_manager_interface import ITokenManager
-from application.auth.user_repository_interface import IUserRepository
 from application.bookings.commands import (
     CreateBookingUseCase,
     DeleteBookingUseCase,
@@ -27,10 +26,14 @@ from application.bookings.queries import (
     GetUpcomingCheckoutsQuery,
     ListBookingsQuery,
 )
+from application.shared.password_manager_interface import IPasswordManager
+from application.shared.user_repository_interface import IUserRepository
+from application.users.create_user_use_case import CreateUserUseCase
+from application.users.delete_user_use_case import DeleteUserUseCase
+from application.users.get_all_users_use_case import GetAllUsersUseCase
+from application.users.update_user_use_case import UpdateUserUseCase
 from config import settings
-from domain.apartments.repository import IApartmentRepository
-from domain.auth.token_payload_entity import TokenPayload
-from domain.auth.user_entity import Role
+from domain.auth.user_entity import Role, User
 from domain.bookings.repository import IBookingRepository
 from domain.exceptions import InvalidToken
 from infrastructure.database.session import get_db
@@ -42,9 +45,11 @@ from infrastructure.repositories.sqlalchemy_booking_repository import (
 )
 from infrastructure.repositories.sqlalchemy_user_repository import SQLAlchemyUserRepository
 from infrastructure.security.jwt_token_manager import JwtTokenManager
-from infrastructure.security.passlib_password_verifier import PasslibPasswordVerifier
+from infrastructure.security.passlib_password_manager import PasslibPasswordManager
 
 bearer_scheme = HTTPBearer(auto_error=False)  # Esquema de autenticación Bearer
+
+logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Dependencias primitivas
@@ -61,22 +66,37 @@ def get_token_manager() -> ITokenManager:
     return JwtTokenManager()
 
 
-def get_password_verifier() -> IPasswordVerifier:
+def get_password_manager() -> IPasswordManager:
     """Verificador de contraseñas."""
-    return PasslibPasswordVerifier()
+    return PasslibPasswordManager()
 
 
 def get_current_user(
     credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
     token_manager: ITokenManager = Depends(get_token_manager),
-) -> TokenPayload:
+    user_repository: IUserRepository = Depends(get_user_repository),
+) -> User:
     """Decodifica el token y devuelve el payload."""
     if credentials is None:
         raise InvalidToken("Token de autenticación no proporcionado.")
-    return token_manager.decode_access_token(credentials.credentials)
+
+    token = token_manager.decode_access_token(credentials.credentials)
+
+    try:
+        user_id = int(token.subject)
+    except (TypeError, ValueError) as exc:
+        logger.warning("Subject del token no válido")
+        raise InvalidToken("Subject del token no válido.") from exc
+
+    user = user_repository.get_by_id(user_id)
+    if user is None:
+        raise InvalidToken("Usuario del token no encontrado.")
+    return user
 
 
-def require_admin(current_user: TokenPayload = Depends(get_current_user)) -> TokenPayload:
+def require_admin(
+    current_user: User = Depends(get_current_user),
+) -> User:
     """Verifica que el usuario tenga el rol de administrador."""
     if current_user.role != Role.ADMIN:
         raise HTTPException(
@@ -108,10 +128,10 @@ def get_apartment_repository(db: Session = Depends(get_db)) -> IApartmentReposit
 def get_login_use_case(
     user_repository: IUserRepository = Depends(get_user_repository),
     token_manager: ITokenManager = Depends(get_token_manager),
-    password_verifier: IPasswordVerifier = Depends(get_password_verifier),
+    password_manager: IPasswordManager = Depends(get_password_manager),
 ) -> LoginUseCase:
     """Inyección de dependencias para el caso de uso de login."""
-    return LoginUseCase(user_repository, token_manager, password_verifier)
+    return LoginUseCase(user_repository, token_manager, password_manager)
 
 
 def get_refresh_token_use_case(
@@ -120,6 +140,35 @@ def get_refresh_token_use_case(
 ) -> RefreshTokenUseCase:
     """Inyección de dependencias para renovar access tokens."""
     return RefreshTokenUseCase(user_repository, token_manager)
+
+
+def get_create_user_use_case(
+    user_repository: IUserRepository = Depends(get_user_repository),
+    password_manager: IPasswordManager = Depends(get_password_manager),
+) -> CreateUserUseCase:
+    """Inyección de dependencias para crear un usuario."""
+    return CreateUserUseCase(user_repository, password_manager)
+
+
+def get_delete_user_use_case(
+    user_repository: IUserRepository = Depends(get_user_repository),
+) -> DeleteUserUseCase:
+    """Inyección de dependencias para eliminar un usuario."""
+    return DeleteUserUseCase(user_repository)
+
+
+def get_update_user_use_case(
+    user_repository: IUserRepository = Depends(get_user_repository),
+) -> UpdateUserUseCase:
+    """Inyección de dependencias para actualizar un usuario."""
+    return UpdateUserUseCase(user_repository)
+
+
+def get_get_all_users_use_case(
+    user_repository: IUserRepository = Depends(get_user_repository),
+) -> GetAllUsersUseCase:
+    """Inyección de dependencias para obtener todos los usuarios."""
+    return GetAllUsersUseCase(user_repository)
 
 
 @dataclass

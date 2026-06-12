@@ -8,7 +8,8 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'bookings:delete',
     'searches:access',
     'admin:access',
+    'users:manage',
+    'properties:manage',
   ],
-  employee: ['bookings:read', 'searches:access'],
-  viewer: ['bookings:read'],
+  limpiadora: ['bookings:read'], //Revisar permisos
 };

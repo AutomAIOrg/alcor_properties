@@ -2,6 +2,7 @@
 Enrutador de autenticación.
 """
 
+import logging
 from typing import Annotated
 
 from fastapi import APIRouter, Depends
@@ -16,6 +17,8 @@ from api.v1.auth.schemas import (
 from application.auth.login_use_case import LoginCredentials, LoginUseCase
 from application.auth.refresh_token_use_case import RefreshTokenCommand, RefreshTokenUseCase
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
@@ -25,6 +28,7 @@ async def user_login(
     login_use_case: Annotated[LoginUseCase, Depends(get_login_use_case)],
 ):
     """Login de usuario."""
+    logger.info(f"Login de usuario: {request.username}")
     token = login_use_case.execute(
         LoginCredentials(username=request.username, password=request.password)
     )

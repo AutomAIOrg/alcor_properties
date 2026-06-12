@@ -8,7 +8,7 @@ import { Role } from '../models/user.model';
  *
  * Uso:
  *   *appHasRole="'admin'"
- *   *appHasRole="['admin', 'employee']"
+ *   *appHasRole="['admin', 'limpiadora']"
  */
 @Directive({
   selector: '[appHasRole]',

@@ -2,12 +2,15 @@
 Casos de uso (comandos) para autenticación.
 """
 
+import logging
 from dataclasses import dataclass
 
-from application.auth.password_verifier_interface import IPasswordVerifier
 from application.auth.token_manager_interface import ITokenManager
-from application.auth.user_repository_interface import IUserRepository
+from application.shared.password_manager_interface import IPasswordManager
+from application.shared.user_repository_interface import IUserRepository
 from domain.exceptions import InvalidCredentials
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -33,7 +36,7 @@ class LoginUseCase:
         self,
         user_repository: IUserRepository,
         token_manager: ITokenManager,
-        password_verifier: IPasswordVerifier,
+        password_verifier: IPasswordManager,
     ) -> None:
         self._user_repository = user_repository
         self._token_manager = token_manager
@@ -43,9 +46,11 @@ class LoginUseCase:
         user = self._user_repository.get_by_username(credentials.username)
 
         if user is None:
+            logger.warning("Usuario no encontrado")
             raise InvalidCredentials()
 
         if not self._password_verifier.verify(credentials.password, user.password):
+            logger.warning("Contraseña inválida")
             raise InvalidCredentials()
 
         claims = {
