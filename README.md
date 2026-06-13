@@ -209,7 +209,7 @@ pnpm build
 ## Funcionalidades actuales
 
 - **Calendario mensual** con vista de reservas por semana y carril (sin solapamientos)
-- **Filtros múltiples** por piso (`booking_id`) y estado, con checkboxes desplegables
+- **Filtros múltiples** por piso (`apartment_id`) y estado, con checkboxes desplegables
 - **Modal de detalle y edición** de reservas existentes
 - **Modal de creación** de nuevas reservas con validación, cálculo automático de noches y selector de piso desde la base de datos
 - **Estados de reserva**: `Confirmed`, `Pending`, `Cancelled`, `ok` (configurables en `booking.model.ts`)

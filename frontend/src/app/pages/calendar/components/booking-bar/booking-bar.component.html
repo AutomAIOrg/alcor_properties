@@ -9,7 +9,7 @@
   [style.height.px]="height"
   [style.background]="bar().booking.status === 'Cancelled' ? null : bar().background"
   (click)="barClick.emit(bar().booking)"
-  [attr.title]="bar().booking.booking_id + ' — ' + bar().booking.guest_name"
+  [attr.title]="bar().booking.apartment_id + ' — ' + bar().booking.guest_name"
 >
-  <span class="bar-label">{{ bar().booking.booking_id }} - {{ bar().booking.guest_name }}</span>
+  <span class="bar-label">{{ bar().booking.apartment_id }} - {{ bar().booking.guest_name }}</span>
 </div>

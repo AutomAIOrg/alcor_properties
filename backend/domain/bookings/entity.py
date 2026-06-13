@@ -8,6 +8,11 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator
 
+# Estados de reserva que NO bloquean la disponibilidad de un apartamento.
+# Una reserva en cualquiera de estos estados se considera inactiva y no impide
+# que el apartamento sea reservado en el mismo período.
+NON_BLOCKING_STATUSES: frozenset[str] = frozenset({"cancelled"})
+
 
 class Booking(BaseModel):
     """
@@ -24,8 +29,8 @@ class Booking(BaseModel):
         default=None,
         description="Clave primaria de base de datos. None para entidades aún no persistidas.",
     )
-    booking_id: str = Field(
-        ..., description="Identificador único de la reserva (ej. referencia Airbnb)"
+    apartment_id: str = Field(
+        ..., description="Identificador único del apartamento (ej. referencia Airbnb)"
     )
     guest_name: str = Field(..., min_length=1, description="Nombre completo del huésped")
     check_in: date = Field(..., description="Fecha de entrada (inclusiva)")
@@ -89,7 +94,7 @@ class Booking(BaseModel):
         return self.check_in <= today <= self.check_out
 
     def is_cancelled(self) -> bool:
-        return self.status.lower() == "cancelled"
+        return self.status.lower() in NON_BLOCKING_STATUSES
 
     def has_upcoming_checkin(self, days: int = 7, reference_date: date | None = None) -> bool:
         """Devuelve True si el check-in es en los próximos *days* días."""

@@ -68,7 +68,7 @@ class SQLAlchemyBookingRepository(IBookingRepository):
             assert booking.record_id is not None
             raise BookingNotFound(booking.record_id)
 
-        orm.booking_id = booking.booking_id
+        orm.apartment_id = booking.apartment_id
         orm.guest_name = booking.guest_name
         orm.check_in = booking.check_in
         orm.check_out = booking.check_out
@@ -106,7 +106,7 @@ class SQLAlchemyBookingRepository(IBookingRepository):
 
         return Booking(
             record_id=orm.record_id,
-            booking_id=orm.booking_id,
+            apartment_id=orm.apartment_id,
             guest_name=orm.guest_name or "Unknown",
             check_in=orm.check_in,
             check_out=orm.check_out,
@@ -127,7 +127,7 @@ class SQLAlchemyBookingRepository(IBookingRepository):
     def _to_orm(booking: Booking) -> BookingORM:
         """Convierte una entidad de dominio Booking en una instancia BookingORM para persistencia."""
         return BookingORM(
-            booking_id=booking.booking_id,
+            apartment_id=booking.apartment_id,
             guest_name=booking.guest_name,
             check_in=booking.check_in,
             check_out=booking.check_out,

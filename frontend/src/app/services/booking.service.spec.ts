@@ -11,7 +11,7 @@ import { environment } from '../../environments/environment';
 function makeBooking(overrides: Partial<Booking> = {}): Booking {
   return {
     record_id: 1,
-    booking_id: 'R180',
+    apartment_id: 'R180',
     guest_name: 'Ana García',
     check_in: '2025-06-01',
     check_out: '2025-06-07',
@@ -76,8 +76,8 @@ describe('BookingService', () => {
   describe('B — getBookings', () => {
     it('hace GET al endpoint de reservas y devuelve la lista recibida', () => {
       const bookings = [
-        makeBooking({ record_id: 1, booking_id: 'R180' }),
-        makeBooking({ record_id: 2, booking_id: 'R101' }),
+        makeBooking({ record_id: 1, apartment_id: 'R180' }),
+        makeBooking({ record_id: 2, apartment_id: 'R101' }),
       ];
 
       let result: Booking[] | undefined;
@@ -168,7 +168,7 @@ describe('BookingService', () => {
   describe('D — createBooking', () => {
     it('hace POST al endpoint de reservas y devuelve la reserva creada', () => {
       const data = makeCreateBookingData({
-        booking_id: 'R999',
+        apartment_id: 'R999',
         guest_name: 'Carlos López',
         price: 900,
       });
@@ -193,7 +193,7 @@ describe('BookingService', () => {
 
       expect(result).toEqual(createdBooking);
       expect(result?.record_id).toBe(99);
-      expect(result?.booking_id).toBe('R999');
+      expect(result?.apartment_id).toBe('R999');
       expect(result?.guest_name).toBe('Carlos López');
     });
 

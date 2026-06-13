@@ -89,7 +89,7 @@ class TestGetBooking:
     def test_returns_200_with_correct_schema(self, api_client, mock_use_cases):
         booking = make_booking(
             record_id=5,
-            booking_id="B-2026-001",
+            apartment_id="B-2026-001",
             guest_name="María López",
             check_in=date(2026, 6, 1),
             check_out=date(2026, 6, 5),
@@ -101,7 +101,7 @@ class TestGetBooking:
         assert response.status_code == 200
         data = response.json()
         assert data["record_id"] == 5
-        assert data["booking_id"] == "B-2026-001"
+        assert data["apartment_id"] == "B-2026-001"
         assert data["guest_name"] == "María López"
         assert data["check_in"] == "2026-06-01"
 
@@ -147,7 +147,7 @@ class TestCreateBooking:
         response = api_client.post(
             "/api/v1/bookings/",
             json={
-                "booking_id": "NEW-001",
+                "apartment_id": "NEW-001",
                 "guest_name": "Pedro Martínez",
                 "check_in": "2026-07-01",
                 "check_out": "2026-07-05",
@@ -160,7 +160,7 @@ class TestCreateBooking:
     def test_invalid_payload_returns_422(self, api_client):
         response = api_client.post(
             "/api/v1/bookings/",
-            json={"guest_name": "Solo nombre"},  # falta booking_id, check_in, check_out, nights
+            json={"guest_name": "Solo nombre"},  # falta apartment_id, check_in, check_out, nights
         )
 
         assert response.status_code == 422
@@ -224,7 +224,7 @@ class TestErrorHandlers:
         response = api_client.post(
             "/api/v1/bookings/",
             json={
-                "booking_id": "CONFLICT",
+                "apartment_id": "CONFLICT",
                 "guest_name": "Test",
                 "check_in": "2026-06-01",
                 "check_out": "2026-06-05",
@@ -242,7 +242,7 @@ class TestErrorHandlers:
         response = api_client.post(
             "/api/v1/bookings/",
             json={
-                "booking_id": "INVALID",
+                "apartment_id": "INVALID",
                 "guest_name": "Test",
                 "check_in": "2026-06-05",
                 "check_out": "2026-06-10",

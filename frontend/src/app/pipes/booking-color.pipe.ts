@@ -1,7 +1,7 @@
 import { Pipe, PipeTransform } from '@angular/core';
 
 /**
- * Pipe pura que genera un color HSL único por booking_id.
+ * Pipe pura que genera un color HSL único por apartment_id.
  * Usa el ángulo dorado (137.508°) para garantizar que colores adyacentes
  * en el espacio de hash nunca sean similares entre sí.
  *

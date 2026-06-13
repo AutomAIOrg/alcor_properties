@@ -9,6 +9,7 @@ from fastapi import Depends, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
+from application.apartments.use_cases import GetApartmentByIdUseCase, SearchApartmentsUseCase
 from application.auth.login_use_case import LoginUseCase
 from application.auth.refresh_token_use_case import RefreshTokenUseCase
 from application.auth.token_manager_interface import ITokenManager
@@ -32,10 +33,14 @@ from application.users.delete_user_use_case import DeleteUserUseCase
 from application.users.get_all_users_use_case import GetAllUsersUseCase
 from application.users.update_user_use_case import UpdateUserUseCase
 from config import settings
+from domain.apartments.repository import IApartmentRepository
 from domain.auth.user_entity import Role, User
 from domain.bookings.repository import IBookingRepository
 from domain.exceptions import InvalidToken
 from infrastructure.database.session import get_db
+from infrastructure.repositories.sqlalchemy_apartment_repository import (
+    SQLAlchemyApartmentRepository,
+)
 from infrastructure.repositories.sqlalchemy_booking_repository import (
     SQLAlchemyBookingRepository,
 )
@@ -109,6 +114,11 @@ def get_electric_ids() -> set[str]:
 def get_booking_repository(db: Session = Depends(get_db)) -> IBookingRepository:
     """Repositorio de reservas."""
     return SQLAlchemyBookingRepository(db)
+
+
+def get_apartment_repository(db: Session = Depends(get_db)) -> IApartmentRepository:
+    """Repositorio de apartamentos."""
+    return SQLAlchemyApartmentRepository(db)
 
 
 # ---------------------------------------------------------------------------
@@ -193,3 +203,17 @@ def get_booking_use_cases(
         update_command=UpdateBookingUseCase(repo, electric_ids),
         delete_command=DeleteBookingUseCase(repo),
     )
+
+
+def get_apartment_by_id_use_case(
+    repository: IApartmentRepository = Depends(get_apartment_repository),
+) -> GetApartmentByIdUseCase:
+    """Inyección de dependencias para el caso de uso de obtener un apartamento por ID."""
+    return GetApartmentByIdUseCase(repository)
+
+
+def get_search_apartments_use_case(
+    repository: IApartmentRepository = Depends(get_apartment_repository),
+) -> SearchApartmentsUseCase:
+    """Inyección de dependencias para el caso de uso de búsqueda de apartamentos."""
+    return SearchApartmentsUseCase(repository)

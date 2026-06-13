@@ -1,0 +1,349 @@
+"""
+Integration tests — SQLAlchemyApartmentRepository contra SQLite en memoria.
+
+Verifica filtros de texto, numéricos, disponibilidad y mapeo de entidades
+sin conectar contra MySQL.
+"""
+
+from datetime import date
+
+import pytest
+
+from domain.apartments.entity import Apartment
+from domain.apartments.filters import ApartmentSearchFilters
+from infrastructure.models.apartment import ApartmentORM
+from infrastructure.models.booking import BookingORM
+from infrastructure.repositories.sqlalchemy_apartment_repository import (
+    SQLAlchemyApartmentRepository,
+)
+
+pytestmark = pytest.mark.integration
+
+
+# ---------------------------------------------------------------------------
+# Helpers de inserción directa (bypass de la capa de dominio)
+# ---------------------------------------------------------------------------
+
+
+def _insert_apartment(session, **overrides) -> ApartmentORM:
+    """Inserta un ApartmentORM con valores por defecto aplicando los overrides dados."""
+    defaults = {
+        "apartment_id": "R180",
+        "community": "Alta Entinas",
+        "apartment_description": "Apartamento familiar",
+        "address": "Calle Glaucio 15",
+        "rooms": 2,
+        "bathrooms": 2,
+        "parking": "63",
+        "total_occupants": 6,
+        "owner_name": "Katarzyna Tokarska",
+        "email": "owner@example.com",
+        "phone": "+34 600 000 000",
+    }
+    orm = ApartmentORM(**{**defaults, **overrides})
+    session.add(orm)
+    session.commit()
+    session.refresh(orm)
+    return orm
+
+
+def _insert_booking(session, **overrides) -> BookingORM:
+    """Inserta un BookingORM con valores por defecto aplicando los overrides dados."""
+    defaults = {
+        "apartment_id": "R180",
+        "guest_name": "Ana García",
+        "check_in": date(2026, 6, 1),
+        "check_out": date(2026, 6, 5),
+        "nights": 4,
+        "status": "Confirmed",
+    }
+    orm = BookingORM(**{**defaults, **overrides})
+    session.add(orm)
+    session.commit()
+    session.refresh(orm)
+    return orm
+
+
+# ---------------------------------------------------------------------------
+# get_by_apartment_id
+# ---------------------------------------------------------------------------
+
+
+class TestGetByApartmentId:
+    def test_returns_entity_when_found(self, sqlite_session):
+        _insert_apartment(sqlite_session, apartment_id="R180", community="Alta Entinas")
+
+        result = SQLAlchemyApartmentRepository(sqlite_session).get_by_apartment_id("R180")
+
+        assert isinstance(result, Apartment)
+        assert result.apartment_id == "R180"
+        assert result.community == "Alta Entinas"
+
+    def test_returns_none_when_not_found(self, sqlite_session):
+        result = SQLAlchemyApartmentRepository(sqlite_session).get_by_apartment_id("UNKNOWN")
+
+        assert result is None
+
+    def test_all_fields_are_mapped_to_domain_entity(self, sqlite_session):
+        _insert_apartment(sqlite_session)
+
+        result = SQLAlchemyApartmentRepository(sqlite_session).get_by_apartment_id("R180")
+
+        assert result.rooms == 2
+        assert result.bathrooms == 2
+        assert result.parking == "63"
+        assert result.total_occupants == 6
+        assert result.owner_name == "Katarzyna Tokarska"
+        assert result.email == "owner@example.com"
+        assert result.phone == "+34 600 000 000"
+
+
+# ---------------------------------------------------------------------------
+# search_apartments — filtros de texto
+# ---------------------------------------------------------------------------
+
+
+class TestSearchTextFilters:
+    def test_no_filters_returns_all_apartments(self, sqlite_session):
+        _insert_apartment(sqlite_session, apartment_id="R180")
+        _insert_apartment(sqlite_session, apartment_id="R221")
+
+        results = SQLAlchemyApartmentRepository(sqlite_session).search_apartments(
+            ApartmentSearchFilters()
+        )
+
+        assert len(results) == 2
+
+    def test_q_matches_community_case_insensitive(self, sqlite_session):
+        _insert_apartment(sqlite_session, apartment_id="R180", community="Alta Entinas")
+        _insert_apartment(sqlite_session, apartment_id="R221", community="Zenata")
+
+        results = SQLAlchemyApartmentRepository(sqlite_session).search_apartments(
+            ApartmentSearchFilters(q="entinas")
+        )
+
+        assert len(results) == 1
+        assert results[0].apartment_id == "R180"
+
+    def test_q_matches_apartment_id(self, sqlite_session):
+        _insert_apartment(sqlite_session, apartment_id="R180")
+        _insert_apartment(sqlite_session, apartment_id="R221")
+
+        results = SQLAlchemyApartmentRepository(sqlite_session).search_apartments(
+            ApartmentSearchFilters(q="R221")
+        )
+
+        assert len(results) == 1
+        assert results[0].apartment_id == "R221"
+
+    def test_q_matches_owner_name(self, sqlite_session):
+        _insert_apartment(sqlite_session, apartment_id="R180", owner_name="Katarzyna Tokarska")
+        _insert_apartment(sqlite_session, apartment_id="R221", owner_name="Juan Pérez")
+
+        results = SQLAlchemyApartmentRepository(sqlite_session).search_apartments(
+            ApartmentSearchFilters(q="tokarska")
+        )
+
+        assert len(results) == 1
+        assert results[0].apartment_id == "R180"
+
+    def test_q_returns_empty_when_no_match(self, sqlite_session):
+        _insert_apartment(sqlite_session, apartment_id="R180")
+
+        results = SQLAlchemyApartmentRepository(sqlite_session).search_apartments(
+            ApartmentSearchFilters(q="NOMATCH-XYZ")
+        )
+
+        assert results == []
+
+    def test_community_field_filter_is_case_insensitive(self, sqlite_session):
+        _insert_apartment(sqlite_session, apartment_id="R180", community="Alta Entinas")
+        _insert_apartment(sqlite_session, apartment_id="R221", community="Zenata")
+
+        results = SQLAlchemyApartmentRepository(sqlite_session).search_apartments(
+            ApartmentSearchFilters(community="ALTA")
+        )
+
+        assert len(results) == 1
+        assert results[0].apartment_id == "R180"
+
+    def test_address_field_filter_partial_match(self, sqlite_session):
+        _insert_apartment(sqlite_session, apartment_id="R180", address="Calle Glaucio 15")
+        _insert_apartment(sqlite_session, apartment_id="R221", address="Avenida del Mar 3")
+
+        results = SQLAlchemyApartmentRepository(sqlite_session).search_apartments(
+            ApartmentSearchFilters(address="glaucio")
+        )
+
+        assert len(results) == 1
+        assert results[0].apartment_id == "R180"
+
+
+# ---------------------------------------------------------------------------
+# search_apartments — filtros numéricos
+# ---------------------------------------------------------------------------
+
+
+class TestSearchNumericFilters:
+    def test_min_rooms_excludes_apartments_below_threshold(self, sqlite_session):
+        _insert_apartment(sqlite_session, apartment_id="SMALL", rooms=1)
+        _insert_apartment(sqlite_session, apartment_id="LARGE", rooms=4)
+
+        results = SQLAlchemyApartmentRepository(sqlite_session).search_apartments(
+            ApartmentSearchFilters(min_rooms=3)
+        )
+
+        assert len(results) == 1
+        assert results[0].apartment_id == "LARGE"
+
+    def test_max_rooms_excludes_apartments_above_threshold(self, sqlite_session):
+        _insert_apartment(sqlite_session, apartment_id="SMALL", rooms=1)
+        _insert_apartment(sqlite_session, apartment_id="LARGE", rooms=4)
+
+        results = SQLAlchemyApartmentRepository(sqlite_session).search_apartments(
+            ApartmentSearchFilters(max_rooms=2)
+        )
+
+        assert len(results) == 1
+        assert results[0].apartment_id == "SMALL"
+
+    def test_min_max_rooms_combined(self, sqlite_session):
+        _insert_apartment(sqlite_session, apartment_id="ONE", rooms=1)
+        _insert_apartment(sqlite_session, apartment_id="TWO", rooms=2)
+        _insert_apartment(sqlite_session, apartment_id="FOUR", rooms=4)
+
+        results = SQLAlchemyApartmentRepository(sqlite_session).search_apartments(
+            ApartmentSearchFilters(min_rooms=2, max_rooms=3)
+        )
+
+        assert len(results) == 1
+        assert results[0].apartment_id == "TWO"
+
+    def test_min_max_occupants_combined(self, sqlite_session):
+        _insert_apartment(sqlite_session, apartment_id="SMALL", total_occupants=2)
+        _insert_apartment(sqlite_session, apartment_id="MEDIUM", total_occupants=6)
+        _insert_apartment(sqlite_session, apartment_id="LARGE", total_occupants=10)
+
+        results = SQLAlchemyApartmentRepository(sqlite_session).search_apartments(
+            ApartmentSearchFilters(min_occupants=4, max_occupants=8)
+        )
+
+        assert len(results) == 1
+        assert results[0].apartment_id == "MEDIUM"
+
+
+# ---------------------------------------------------------------------------
+# search_apartments — filtro de disponibilidad
+# ---------------------------------------------------------------------------
+
+
+class TestSearchAvailabilityFilter:
+    def test_apartment_with_no_bookings_is_available(self, sqlite_session):
+        _insert_apartment(sqlite_session, apartment_id="R180")
+
+        results = SQLAlchemyApartmentRepository(sqlite_session).search_apartments(
+            ApartmentSearchFilters(
+                available_from=date(2026, 6, 1),
+                available_to=date(2026, 6, 10),
+            )
+        )
+
+        assert len(results) == 1
+        assert results[0].apartment_id == "R180"
+
+    def test_overlapping_confirmed_booking_blocks_availability(self, sqlite_session):
+        _insert_apartment(sqlite_session, apartment_id="R180")
+        _insert_booking(
+            sqlite_session,
+            apartment_id="R180",
+            check_in=date(2026, 6, 3),
+            check_out=date(2026, 6, 8),
+            status="Confirmed",
+        )
+
+        results = SQLAlchemyApartmentRepository(sqlite_session).search_apartments(
+            ApartmentSearchFilters(
+                available_from=date(2026, 6, 1),
+                available_to=date(2026, 6, 10),
+            )
+        )
+
+        assert results == []
+
+    def test_cancelled_booking_does_not_block_availability(self, sqlite_session):
+        _insert_apartment(sqlite_session, apartment_id="R180")
+        _insert_booking(
+            sqlite_session,
+            apartment_id="R180",
+            check_in=date(2026, 6, 3),
+            check_out=date(2026, 6, 8),
+            status="Cancelled",
+        )
+
+        results = SQLAlchemyApartmentRepository(sqlite_session).search_apartments(
+            ApartmentSearchFilters(
+                available_from=date(2026, 6, 1),
+                available_to=date(2026, 6, 10),
+            )
+        )
+
+        assert len(results) == 1
+        assert results[0].apartment_id == "R180"
+
+    def test_non_overlapping_booking_does_not_block_availability(self, sqlite_session):
+        _insert_apartment(sqlite_session, apartment_id="R180")
+        _insert_booking(
+            sqlite_session,
+            apartment_id="R180",
+            check_in=date(2026, 7, 1),
+            check_out=date(2026, 7, 5),
+            status="Confirmed",
+        )
+
+        results = SQLAlchemyApartmentRepository(sqlite_session).search_apartments(
+            ApartmentSearchFilters(
+                available_from=date(2026, 6, 1),
+                available_to=date(2026, 6, 10),
+            )
+        )
+
+        assert len(results) == 1
+
+    def test_available_apartment_returned_while_booked_one_excluded(self, sqlite_session):
+        _insert_apartment(sqlite_session, apartment_id="BUSY")
+        _insert_apartment(sqlite_session, apartment_id="FREE")
+        _insert_booking(
+            sqlite_session,
+            apartment_id="BUSY",
+            check_in=date(2026, 6, 3),
+            check_out=date(2026, 6, 8),
+            status="Confirmed",
+        )
+
+        results = SQLAlchemyApartmentRepository(sqlite_session).search_apartments(
+            ApartmentSearchFilters(
+                available_from=date(2026, 6, 1),
+                available_to=date(2026, 6, 10),
+            )
+        )
+
+        assert len(results) == 1
+        assert results[0].apartment_id == "FREE"
+
+
+# ---------------------------------------------------------------------------
+# search_apartments — ordenación
+# ---------------------------------------------------------------------------
+
+
+class TestSearchOrdering:
+    def test_results_are_ordered_by_apartment_id_ascending(self, sqlite_session):
+        _insert_apartment(sqlite_session, apartment_id="R500")
+        _insert_apartment(sqlite_session, apartment_id="R100")
+        _insert_apartment(sqlite_session, apartment_id="R300")
+
+        results = SQLAlchemyApartmentRepository(sqlite_session).search_apartments(
+            ApartmentSearchFilters()
+        )
+
+        assert [r.apartment_id for r in results] == ["R100", "R300", "R500"]
