@@ -33,6 +33,7 @@ from application.users.delete_user_use_case import DeleteUserUseCase
 from application.users.get_all_users_use_case import GetAllUsersUseCase
 from application.users.update_user_use_case import UpdateUserUseCase
 from config import settings
+from domain.apartments.repository import IApartmentRepository
 from domain.auth.user_entity import Role, User
 from domain.bookings.repository import IBookingRepository
 from domain.exceptions import InvalidToken

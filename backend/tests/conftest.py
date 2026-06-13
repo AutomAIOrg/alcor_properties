@@ -8,6 +8,7 @@ Niveles:
 """
 
 from collections.abc import Iterator
+from datetime import UTC, datetime, timedelta
 from unittest.mock import MagicMock
 
 import pytest
@@ -20,6 +21,8 @@ from starlette.testclient import TestClient
 import infrastructure.models.apartment  # noqa: F401 — registra ApartmentORM en Base.metadata
 import infrastructure.models.booking  # noqa: F401 — registra BookingORM en Base.metadata
 import infrastructure.models.user  # noqa: F401 — registra UserORM en Base.metadata
+from domain.apartments.repository import IApartmentRepository
+from domain.auth.token_payload_entity import TokenPayload
 from domain.auth.user_entity import Role, User
 from domain.bookings.repository import IBookingRepository
 from infrastructure.database.base import Base
