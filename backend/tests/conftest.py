@@ -7,6 +7,7 @@ Niveles:
   - e2e         → sqlite_engine, e2e_client
 """
 
+from collections.abc import Iterator
 from datetime import UTC, datetime, timedelta
 from unittest.mock import MagicMock
 
@@ -22,7 +23,7 @@ import infrastructure.models.booking  # noqa: F401 — registra BookingORM en Ba
 import infrastructure.models.user  # noqa: F401 — registra UserORM en Base.metadata
 from domain.apartments.repository import IApartmentRepository
 from domain.auth.token_payload_entity import TokenPayload
-from domain.auth.user_entity import Role
+from domain.auth.user_entity import Role, User
 from domain.bookings.repository import IBookingRepository
 from infrastructure.database.base import Base
 from infrastructure.models.user import UserORM
@@ -45,8 +46,8 @@ def mock_apartment_repo() -> MagicMock:
 
 
 @pytest.fixture
-def mock_get_apartment_by_id_query() -> MagicMock:
-    """GetApartmentByIdQuery mockeado para tests de API."""
+def mock_get_apartment_by_id_use_case() -> MagicMock:
+    """GetApartmentByIdUseCase mockeado para tests de API."""
     return MagicMock()
 
 
@@ -96,7 +97,7 @@ def mock_use_cases() -> MagicMock:
 
 
 @pytest.fixture
-def api_client(mock_use_cases: MagicMock) -> TestClient:
+def api_client(mock_use_cases: MagicMock) -> Iterator[TestClient]:
     """
     TestClient de FastAPI con use cases inyectados como mock.
 
@@ -104,6 +105,45 @@ def api_client(mock_use_cases: MagicMock) -> TestClient:
       que lo soliciten como parámetro (pytest reutiliza la misma instancia).
     """
     from api.dependencies import get_booking_use_cases, get_current_user
+    from main import app
+
+    admin_user = User(
+        id=1,
+        username="admin",
+        password="admin-password",
+        name="Admin",
+        lastname="User",
+        email="admin@example.com",
+        role=Role.ADMIN,
+    )
+
+    app.dependency_overrides[get_booking_use_cases] = lambda: mock_use_cases
+    app.dependency_overrides[get_current_user] = lambda: admin_user
+
+    try:
+        with TestClient(app, raise_server_exceptions=True) as client:
+            yield client
+    finally:
+        app.dependency_overrides.pop(get_booking_use_cases, None)
+        app.dependency_overrides.pop(get_current_user, None)
+
+
+@pytest.fixture
+def mock_search_apartments_use_case() -> MagicMock:
+    """ApartmentUseCases completamente mockeado para tests de API."""
+    return MagicMock()
+
+
+@pytest.fixture
+def apartment_api_client(
+    mock_search_apartments_use_case: MagicMock,
+    mock_get_apartment_by_id_use_case: MagicMock,
+) -> TestClient:
+    from api.dependencies import (
+        get_apartment_by_id_use_case,
+        get_current_user,
+        get_search_apartments_use_case,
+    )
     from main import app
 
     now = datetime.now(UTC)
@@ -115,14 +155,20 @@ def api_client(mock_use_cases: MagicMock) -> TestClient:
         role=Role.ADMIN,
     )
 
-    app.dependency_overrides[get_booking_use_cases] = lambda: mock_use_cases
+    app.dependency_overrides[get_search_apartments_use_case] = lambda: (
+        mock_search_apartments_use_case
+    )
+    app.dependency_overrides[get_apartment_by_id_use_case] = lambda: (
+        mock_get_apartment_by_id_use_case
+    )
     app.dependency_overrides[get_current_user] = lambda: admin_payload
 
     try:
         with TestClient(app, raise_server_exceptions=True) as client:
             yield client
     finally:
-        app.dependency_overrides.pop(get_booking_use_cases, None)
+        app.dependency_overrides.pop(get_search_apartments_use_case, None)
+        app.dependency_overrides.pop(get_apartment_by_id_use_case, None)
         app.dependency_overrides.pop(get_current_user, None)
 
 

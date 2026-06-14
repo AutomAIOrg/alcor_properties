@@ -20,13 +20,18 @@ _SECRET = "test-secret-12345678901234567890"  # Mínimo recomendado de 32 caract
 
 @pytest.fixture
 def protected_api_client() -> Iterator[TestClient]:
-    from api.dependencies import get_booking_use_cases, get_token_manager
+    from api.dependencies import get_booking_use_cases, get_token_manager, get_user_repository
     from main import app
+    from tests.helpers import make_user
 
     mock_use_cases = MagicMock()
     mock_use_cases.list_query.execute.return_value = []
     app.dependency_overrides[get_booking_use_cases] = lambda: mock_use_cases
     app.dependency_overrides[get_token_manager] = lambda: JwtTokenManager(secret_key=_SECRET)
+
+    mock_user_repository = MagicMock()
+    mock_user_repository.get_by_id.return_value = make_user(id=1, role=Role.LIMPIADORA)
+    app.dependency_overrides[get_user_repository] = lambda: mock_user_repository
 
     try:
         with TestClient(app, raise_server_exceptions=True) as client:
@@ -34,6 +39,7 @@ def protected_api_client() -> Iterator[TestClient]:
     finally:
         app.dependency_overrides.pop(get_booking_use_cases, None)
         app.dependency_overrides.pop(get_token_manager, None)
+        app.dependency_overrides.pop(get_user_repository, None)
 
 
 def _bearer_token(role: Role) -> str:

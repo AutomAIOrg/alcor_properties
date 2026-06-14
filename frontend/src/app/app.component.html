@@ -1,4 +1,4 @@
-<div class="main-container">
+<div class="main-container" [class.sidebar-collapsed]="isSidebarHidden || !showSidebar()">
   <!-- BARRA LATERAL -->
   @if (showSidebar()) {
     <aside class="sidebar" [class.hidden]="isSidebarHidden">
@@ -19,12 +19,20 @@
 
       <nav class="menu">
         <a routerLink="/calendar" routerLinkActive="active-link">📅 Calendario</a>
-        <a *appHasRole="['admin', 'employee']" routerLink="/searches" routerLinkActive="active-link"
-          >🔍 Búsquedas</a
-        >
+        @if (authService.hasPermission('searches:access')) {
+          <a routerLink="/searches" routerLinkActive="active-link">🔍 Búsquedas</a>
+        }
       </nav>
 
-      <button class="logout-btn" (click)="logout()">🚪 Cerrar sesión</button>
+      <div class="sidebar-actions">
+        @if (authService.hasPermission('admin:access')) {
+          <a class="admin-panel-link" routerLink="/admin" routerLinkActive="active-link">
+            ⚙️️ Panel de Administrador
+          </a>
+        }
+
+        <button class="logout-btn" (click)="logout()">🚪 Cerrar sesión</button>
+      </div>
     </aside>
   }
 

@@ -1,0 +1,431 @@
+<section class="admin-panel">
+  <header class="admin-header">
+    <div>
+      <span class="eyebrow">Panel de Administrador</span>
+      <h1>Configuración operativa</h1>
+      <p>
+        Gestiona los usuarios que acceden a la aplicación y la base de apartamentos que se usará en
+        reservas, limpiezas y facturación.
+      </p>
+    </div>
+  </header>
+
+  <article class="accordion-card">
+    <button
+      class="accordion-trigger"
+      type="button"
+      [attr.aria-expanded]="isUsersSectionOpen()"
+      (click)="toggleUsersSection()"
+    >
+      <span>
+        <strong>Gestión de usuarios</strong>
+        <small>Alta y baja de usuarios con asignación de roles para la gestión de permisos.</small>
+      </span>
+      <span class="accordion-icon" [class.open]="isUsersSectionOpen()">▾</span>
+    </button>
+
+    @if (isUsersSectionOpen()) {
+      <div class="accordion-content">
+        <article class="admin-card">
+          @if (usersError()) {
+            <div class="notice error-notice">
+              <span>{{ usersError() }}</span>
+              <button class="secondary-btn" type="button" (click)="loadUsers()">Reintentar</button>
+            </div>
+          }
+
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>Usuario</th>
+                  <th>Username</th>
+                  <th>Rol</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                @if (isLoadingUsers()) {
+                  <tr>
+                    <td colspan="4" class="state-cell">Cargando usuarios...</td>
+                  </tr>
+                } @else if (usersError()) {
+                  <tr>
+                    <td colspan="4" class="state-cell">
+                      No se han podido cargar los usuarios. Revisa el error y vuelve a intentarlo.
+                    </td>
+                  </tr>
+                } @else if (!users().length) {
+                  <tr>
+                    <td colspan="4" class="state-cell">No hay usuarios para mostrar.</td>
+                  </tr>
+                } @else {
+                  @for (user of users(); track user.id) {
+                    <tr>
+                      <td>
+                        <strong>{{ user.name }} {{ user.lastname }}</strong>
+                        <span>{{ user.email || 'Sin email' }}</span>
+                      </td>
+                      <td>
+                        <span>{{ user.username }}</span>
+                      </td>
+                      <td>
+                        <span class="role-chip">{{ user.role }}</span>
+                      </td>
+                      <td class="actions-cell">
+                        <div class="row-actions">
+                          <button
+                            class="icon-btn edit-btn"
+                            type="button"
+                            title="Editar usuario"
+                            aria-label="Editar usuario"
+                            [disabled]="isSavingUser() || isDeletingUser()"
+                            (click)="startEditingUser(user)"
+                          >
+                            ✎
+                          </button>
+                          <button
+                            class="icon-btn delete-btn"
+                            type="button"
+                            title="Eliminar usuario"
+                            aria-label="Eliminar usuario"
+                            [disabled]="isSavingUser() || isDeletingUser()"
+                            (click)="openDeleteUserDialog(user)"
+                          >
+                            🗑
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  }
+                }
+              </tbody>
+            </table>
+          </div>
+
+          <div class="section-actions users-actions">
+            <button class="primary-btn" type="button" (click)="openCreateUserDialog()">
+              Crear usuario
+            </button>
+          </div>
+        </article>
+      </div>
+    }
+  </article>
+
+  <article class="accordion-card">
+    <button
+      class="accordion-trigger"
+      type="button"
+      [attr.aria-expanded]="isPropertiesSectionOpen()"
+      (click)="togglePropertiesSection()"
+    >
+      <span>
+        <strong>Gestión de apartamentos y propiedades</strong>
+        <small>Catálogo de apartamentos disponibles para la gestión de reservas.</small>
+      </span>
+      <span class="accordion-icon" [class.open]="isPropertiesSectionOpen()">▾</span>
+    </button>
+
+    @if (isPropertiesSectionOpen()) {
+      <div class="accordion-content">
+        <article class="admin-card">
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>Referencia</th>
+                  <th>Propiedad</th>
+                  <th>Dirección</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                @if (!properties().length) {
+                  <tr>
+                    <td colspan="4" class="state-cell">No hay apartamentos para mostrar.</td>
+                  </tr>
+                } @else {
+                  @for (property of properties(); track property.id) {
+                    <tr>
+                      <td>
+                        <span class="reference-chip">{{ property.reference }}</span>
+                      </td>
+                      <td>
+                        <strong>{{ property.name }}</strong>
+                      </td>
+                      <td>
+                        <span>{{ property.address }}</span>
+                      </td>
+                      <td class="actions-cell">
+                        <div class="row-actions">
+                          <button
+                            class="icon-btn edit-btn"
+                            type="button"
+                            title="Editar apartamento"
+                            aria-label="Editar apartamento"
+                            (click)="startEditingProperty(property)"
+                          >
+                            ✎
+                          </button>
+                          <button
+                            class="icon-btn delete-btn"
+                            type="button"
+                            title="Eliminar apartamento"
+                            aria-label="Eliminar apartamento"
+                            (click)="openDeletePropertyDialog(property)"
+                          >
+                            🗑
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  }
+                }
+              </tbody>
+            </table>
+          </div>
+
+          <div class="section-actions users-actions">
+            <button class="primary-btn" type="button" (click)="openCreatePropertyDialog()">
+              Incluir apartamento
+            </button>
+          </div>
+        </article>
+      </div>
+    }
+  </article>
+
+  @if (isUserFormModalOpen()) {
+    <div class="modal-backdrop" role="presentation">
+      <section
+        class="confirm-dialog user-form-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="user-form-title"
+      >
+        <h2 id="user-form-title">
+          {{ editingUserId() === null ? 'Crear usuario' : 'Editar usuario' }}
+        </h2>
+        <form class="admin-form user-form" (ngSubmit)="saveUser()" #userForm="ngForm">
+          <label>
+            Username
+            <input
+              type="text"
+              name="username"
+              placeholder="Nombre de usuario"
+              [ngModel]="newUser().username"
+              (ngModelChange)="updateNewUserUsername($event)"
+              required
+            />
+          </label>
+
+          <label>
+            Nombre
+            <input
+              type="text"
+              name="userName"
+              placeholder="Nombre"
+              [ngModel]="newUser().name"
+              (ngModelChange)="updateNewUserName($event)"
+              required
+            />
+          </label>
+
+          <label>
+            Apellidos
+            <input
+              type="text"
+              name="lastname"
+              placeholder="Apellidos (opcional)"
+              [ngModel]="newUser().lastname"
+              (ngModelChange)="updateNewUserLastname($event)"
+            />
+          </label>
+
+          <label>
+            Email
+            <input
+              type="email"
+              name="userEmail"
+              placeholder="Email (opcional)"
+              [ngModel]="newUser().email"
+              (ngModelChange)="updateNewUserEmail($event)"
+            />
+          </label>
+
+          <label>
+            Rol
+            <select
+              name="userRole"
+              [ngModel]="newUser().role"
+              (ngModelChange)="updateNewUserRole($event)"
+            >
+              @for (role of roleOptions; track role) {
+                <option [value]="role">{{ role }}</option>
+              }
+            </select>
+          </label>
+
+          <div class="dialog-actions">
+            <button
+              class="secondary-btn"
+              type="button"
+              [disabled]="isSavingUser()"
+              (click)="closeUserFormDialog()"
+            >
+              Cancelar
+            </button>
+            <button
+              class="primary-btn"
+              type="submit"
+              [disabled]="userForm.invalid || isSavingUser()"
+            >
+              @if (isSavingUser()) {
+                Guardando...
+              } @else if (editingUserId() !== null) {
+                Guardar cambios
+              } @else {
+                Añadir usuario
+              }
+            </button>
+          </div>
+        </form>
+      </section>
+    </div>
+  }
+
+  @if (isPropertyFormModalOpen()) {
+    <div class="modal-backdrop" role="presentation">
+      <section
+        class="confirm-dialog user-form-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="property-form-title"
+      >
+        <h2 id="property-form-title">
+          {{ editingPropertyId() === null ? 'Incluir apartamento' : 'Editar apartamento' }}
+        </h2>
+        <form class="admin-form property-form" (ngSubmit)="saveProperty()" #propertyForm="ngForm">
+          <label>
+            Referencia
+            <input
+              type="text"
+              name="propertyReference"
+              placeholder="R180"
+              [ngModel]="newProperty().reference"
+              (ngModelChange)="updateNewPropertyReference($event)"
+              required
+            />
+          </label>
+
+          <label>
+            Nombre
+            <input
+              type="text"
+              name="propertyName"
+              placeholder="Apartamento R180"
+              [ngModel]="newProperty().name"
+              (ngModelChange)="updateNewPropertyName($event)"
+              required
+            />
+          </label>
+
+          <label class="wide-field">
+            Dirección
+            <input
+              type="text"
+              name="propertyAddress"
+              placeholder="Dirección completa"
+              [ngModel]="newProperty().address"
+              (ngModelChange)="updateNewPropertyAddress($event)"
+            />
+          </label>
+
+          <div class="dialog-actions">
+            <button class="secondary-btn" type="button" (click)="closePropertyFormDialog()">
+              Cancelar
+            </button>
+            <button class="primary-btn" type="submit" [disabled]="propertyForm.invalid">
+              {{ editingPropertyId() === null ? 'Añadir apartamento' : 'Guardar cambios' }}
+            </button>
+          </div>
+        </form>
+      </section>
+    </div>
+  }
+
+  @if (userPendingDeletion()) {
+    <div class="modal-backdrop" role="presentation">
+      <section
+        class="confirm-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="delete-user-title"
+      >
+        <h2 id="delete-user-title">Eliminar usuario</h2>
+        <p>
+          ¿Seguro que deseas eliminar el usuario
+          <strong>{{ userPendingDeletion()!.username }}</strong
+          >?
+        </p>
+        <div class="dialog-actions">
+          <button
+            class="secondary-btn"
+            type="button"
+            [disabled]="isDeletingUser()"
+            (click)="closeDeleteUserDialog()"
+          >
+            Cancelar
+          </button>
+          <button
+            class="danger-btn"
+            type="button"
+            [disabled]="isDeletingUser()"
+            (click)="confirmDeleteUser()"
+          >
+            {{ isDeletingUser() ? 'Eliminando...' : 'Confirmar' }}
+          </button>
+        </div>
+      </section>
+    </div>
+  }
+
+  @if (propertyPendingDeletion()) {
+    <div class="modal-backdrop" role="presentation">
+      <section
+        class="confirm-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="delete-property-title"
+      >
+        <h2 id="delete-property-title">Eliminar apartamento</h2>
+        <p>
+          ¿Seguro que deseas eliminar el apartamento
+          <strong>{{ propertyPendingDeletion()!.reference }}</strong
+          >?
+        </p>
+        <div class="dialog-actions">
+          <button class="secondary-btn" type="button" (click)="closeDeletePropertyDialog()">
+            Cancelar
+          </button>
+          <button class="danger-btn" type="button" (click)="confirmDeleteProperty()">
+            Confirmar
+          </button>
+        </div>
+      </section>
+    </div>
+  }
+
+  @if (toast()) {
+    <div class="toast" [class.error]="toast()!.type === 'error'" role="status" aria-live="polite">
+      <span>{{ toast()!.text }}</span>
+      @if (toast()!.type === 'error' && toast()!.detail) {
+        <details>
+          <summary>Mostrar detalle</summary>
+          <p>{{ toast()!.detail }}</p>
+        </details>
+      }
+    </div>
+  }
+</section>

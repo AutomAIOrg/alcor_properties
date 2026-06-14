@@ -14,7 +14,7 @@ from application.auth.refresh_token_use_case import (
     RefreshTokenUseCase,
 )
 from application.auth.token_manager_interface import ITokenManager
-from application.auth.user_repository_interface import IUserRepository
+from application.shared.user_repository_interface import IUserRepository
 from domain.auth.token_payload_entity import TokenPayload
 from domain.auth.user_entity import Role
 from domain.exceptions import InvalidToken

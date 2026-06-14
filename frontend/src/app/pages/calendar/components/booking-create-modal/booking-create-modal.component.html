@@ -12,11 +12,8 @@
         <div class="field">
           <label>Referencia piso *</label>
           <select (change)="patchSelect('apartment_id', $event)">
-            <option value="" disabled [selected]="!draft().apartment_id">
-              {{ apartmentPlaceholder() }}
-            </option>
-
-            @for (apt of apartmentOptions(); track apt) {
+            <option value="" disabled [selected]="!draft().apartment_id">Selecciona un piso</option>
+            @for (apt of apartments(); track apt) {
               <option [value]="apt" [selected]="draft().apartment_id === apt">{{ apt }}</option>
             }
           </select>

@@ -6,7 +6,6 @@ Sin base de datos real: la dependencia get_apartment_use_cases se sobreescribe.
 """
 
 import pytest
-from pydantic import ValidationError
 
 from tests.helpers import make_apartment
 
@@ -19,8 +18,10 @@ pytestmark = pytest.mark.integration
 
 
 class TestSearchApartments:
-    def test_returns_200_with_empty_list(self, apartment_api_client, mock_search_apartments_query):
-        mock_search_apartments_query.execute.return_value = []
+    def test_returns_200_with_empty_list(
+        self, apartment_api_client, mock_search_apartments_use_case
+    ):
+        mock_search_apartments_use_case.execute.return_value = []
 
         response = apartment_api_client.get("/api/v1/apartments/search")
 
@@ -28,9 +29,9 @@ class TestSearchApartments:
         assert response.json() == []
 
     def test_returns_200_with_correct_schema(
-        self, apartment_api_client, mock_search_apartments_query
+        self, apartment_api_client, mock_search_apartments_use_case
     ):
-        mock_search_apartments_query.execute.return_value = [
+        mock_search_apartments_use_case.execute.return_value = [
             make_apartment(
                 apartment_id="R180",
                 community="Alta Entinas",
@@ -52,58 +53,58 @@ class TestSearchApartments:
         assert data[0]["parking"] == "63"
 
     def test_q_param_is_forwarded_to_use_case(
-        self, apartment_api_client, mock_search_apartments_query
+        self, apartment_api_client, mock_search_apartments_use_case
     ):
-        mock_search_apartments_query.execute.return_value = []
+        mock_search_apartments_use_case.execute.return_value = []
 
         apartment_api_client.get("/api/v1/apartments/search?q=entinas")
 
-        filters = mock_search_apartments_query.execute.call_args[0][0]
+        filters = mock_search_apartments_use_case.execute.call_args[0][0]
         assert filters.q == "entinas"
 
     def test_numeric_filters_are_forwarded_to_use_case(
-        self, apartment_api_client, mock_search_apartments_query
+        self, apartment_api_client, mock_search_apartments_use_case
     ):
-        mock_search_apartments_query.execute.return_value = []
+        mock_search_apartments_use_case.execute.return_value = []
 
         apartment_api_client.get(
             "/api/v1/apartments/search?min_rooms=2&max_rooms=4&min_occupants=4"
         )
 
-        filters = mock_search_apartments_query.execute.call_args[0][0]
+        filters = mock_search_apartments_use_case.execute.call_args[0][0]
         assert filters.min_rooms == 2
         assert filters.max_rooms == 4
         assert filters.min_occupants == 4
 
     def test_date_filters_are_forwarded_to_use_case(
-        self, apartment_api_client, mock_search_apartments_query
+        self, apartment_api_client, mock_search_apartments_use_case
     ):
         from datetime import date
 
-        mock_search_apartments_query.execute.return_value = []
+        mock_search_apartments_use_case.execute.return_value = []
 
         apartment_api_client.get(
             "/api/v1/apartments/search?available_from=2026-06-01&available_to=2026-06-30"
         )
 
-        filters = mock_search_apartments_query.execute.call_args[0][0]
+        filters = mock_search_apartments_use_case.execute.call_args[0][0]
         assert filters.available_from == date(2026, 6, 1)
         assert filters.available_to == date(2026, 6, 30)
 
-    def test_raises_validation_error_when_only_available_from_provided(self, apartment_api_client):
-        with pytest.raises(ValidationError) as exc_info:
-            apartment_api_client.get("/api/v1/apartments/search?available_from=2026-06-01")
+    def test_returns_422_when_only_available_from_provided(self, apartment_api_client):
+        response = apartment_api_client.get("/api/v1/apartments/search?available_from=2026-06-01")
 
-        assert "available_from y available_to deben informarse juntas" in str(exc_info.value)
+        assert response.status_code == 422
+        assert "available_from y available_to deben informarse juntas" in response.text
 
-    def test_raises_validation_error_when_min_rooms_greater_than_max_rooms(
+    def test_returns_422_when_min_rooms_greater_than_max_rooms(
         self,
         apartment_api_client,
     ):
-        with pytest.raises(ValidationError) as exc_info:
-            apartment_api_client.get("/api/v1/apartments/search?min_rooms=5&max_rooms=2")
+        response = apartment_api_client.get("/api/v1/apartments/search?min_rooms=5&max_rooms=2")
 
-        assert "min_rooms no puede ser mayor que max_rooms" in str(exc_info.value)
+        assert response.status_code == 422
+        assert "min_rooms no puede ser mayor que max_rooms" in response.text
 
     def test_returns_422_when_min_rooms_is_negative(self, apartment_api_client):
         response = apartment_api_client.get("/api/v1/apartments/search?min_rooms=-1")
@@ -118,9 +119,9 @@ class TestSearchApartments:
 
 class TestGetApartmentByApartmentId:
     def test_returns_200_with_correct_schema(
-        self, apartment_api_client, mock_get_apartment_by_id_query
+        self, apartment_api_client, mock_get_apartment_by_id_use_case
     ):
-        mock_get_apartment_by_id_query.execute.return_value = make_apartment(
+        mock_get_apartment_by_id_use_case.execute.return_value = make_apartment(
             apartment_id="R180",
             community="Alta Entinas",
             address="Calle Glaucio 15",
@@ -135,9 +136,9 @@ class TestGetApartmentByApartmentId:
         assert data["address"] == "Calle Glaucio 15"
 
     def test_returns_404_when_apartment_not_found(
-        self, apartment_api_client, mock_get_apartment_by_id_query
+        self, apartment_api_client, mock_get_apartment_by_id_use_case
     ):
-        mock_get_apartment_by_id_query.execute.return_value = None
+        mock_get_apartment_by_id_use_case.execute.return_value = None
 
         response = apartment_api_client.get("/api/v1/apartments/UNKNOWN")
 
@@ -145,9 +146,9 @@ class TestGetApartmentByApartmentId:
         assert "no encontrado" in response.json()["detail"]
 
     def test_returns_400_when_use_case_raises_value_error(
-        self, apartment_api_client, mock_get_apartment_by_id_query
+        self, apartment_api_client, mock_get_apartment_by_id_use_case
     ):
-        mock_get_apartment_by_id_query.execute.side_effect = ValueError(
+        mock_get_apartment_by_id_use_case.execute.side_effect = ValueError(
             "El apartment_id no puede estar vacío"
         )
 

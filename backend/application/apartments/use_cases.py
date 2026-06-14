@@ -1,27 +1,52 @@
 """
-Caso de uso para obtener estadísticas detalladas de un apartamento.
+Caso de uso para buscar apartamentos disponibles según filtros.
 """
 
 import calendar
 from datetime import date
 
-from application.bookings.queries import _apply_all, _compute_stats
+from domain.apartments.entity import Apartment
+from domain.apartments.filters import ApartmentSearchFilters
 from domain.apartments.repository import IApartmentRepository
-from domain.bookings.entity import Booking
 from domain.bookings.repository import IBookingRepository
 from domain.exceptions import ApartmentNotFound
+from application.bookings.queries import _apply_all, _compute_stats
 
 
-class GetApartmentStatsQuery:
+class SearchApartmentsUseCase:
+    def __init__(self, apartment_repository: IApartmentRepository) -> None:
+        self.apartment_repository = apartment_repository
+
+    def execute(
+        self,
+        filters: ApartmentSearchFilters,
+    ) -> list[Apartment]:
+        return self.apartment_repository.search_apartments(filters)
+
+
+class GetApartmentByIdUseCase:
+    def __init__(self, apartment_repository: IApartmentRepository) -> None:
+        self.apartment_repository = apartment_repository
+
+    def execute(self, apartment_id: str) -> Apartment | None:
+        apartment_id = apartment_id.strip()
+
+        if not apartment_id:
+            raise ValueError("El apartment_id no puede estar vacío")
+
+        return self.apartment_repository.get_by_apartment_id(apartment_id)
+
+
+class GetApartmentStatsUseCase:
     """
     Calcula estadísticas de un apartamento: métricas del rango filtrado y desglose anual.
 
     - filtered_range: stats de las reservas que se superponen con el rango proporcionado.
-      Incluye occupancy_pct = noches_activas / días_del_rango × 100 (solo si hay fechas).
+        Incluye occupancy_pct = noches_activas / días_del_rango × 100 (solo si hay fechas).
     - by_year: cubre TODOS los años con reservas del apartamento (ignora el filtro de fechas).
-      occupancy_pct = noches_activas / días_del_año × 100.
+        occupancy_pct = noches_activas / días_del_año × 100.
     """
-
+    
     def __init__(
         self,
         apartment_repository: IApartmentRepository,
@@ -130,3 +155,4 @@ class GetApartmentStatsQuery:
             "filtered_range": filtered_range,
             "by_year": by_year,
         }
+     

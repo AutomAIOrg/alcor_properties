@@ -1,8 +1,14 @@
 .main-container {
+  --sidebar-visible-width: 250px;
+
   display: flex;
   height: 100vh;
   width: 100vw;
   position: relative;
+
+  &.sidebar-collapsed {
+    --sidebar-visible-width: 0px;
+  }
 }
 
 .sidebar {
@@ -40,6 +46,36 @@
     }
   }
 
+  .sidebar-actions {
+    margin-top: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .admin-panel-link {
+    width: 100%;
+    padding: 10px;
+    background: rgba(52, 152, 219, 0.14);
+    border: 1px solid rgba(52, 152, 219, 0.45);
+    border-radius: 4px;
+    color: white;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    text-align: left;
+    text-decoration: none;
+    transition:
+      background 0.2s,
+      border-color 0.2s;
+
+    &:hover,
+    &.active-link {
+      background: #3498db;
+      border-color: #3498db;
+    }
+  }
+
   .toggle-btn {
     position: absolute;
     top: 10px;
@@ -55,7 +91,6 @@
   }
   // Botón de logout, colocado al final del sidebar para que siempre esté abajo
   .logout-btn {
-    margin-top: auto;
     width: 100%;
     padding: 10px;
     background: none;
