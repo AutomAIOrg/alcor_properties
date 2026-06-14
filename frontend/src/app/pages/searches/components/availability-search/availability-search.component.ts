@@ -8,6 +8,12 @@ import {
   type DateRangeValue,
 } from '../../../../shared/components/date-range-picker/date-range-picker.component';
 
+export type AvailabilityBookingCreateRequest = {
+  apartment: Apartment;
+  checkIn: string;
+  checkOut: string;
+};
+
 @Component({
   selector: 'app-availability-search',
   standalone: true,
@@ -19,6 +25,7 @@ export class AvailabilitySearchComponent {
   private apartmentService = inject(ApartmentService);
 
   apartmentSelected = output<Apartment>();
+  bookingCreateRequested = output<AvailabilityBookingCreateRequest>();
 
   avail = {
     from: signal(''),
@@ -98,6 +105,18 @@ export class AvailabilitySearchComponent {
 
   selectApartment(apartment: Apartment): void {
     this.apartmentSelected.emit(apartment);
+  }
+
+  requestBookingCreate(apartment: Apartment, event?: Event): void {
+    event?.stopPropagation();
+
+    if (!this.avail.from() || !this.avail.to()) return;
+
+    this.bookingCreateRequested.emit({
+      apartment,
+      checkIn: this.avail.from(),
+      checkOut: this.avail.to(),
+    });
   }
 
   inputValue(event: Event): string {

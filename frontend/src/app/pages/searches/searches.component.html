@@ -47,6 +47,7 @@
   <app-availability-search
     [hidden]="activeTab() !== 'availability'"
     (apartmentSelected)="openApartmentDetail($event)"
+    (bookingCreateRequested)="openCreateBookingModal($event)"
   />
 
   <app-apartment-search
@@ -68,5 +69,15 @@
     [booking]="selectedBooking()!"
     (close)="closeModal()"
     (saved)="onBookingSaved($event)"
+  />
+}
+
+@if (createBookingInitialValues()) {
+  <app-booking-create-modal
+    [apartments]="allApartmentIds()"
+    [bookings]="bookings()"
+    [initialValues]="createBookingInitialValues()"
+    (close)="closeCreateBookingModal()"
+    (created)="onBookingCreated($event)"
   />
 }

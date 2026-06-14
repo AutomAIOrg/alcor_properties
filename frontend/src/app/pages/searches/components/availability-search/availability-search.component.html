@@ -115,6 +115,7 @@
             <th>Parking</th>
             <th>Propietario</th>
             <th>Teléfono</th>
+            <th class="text-right">Acción</th>
           </tr>
         </thead>
         <tbody>
@@ -133,6 +134,15 @@
               <td>{{ apt.parking }}</td>
               <td>{{ apt.owner_name ?? '—' }}</td>
               <td>{{ apt.phone ?? '—' }}</td>
+              <td class="text-right">
+                <button
+                  type="button"
+                  class="btn-inline"
+                  (click)="requestBookingCreate(apt, $event)"
+                >
+                  Nueva reserva
+                </button>
+              </td>
             </tr>
           }
         </tbody>

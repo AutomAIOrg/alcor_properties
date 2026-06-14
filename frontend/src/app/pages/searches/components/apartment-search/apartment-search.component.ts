@@ -127,6 +127,16 @@ export class ApartmentSearchComponent {
     );
   }
 
+  refreshAfterBookingSaved(updated: Booking): void {
+    const hasActiveSearch = !!this.apt.stats() || this.apt.bookings().length > 0;
+    if (hasActiveSearch) {
+      this.searchApartmentDetail();
+      return;
+    }
+
+    this.applyBookingUpdate(updated);
+  }
+
   inputValue(event: Event): string {
     return (event.target as HTMLInputElement).value;
   }
