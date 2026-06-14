@@ -9,7 +9,7 @@ import { CalendarWeek } from '../../models/calendar.model';
 import { CalendarHeaderComponent } from './components/calendar-header/calendar-header.component';
 import { WeekRowComponent } from './components/week-row/week-row.component';
 import { BookingModalComponent } from '../../shared/components/booking-modal/booking-modal.component';
-import { BookingCreateModalComponent } from './components/booking-create-modal/booking-create-modal.component';
+import { BookingCreateModalComponent } from '../../shared/components/booking-create-modal/booking-create-modal.component';
 import { AuthService } from '../../auth/auth.service';
 
 @Component({
