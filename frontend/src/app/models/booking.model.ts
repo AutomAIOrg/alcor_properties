@@ -20,3 +20,12 @@ export interface Booking {
 
 export const BASE_STATUSES = ['Confirmed', 'Pending', 'Cancelled', 'ok'] as const;
 export type BookingStatus = (typeof BASE_STATUSES)[number];
+
+export interface CleaningOpportunity {
+  record_id: number;
+  apartment_id: string;
+  check_in: string;
+  check_out: string;
+  status: string;
+  notes: string | null;
+}

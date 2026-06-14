@@ -72,6 +72,10 @@ export class AuthService {
     return ROLE_PERMISSIONS[role].includes(permission);
   }
 
+  getDefaultRoute(): string {
+    return this.currentRole() === 'limpiadora' ? '/cleaning-organization' : '/calendar';
+  }
+
   // ── Restaurar sesión desde localStorage ───────────────────────────────────
   private loadUserFromToken(): User | null {
     if (!this.tokenService.isValid()) {
