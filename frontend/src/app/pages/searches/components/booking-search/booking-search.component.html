@@ -6,6 +6,7 @@
         [from]="bkg.from()"
         [to]="bkg.to()"
         (rangeChange)="setBookingRange($event)"
+        (rangeComplete)="completeBookingRange($event)"
       />
       <div class="field">
         <label>ID del piso</label>

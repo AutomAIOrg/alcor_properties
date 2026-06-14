@@ -93,6 +93,11 @@ export class BookingSearchComponent {
     this.bkg.to.set(range.to);
   }
 
+  completeBookingRange(range: DateRangeValue): void {
+    this.setBookingRange(range);
+    this.searchBookings();
+  }
+
   openModal(booking: Booking): void {
     this.bookingSelected.emit(booking);
   }
@@ -101,6 +106,16 @@ export class BookingSearchComponent {
     this.bkg.results.update(list =>
       list.map(booking => (booking.record_id === updated.record_id ? updated : booking))
     );
+  }
+
+  refreshAfterBookingSaved(updated: Booking): void {
+    const hasActiveSearch = !!this.bkg.stats() || this.bkg.results().length > 0;
+    if (hasActiveSearch) {
+      this.searchBookings();
+      return;
+    }
+
+    this.applyBookingUpdate(updated);
   }
 
   inputValue(event: Event): string {
