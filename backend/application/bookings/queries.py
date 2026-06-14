@@ -195,22 +195,26 @@ class GetCalendarEventsQuery:
 
 
 class GetCleaningOpportunitiesUseCase:
-    """Obtiene reservas mínimas para calcular oportunidades de limpieza."""
+    """Obtiene reservas no canceladas para calcular oportunidades de limpieza."""
 
     def __init__(self, repository: IBookingRepository) -> None:
         self._repo = repository
 
     def execute(self) -> list[CleaningOpportunity]:
         bookings = [booking for booking in self._repo.list() if not booking.is_cancelled()]
-        cleaning_opportunities = [
-            CleaningOpportunity(
-                record_id=booking.record_id,
-                apartment_id=booking.apartment_id,
-                check_in=booking.check_in,
-                check_out=booking.check_out,
-                status=booking.status,
-                notes=booking.notes,
+        cleaning_opportunities: list[CleaningOpportunity] = []
+        for booking in bookings:
+            if booking.record_id is None:
+                continue
+
+            cleaning_opportunities.append(
+                CleaningOpportunity(
+                    record_id=booking.record_id,
+                    apartment_id=booking.apartment_id,
+                    check_in=booking.check_in,
+                    check_out=booking.check_out,
+                    status=booking.status,
+                    notes=booking.notes,
+                )
             )
-            for booking in bookings
-        ]
         return cleaning_opportunities
