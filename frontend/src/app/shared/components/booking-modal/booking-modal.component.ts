@@ -47,6 +47,7 @@ export class BookingModalComponent {
   editing = signal(false);
   saving = signal(false);
   draft = signal<Partial<Booking>>({});
+  electricAllowanceWarning = signal('');
 
   initials = computed(() => {
     const name = this.booking().guest_name ?? '';
@@ -62,15 +63,24 @@ export class BookingModalComponent {
 
   startEdit(): void {
     this.draft.set({ ...this.booking() });
+    this.electricAllowanceWarning.set('');
     this.editing.set(true);
   }
 
   cancelEdit(): void {
+    this.electricAllowanceWarning.set('');
     this.editing.set(false);
   }
 
   saveEdit(): void {
     if (this.saving()) return;
+    if (this.draft().electric_allowance !== this.booking().electric_allowance) {
+      this.electricAllowanceWarning.set(
+        'La luz incluida es un campo calculado automáticamente y no se puede modificar manualmente.'
+      );
+      return;
+    }
+    this.electricAllowanceWarning.set('');
     this.saving.set(true);
     this.bookingService.updateBooking(this.booking().record_id, this.draft()).subscribe({
       next: updated => {
@@ -83,6 +93,9 @@ export class BookingModalComponent {
   }
 
   patchDraft(field: keyof Booking, value: unknown): void {
+    if (field === 'electric_allowance') {
+      this.electricAllowanceWarning.set('');
+    }
     this.draft.update(d => ({ ...d, [field]: value === '' ? null : value }));
   }
 

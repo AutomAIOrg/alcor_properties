@@ -287,6 +287,10 @@
           </div>
         </div>
 
+        @if (electricAllowanceWarning()) {
+          <div class="warning-banner">{{ electricAllowanceWarning() }}</div>
+        }
+
         <p class="edit-section-title">Contacto</p>
 
         <div class="field-row">

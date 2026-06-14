@@ -182,6 +182,36 @@ describe('BookingModalComponent', () => {
     });
   });
 
+  describe('saveEdit — electric_allowance calculado', () => {
+    beforeEach(() => {
+      fixture.componentRef.setInput('booking', makeBooking({ electric_allowance: 24 }));
+      fixture.detectChanges();
+      component.startEdit();
+    });
+
+    it('si cambia electric_allowance, no guarda y muestra aviso', () => {
+      component.patchDraft('electric_allowance', 40);
+
+      component.saveEdit();
+      fixture.detectChanges();
+
+      expect(bookingServiceSpy.updateBooking).not.toHaveBeenCalled();
+      expect(component.electricAllowanceWarning()).toContain('campo calculado');
+      expect(fixture.nativeElement.textContent).toContain(
+        'La luz incluida es un campo calculado automáticamente'
+      );
+    });
+
+    it('si electric_allowance no cambia, guarda normalmente', () => {
+      component.patchDraft('price', 700);
+
+      component.saveEdit();
+
+      expect(bookingServiceSpy.updateBooking).toHaveBeenCalledTimes(1);
+      expect(component.electricAllowanceWarning()).toBe('');
+    });
+  });
+
   describe('saveEdit — error', () => {
     beforeEach(() => {
       component.startEdit();
