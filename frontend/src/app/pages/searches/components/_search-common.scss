@@ -42,7 +42,9 @@
     background: #fff;
     outline: none;
     width: 100%;
-    transition: border-color 0.15s, box-shadow 0.15s;
+    transition:
+      border-color 0.15s,
+      box-shadow 0.15s;
 
     &:focus {
       border-color: #667085;
@@ -73,7 +75,9 @@
   border: none;
   background: #101828;
   color: #fff;
-  transition: background 0.15s, opacity 0.15s;
+  transition:
+    background 0.15s,
+    opacity 0.15s;
 
   &:hover:not(:disabled) {
     background: #1d2939;

@@ -52,10 +52,7 @@
     </div>
 
     <div class="filter-actions">
-      <button
-        class="btn-secondary"
-        (click)="clearBookings(); bookingDateRange.closeCalendar()"
-      >
+      <button class="btn-secondary" (click)="clearBookings(); bookingDateRange.closeCalendar()">
         Limpiar
       </button>
       <button class="btn-primary" [disabled]="bkg.loading()" (click)="searchBookings()">
@@ -86,36 +83,42 @@
         <span class="stat-label">Canceladas</span>
         <span class="stat-value">{{ stats.cancelled_bookings }}</span>
         @if (stats.cancellation_rate != null) {
-          <span class="stat-sub">{{ stats.cancellation_rate | number:'1.1-1' }}% cancelación</span>
+          <span class="stat-sub">{{ stats.cancellation_rate | number: '1.1-1' }}% cancelación</span>
         }
       </div>
       <div class="stat-card">
         <span class="stat-label">Noches totales</span>
         <span class="stat-value">{{ stats.total_nights }}</span>
         @if (stats.avg_nights_per_booking != null) {
-          <span class="stat-sub">{{ stats.avg_nights_per_booking | number:'1.1-1' }} media/reserva</span>
+          <span class="stat-sub"
+            >{{ stats.avg_nights_per_booking | number: '1.1-1' }} media/reserva</span
+          >
         }
       </div>
       <div class="stat-card">
         <span class="stat-label">Total personas</span>
         <span class="stat-value">{{ stats.total_persons }}</span>
         @if (stats.avg_persons_per_booking != null) {
-          <span class="stat-sub">{{ stats.avg_persons_per_booking | number:'1.1-1' }} media/reserva</span>
+          <span class="stat-sub"
+            >{{ stats.avg_persons_per_booking | number: '1.1-1' }} media/reserva</span
+          >
         }
       </div>
       @if (stats.occupancy_pct != null) {
         <div class="stat-card stat-card--blue">
           <span class="stat-label">% Ocupación rango</span>
-          <span class="stat-value">{{ stats.occupancy_pct | number:'1.1-1' }}%</span>
+          <span class="stat-value">{{ stats.occupancy_pct | number: '1.1-1' }}%</span>
         </div>
       }
       @if (stats.total_revenue != null) {
         <div class="stat-card stat-card--gold">
           <span class="stat-label">Ingresos totales</span>
-          <span class="stat-value">{{ stats.total_revenue | currency:'EUR':'symbol':'1.0-0' }}</span>
+          <span class="stat-value">{{
+            stats.total_revenue | currency: 'EUR' : 'symbol' : '1.0-0'
+          }}</span>
           @if (stats.avg_revenue_per_booking != null) {
             <span class="stat-sub">
-              {{ stats.avg_revenue_per_booking | currency:'EUR':'symbol':'1.0-0' }}
+              {{ stats.avg_revenue_per_booking | currency: 'EUR' : 'symbol' : '1.0-0' }}
               media/reserva
             </span>
           }
@@ -124,20 +127,24 @@
       @if (stats.avg_revenue_per_night != null) {
         <div class="stat-card">
           <span class="stat-label">Precio medio/noche</span>
-          <span class="stat-value">{{ stats.avg_revenue_per_night | currency:'EUR':'symbol':'1.0-0' }}</span>
+          <span class="stat-value">{{
+            stats.avg_revenue_per_night | currency: 'EUR' : 'symbol' : '1.0-0'
+          }}</span>
         </div>
       }
       @if (stats.total_charges != null) {
         <div class="stat-card">
           <span class="stat-label">Cargos extra</span>
-          <span class="stat-value">{{ stats.total_charges | currency:'EUR':'symbol':'1.0-0' }}</span>
+          <span class="stat-value">{{
+            stats.total_charges | currency: 'EUR' : 'symbol' : '1.0-0'
+          }}</span>
         </div>
       }
       @if (stats.total_electric_allowance != null) {
         <div class="stat-card stat-card--electric">
           <span class="stat-label">Electricidad</span>
           <span class="stat-value">
-            {{ stats.total_electric_allowance | currency:'EUR':'symbol':'1.0-0' }}
+            {{ stats.total_electric_allowance | currency: 'EUR' : 'symbol' : '1.0-0' }}
           </span>
         </div>
       }
@@ -186,8 +193,8 @@
                 </span>
               </td>
               <td class="guest-name">{{ booking.guest_name }}</td>
-              <td>{{ booking.check_in | date:'d MMM y' }}</td>
-              <td>{{ booking.check_out | date:'d MMM y' }}</td>
+              <td>{{ booking.check_in | date: 'd MMM y' }}</td>
+              <td>{{ booking.check_out | date: 'd MMM y' }}</td>
               <td class="text-center">{{ booking.nights }}</td>
               <td class="text-center">{{ booking.persons }}</td>
               <td>
@@ -196,13 +203,25 @@
                 </span>
               </td>
               <td class="text-right">
-                {{ booking.price != null ? (booking.price | currency:'EUR':'symbol':'1.0-0') : '—' }}
+                {{
+                  booking.price != null
+                    ? (booking.price | currency: 'EUR' : 'symbol' : '1.0-0')
+                    : '—'
+                }}
               </td>
               <td class="text-right">
-                {{ booking.charges != null ? (booking.charges | currency:'EUR':'symbol':'1.0-0') : '—' }}
+                {{
+                  booking.charges != null
+                    ? (booking.charges | currency: 'EUR' : 'symbol' : '1.0-0')
+                    : '—'
+                }}
               </td>
               <td class="text-right">
-                {{ booking.electric_allowance != null ? (booking.electric_allowance | currency:'EUR':'symbol':'1.0-0') : '—' }}
+                {{
+                  booking.electric_allowance != null
+                    ? (booking.electric_allowance | currency: 'EUR' : 'symbol' : '1.0-0')
+                    : '—'
+                }}
               </td>
               <td class="text-muted">{{ booking.booking_number ?? '—' }}</td>
               <td class="notes-cell">{{ booking.notes ?? '' }}</td>

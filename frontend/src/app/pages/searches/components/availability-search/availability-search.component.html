@@ -71,10 +71,7 @@
     </details>
 
     <div class="filter-actions">
-      <button
-        class="btn-secondary"
-        (click)="clearAvailability(); availDateRange.closeCalendar()"
-      >
+      <button class="btn-secondary" (click)="clearAvailability(); availDateRange.closeCalendar()">
         Limpiar
       </button>
       <button
@@ -97,8 +94,9 @@
   @if (avail.results().length > 0) {
     <div class="results-header">
       <span class="results-count">
-        {{ avail.results().length }} piso{{ avail.results().length !== 1 ? 's' : '' }}
-        disponible{{ avail.results().length !== 1 ? 's' : '' }}
+        {{ avail.results().length }} piso{{ avail.results().length !== 1 ? 's' : '' }} disponible{{
+          avail.results().length !== 1 ? 's' : ''
+        }}
       </span>
       <span class="results-hint">Haz clic en un piso para ver su detalle</span>
     </div>
@@ -150,7 +148,9 @@
     </div>
   }
 
-  @if (!avail.loading() && !avail.error() && avail.results().length === 0 && avail.from() && avail.to()) {
+  @if (
+    !avail.loading() && !avail.error() && avail.results().length === 0 && avail.from() && avail.to()
+  ) {
     <div class="empty-state">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
         <circle cx="11" cy="11" r="8" />

@@ -38,7 +38,9 @@
   width: 100%;
   text-align: left;
   cursor: pointer;
-  transition: border-color 0.15s, box-shadow 0.15s;
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
 
   &:hover,
   &:focus {
@@ -116,7 +118,9 @@
   font-size: 0.8rem;
   cursor: pointer;
   border-radius: 8px;
-  transition: background 0.12s, color 0.12s;
+  transition:
+    background 0.12s,
+    color 0.12s;
 
   &:hover {
     background: #f2f4f7;

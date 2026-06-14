@@ -1,8 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import {
-  DateRangePickerComponent,
-  type DateRangeValue,
-} from './date-range-picker.component';
+import { DateRangePickerComponent, type DateRangeValue } from './date-range-picker.component';
 
 describe('DateRangePickerComponent', () => {
   let fixture: ComponentFixture<DateRangePickerComponent>;

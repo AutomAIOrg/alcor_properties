@@ -33,10 +33,7 @@
     </div>
 
     <div class="filter-actions">
-      <button
-        class="btn-secondary"
-        (click)="clearApartmentDetail(); aptDateRange.closeCalendar()"
-      >
+      <button class="btn-secondary" (click)="clearApartmentDetail(); aptDateRange.closeCalendar()">
         Limpiar
       </button>
       <button
@@ -82,8 +79,8 @@
       Estadísticas del período
       @if (stats.filtered_range.start_date && stats.filtered_range.end_date) {
         <span class="date-range-label">
-          {{ stats.filtered_range.start_date | date:'d MMM y' }} –
-          {{ stats.filtered_range.end_date | date:'d MMM y' }}
+          {{ stats.filtered_range.start_date | date: 'd MMM y' }} –
+          {{ stats.filtered_range.end_date | date: 'd MMM y' }}
         </span>
       } @else {
         <span class="date-range-label">Todas las reservas</span>
@@ -103,7 +100,7 @@
         <span class="stat-value">{{ stats.filtered_range.cancelled_bookings }}</span>
         @if (stats.filtered_range.cancellation_rate != null) {
           <span class="stat-sub">
-            {{ stats.filtered_range.cancellation_rate | number:'1.1-1' }}% cancelación
+            {{ stats.filtered_range.cancellation_rate | number: '1.1-1' }}% cancelación
           </span>
         }
       </div>
@@ -112,7 +109,7 @@
         <span class="stat-value">{{ stats.filtered_range.total_nights }}</span>
         @if (stats.filtered_range.avg_nights_per_booking != null) {
           <span class="stat-sub">
-            {{ stats.filtered_range.avg_nights_per_booking | number:'1.1-1' }} media/reserva
+            {{ stats.filtered_range.avg_nights_per_booking | number: '1.1-1' }} media/reserva
           </span>
         }
       </div>
@@ -120,7 +117,7 @@
         <div class="stat-card stat-card--blue">
           <span class="stat-label">% Ocupación rango</span>
           <span class="stat-value">
-            {{ stats.filtered_range.occupancy_pct | number:'1.1-1' }}%
+            {{ stats.filtered_range.occupancy_pct | number: '1.1-1' }}%
           </span>
         </div>
       }
@@ -129,7 +126,7 @@
         <span class="stat-value">{{ stats.filtered_range.total_persons }}</span>
         @if (stats.filtered_range.avg_persons_per_booking != null) {
           <span class="stat-sub">
-            {{ stats.filtered_range.avg_persons_per_booking | number:'1.1-1' }} media/reserva
+            {{ stats.filtered_range.avg_persons_per_booking | number: '1.1-1' }} media/reserva
           </span>
         }
       </div>
@@ -137,11 +134,13 @@
         <div class="stat-card stat-card--gold">
           <span class="stat-label">Ingresos totales</span>
           <span class="stat-value">
-            {{ stats.filtered_range.total_revenue | currency:'EUR':'symbol':'1.0-0' }}
+            {{ stats.filtered_range.total_revenue | currency: 'EUR' : 'symbol' : '1.0-0' }}
           </span>
           @if (stats.filtered_range.avg_revenue_per_booking != null) {
             <span class="stat-sub">
-              {{ stats.filtered_range.avg_revenue_per_booking | currency:'EUR':'symbol':'1.0-0' }}
+              {{
+                stats.filtered_range.avg_revenue_per_booking | currency: 'EUR' : 'symbol' : '1.0-0'
+              }}
               media/reserva
             </span>
           }
@@ -151,7 +150,7 @@
         <div class="stat-card">
           <span class="stat-label">Precio medio/noche</span>
           <span class="stat-value">
-            {{ stats.filtered_range.avg_revenue_per_night | currency:'EUR':'symbol':'1.0-0' }}
+            {{ stats.filtered_range.avg_revenue_per_night | currency: 'EUR' : 'symbol' : '1.0-0' }}
           </span>
         </div>
       }
@@ -159,7 +158,7 @@
         <div class="stat-card">
           <span class="stat-label">Cargos extra</span>
           <span class="stat-value">
-            {{ stats.filtered_range.total_charges | currency:'EUR':'symbol':'1.0-0' }}
+            {{ stats.filtered_range.total_charges | currency: 'EUR' : 'symbol' : '1.0-0' }}
           </span>
         </div>
       }
@@ -167,7 +166,9 @@
         <div class="stat-card stat-card--electric">
           <span class="stat-label">Electricidad</span>
           <span class="stat-value">
-            {{ stats.filtered_range.total_electric_allowance | currency:'EUR':'symbol':'1.0-0' }}
+            {{
+              stats.filtered_range.total_electric_allowance | currency: 'EUR' : 'symbol' : '1.0-0'
+            }}
           </span>
         </div>
       }
@@ -176,7 +177,10 @@
     @if (stats.filtered_range.status_breakdown | keyvalue; as entries) {
       @if (entries.length > 0) {
         <div class="breakdown-row">
-          @for (entry of statusBreakdownEntries(stats.filtered_range.status_breakdown); track entry.key) {
+          @for (
+            entry of statusBreakdownEntries(stats.filtered_range.status_breakdown);
+            track entry.key
+          ) {
             <span class="status-chip" [attr.data-status]="entry.key.toLowerCase()">
               {{ entry.key }}: {{ entry.value }}
             </span>
@@ -215,7 +219,11 @@
                 <td class="text-center text-green">{{ yr.active_bookings }}</td>
                 <td class="text-center text-red">{{ yr.cancelled_bookings }}</td>
                 <td class="text-center">
-                  {{ yr.cancellation_rate != null ? (yr.cancellation_rate | number:'1.1-1') + '%' : '—' }}
+                  {{
+                    yr.cancellation_rate != null
+                      ? (yr.cancellation_rate | number: '1.1-1') + '%'
+                      : '—'
+                  }}
                 </td>
                 <td class="text-center">{{ yr.total_nights }}</td>
                 <td class="text-center text-muted">{{ yr.total_days_in_year }}</td>
@@ -226,20 +234,36 @@
                     [class.occ-mid]="yr.occupancy_pct >= 40 && yr.occupancy_pct < 70"
                     [class.occ-low]="yr.occupancy_pct < 40"
                   >
-                    {{ yr.occupancy_pct | number:'1.1-1' }}%
+                    {{ yr.occupancy_pct | number: '1.1-1' }}%
                   </span>
                 </td>
                 <td class="text-right">
-                  {{ yr.total_revenue != null ? (yr.total_revenue | currency:'EUR':'symbol':'1.0-0') : '—' }}
+                  {{
+                    yr.total_revenue != null
+                      ? (yr.total_revenue | currency: 'EUR' : 'symbol' : '1.0-0')
+                      : '—'
+                  }}
                 </td>
                 <td class="text-right">
-                  {{ yr.avg_revenue_per_booking != null ? (yr.avg_revenue_per_booking | currency:'EUR':'symbol':'1.0-0') : '—' }}
+                  {{
+                    yr.avg_revenue_per_booking != null
+                      ? (yr.avg_revenue_per_booking | currency: 'EUR' : 'symbol' : '1.0-0')
+                      : '—'
+                  }}
                 </td>
                 <td class="text-right">
-                  {{ yr.total_charges != null ? (yr.total_charges | currency:'EUR':'symbol':'1.0-0') : '—' }}
+                  {{
+                    yr.total_charges != null
+                      ? (yr.total_charges | currency: 'EUR' : 'symbol' : '1.0-0')
+                      : '—'
+                  }}
                 </td>
                 <td class="text-right">
-                  {{ yr.total_electric_allowance != null ? (yr.total_electric_allowance | currency:'EUR':'symbol':'1.0-0') : '—' }}
+                  {{
+                    yr.total_electric_allowance != null
+                      ? (yr.total_electric_allowance | currency: 'EUR' : 'symbol' : '1.0-0')
+                      : '—'
+                  }}
                 </td>
               </tr>
             }
@@ -249,7 +273,9 @@
     }
 
     @if (apt.bookings().length > 0) {
-      <div class="section-title">Reservas <span class="results-count">{{ apt.bookings().length }}</span></div>
+      <div class="section-title">
+        Reservas <span class="results-count">{{ apt.bookings().length }}</span>
+      </div>
       <div class="table-wrapper">
         <table class="data-table">
           <thead>
@@ -271,8 +297,8 @@
             @for (booking of apt.bookings(); track booking.record_id) {
               <tr class="clickable-row" (click)="openModal(booking)">
                 <td class="guest-name">{{ booking.guest_name }}</td>
-                <td>{{ booking.check_in | date:'d MMM y' }}</td>
-                <td>{{ booking.check_out | date:'d MMM y' }}</td>
+                <td>{{ booking.check_in | date: 'd MMM y' }}</td>
+                <td>{{ booking.check_out | date: 'd MMM y' }}</td>
                 <td class="text-center">{{ booking.nights }}</td>
                 <td class="text-center">{{ booking.persons }}</td>
                 <td>
@@ -281,13 +307,25 @@
                   </span>
                 </td>
                 <td class="text-right">
-                  {{ booking.price != null ? (booking.price | currency:'EUR':'symbol':'1.0-0') : '—' }}
+                  {{
+                    booking.price != null
+                      ? (booking.price | currency: 'EUR' : 'symbol' : '1.0-0')
+                      : '—'
+                  }}
                 </td>
                 <td class="text-right">
-                  {{ booking.charges != null ? (booking.charges | currency:'EUR':'symbol':'1.0-0') : '—' }}
+                  {{
+                    booking.charges != null
+                      ? (booking.charges | currency: 'EUR' : 'symbol' : '1.0-0')
+                      : '—'
+                  }}
                 </td>
                 <td class="text-right">
-                  {{ booking.electric_allowance != null ? (booking.electric_allowance | currency:'EUR':'symbol':'1.0-0') : '—' }}
+                  {{
+                    booking.electric_allowance != null
+                      ? (booking.electric_allowance | currency: 'EUR' : 'symbol' : '1.0-0')
+                      : '—'
+                  }}
                 </td>
                 <td class="text-muted">{{ booking.booking_number ?? '—' }}</td>
                 <td class="notes-cell">{{ booking.notes ?? '' }}</td>

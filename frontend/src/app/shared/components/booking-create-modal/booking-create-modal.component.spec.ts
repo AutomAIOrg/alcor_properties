@@ -689,9 +689,8 @@ describe('BookingCreateModalComponent', () => {
       const selects: HTMLSelectElement[] = Array.from(
         fixture.nativeElement.querySelectorAll('select')
       );
-      const guestInput: HTMLInputElement = fixture.nativeElement.querySelector(
-        'input[type="text"]'
-      );
+      const guestInput: HTMLInputElement =
+        fixture.nativeElement.querySelector('input[type="text"]');
       const saveButton: HTMLButtonElement = fixture.nativeElement.querySelector('.btn-save');
 
       selects[0].value = 'R202';

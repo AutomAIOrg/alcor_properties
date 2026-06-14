@@ -14,13 +14,7 @@ import {
 @Component({
   selector: 'app-booking-search',
   standalone: true,
-  imports: [
-    CurrencyPipe,
-    DatePipe,
-    DecimalPipe,
-    BookingColorPipe,
-    DateRangePickerComponent,
-  ],
+  imports: [CurrencyPipe, DatePipe, DecimalPipe, BookingColorPipe, DateRangePickerComponent],
   templateUrl: './booking-search.component.html',
   styleUrl: './booking-search.component.scss',
 })
