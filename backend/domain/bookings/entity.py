@@ -105,3 +105,16 @@ class Booking(BaseModel):
         """Devuelve True si el check-out es en los próximos *days* días."""
         today = reference_date or date.today()
         return today <= self.check_out <= today + timedelta(days=days)
+
+
+class CleaningOpportunity(BaseModel):
+    """Oportunidad de limpieza."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    record_id: int
+    apartment_id: str
+    check_in: date
+    check_out: date
+    status: str
+    notes: str | None = None

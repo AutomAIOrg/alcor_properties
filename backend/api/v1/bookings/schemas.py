@@ -68,3 +68,16 @@ class BookingUpdateRequest(BaseModel):
     phone: str | None = None
     booking_number: str | None = None
     notes: str | None = None
+
+
+class CleaningOpportunityResponse(BaseModel):
+    """DTO de salida para las oportunidades de limpieza."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    record_id: int
+    apartment_id: str
+    check_in: date
+    check_out: date
+    status: str
+    notes: str | None = None

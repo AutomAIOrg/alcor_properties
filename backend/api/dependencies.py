@@ -22,6 +22,7 @@ from application.bookings.queries import (
     GetActiveBookingsQuery,
     GetBookingByIdQuery,
     GetCalendarEventsQuery,
+    GetCleaningOpportunitiesUseCase,
     GetUpcomingCheckinsQuery,
     GetUpcomingCheckoutsQuery,
     ListBookingsQuery,
@@ -182,6 +183,7 @@ class BookingUseCases:
     upcoming_checkins_query: GetUpcomingCheckinsQuery
     upcoming_checkouts_query: GetUpcomingCheckoutsQuery
     calendar_events_query: GetCalendarEventsQuery
+    get_cleaning_opportunities_query: GetCleaningOpportunitiesUseCase
     create_command: CreateBookingUseCase
     update_command: UpdateBookingUseCase
     delete_command: DeleteBookingUseCase
@@ -199,6 +201,7 @@ def get_booking_use_cases(
         upcoming_checkins_query=GetUpcomingCheckinsQuery(repo, electric_ids),
         upcoming_checkouts_query=GetUpcomingCheckoutsQuery(repo, electric_ids),
         calendar_events_query=GetCalendarEventsQuery(repo, electric_ids),
+        get_cleaning_opportunities_query=GetCleaningOpportunitiesUseCase(repo),
         create_command=CreateBookingUseCase(repo, electric_ids),
         update_command=UpdateBookingUseCase(repo, electric_ids),
         delete_command=DeleteBookingUseCase(repo),

@@ -5,7 +5,7 @@ Casos de uso de lectura (consultas) para el dominio de Reservas.
 from datetime import date, timedelta
 from typing import Any
 
-from domain.bookings.entity import Booking
+from domain.bookings.entity import Booking, CleaningOpportunity
 from domain.bookings.repository import IBookingRepository
 
 
@@ -192,3 +192,25 @@ class GetCalendarEventsQuery:
                 }
             )
         return events
+
+
+class GetCleaningOpportunitiesUseCase:
+    """Obtiene reservas mínimas para calcular oportunidades de limpieza."""
+
+    def __init__(self, repository: IBookingRepository) -> None:
+        self._repo = repository
+
+    def execute(self) -> list[CleaningOpportunity]:
+        bookings = [booking for booking in self._repo.list() if not booking.is_cancelled()]
+        cleaning_opportunities = [
+            CleaningOpportunity(
+                record_id=booking.record_id,
+                apartment_id=booking.apartment_id,
+                check_in=booking.check_in,
+                check_out=booking.check_out,
+                status=booking.status,
+                notes=booking.notes,
+            )
+            for booking in bookings
+        ]
+        return cleaning_opportunities
