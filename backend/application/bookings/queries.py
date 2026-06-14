@@ -50,8 +50,16 @@ def _compute_stats(
 
     prices = [float(b.price) for b in active if b.price is not None]
     total_revenue = round(sum(prices), 2) if prices else None
-    avg_rev_booking = round(total_revenue / active_count, 2) if total_revenue is not None and active_count > 0 else None
-    avg_rev_night = round(total_revenue / total_nights, 2) if total_revenue is not None and total_nights > 0 else None
+    avg_rev_booking = (
+        round(total_revenue / active_count, 2)
+        if total_revenue is not None and active_count > 0
+        else None
+    )
+    avg_rev_night = (
+        round(total_revenue / total_nights, 2)
+        if total_revenue is not None and total_nights > 0
+        else None
+    )
 
     charges = [float(b.charges) for b in active if b.charges is not None]
     total_charges = round(sum(charges), 2) if charges else None
@@ -206,8 +214,9 @@ class GetBookingStatsQuery:
                 total_nights = sum(b.nights for b in active)
                 occupancy_pct = round(total_nights / range_days * 100, 2)
 
-        return _compute_stats(bookings, start_date=start_date, end_date=end_date, occupancy_pct=occupancy_pct)
-
+        return _compute_stats(
+            bookings, start_date=start_date, end_date=end_date, occupancy_pct=occupancy_pct
+        )
 
 
 class GetBookingByIdQuery:

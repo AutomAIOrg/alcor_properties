@@ -77,7 +77,7 @@ def get_apartment_stats(
             apartment_id,
             start_date=start_date,
             end_date=end_date,
-            )
+        )
     except ValueError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
     except ApartmentNotFound as error:

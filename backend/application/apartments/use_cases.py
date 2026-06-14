@@ -126,29 +126,37 @@ class GetApartmentStatsUseCase:
 
             prices = [float(b.price) for b in active if b.price is not None]
             total_revenue = round(sum(prices), 2) if prices else None
-            avg_rev_booking = round(total_revenue / len(active), 2) if total_revenue is not None and active else None
+            avg_rev_booking = (
+                round(total_revenue / len(active), 2)
+                if total_revenue is not None and active
+                else None
+            )
 
             charges = [float(b.charges) for b in active if b.charges is not None]
             total_charges = round(sum(charges), 2) if charges else None
 
-            electric = [float(b.electric_allowance) for b in active if b.electric_allowance is not None]
+            electric = [
+                float(b.electric_allowance) for b in active if b.electric_allowance is not None
+            ]
             total_electric = round(sum(electric), 2) if electric else None
 
-            by_year.append({
-                "year": yr,
-                "total_bookings": total,
-                "active_bookings": len(active),
-                "cancelled_bookings": cancelled_count,
-                "cancellation_rate": cancellation_rate,
-                "total_nights": total_nights,
-                "avg_nights_per_booking": avg_nights,
-                "total_days_in_year": total_days_in_year,
-                "occupancy_pct": occupancy_pct,
-                "total_revenue": total_revenue,
-                "avg_revenue_per_booking": avg_rev_booking,
-                "total_charges": total_charges,
-                "total_electric_allowance": total_electric,
-            })
+            by_year.append(
+                {
+                    "year": yr,
+                    "total_bookings": total,
+                    "active_bookings": len(active),
+                    "cancelled_bookings": cancelled_count,
+                    "cancellation_rate": cancellation_rate,
+                    "total_nights": total_nights,
+                    "avg_nights_per_booking": avg_nights,
+                    "total_days_in_year": total_days_in_year,
+                    "occupancy_pct": occupancy_pct,
+                    "total_revenue": total_revenue,
+                    "avg_revenue_per_booking": avg_rev_booking,
+                    "total_charges": total_charges,
+                    "total_electric_allowance": total_electric,
+                }
+            )
 
         return {
             "apartment_id": apartment_id,

@@ -225,10 +225,13 @@ def get_search_apartments_use_case(
     """Inyección de dependencias para el caso de uso de búsqueda de apartamentos."""
     return SearchApartmentsUseCase(repository)
 
+
 def get_apartment_stats_use_case(
     apartment_repository: IApartmentRepository = Depends(get_apartment_repository),
     booking_repository: IBookingRepository = Depends(get_booking_repository),
     electric_apartment_ids: set[str] = Depends(get_electric_ids),
 ) -> GetApartmentStatsUseCase:
     """Inyección de dependencias para el caso de uso de estadísticas de apartamentos."""
-    return GetApartmentStatsUseCase(apartment_repository, booking_repository, electric_apartment_ids)
+    return GetApartmentStatsUseCase(
+        apartment_repository, booking_repository, electric_apartment_ids
+    )
