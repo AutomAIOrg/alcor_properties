@@ -2,8 +2,8 @@
 Enrutador para los apartamentos.
 """
 
-from typing import Annotated
 from datetime import date
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
@@ -15,11 +15,11 @@ from api.dependencies import (
 )
 from api.v1.apartments.schemas import ApartmentResponse, ApartmentStatsResponse
 from application.apartments.use_cases import (
-    GetApartmentByIdUseCase, 
-    SearchApartmentsUseCase,
+    GetApartmentByIdUseCase,
     GetApartmentStatsUseCase,
+    SearchApartmentsUseCase,
 )
-from domain.apartments.filters import ApartmentSearchFilters 
+from domain.apartments.filters import ApartmentSearchFilters
 from domain.exceptions import ApartmentNotFound
 
 router = APIRouter(prefix="/apartments", tags=["Apartments"], dependencies=[Depends(require_admin)])
@@ -49,7 +49,6 @@ def get_apartment_by_id(
     """
 
     try:
-        apartment = query.execute(apartment_id)
         apartment = get_apartment_by_id_use_case.execute(apartment_id)
     except ValueError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error

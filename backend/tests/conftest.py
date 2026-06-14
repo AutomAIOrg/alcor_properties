@@ -135,6 +135,12 @@ def mock_search_apartments_use_case() -> MagicMock:
 
 
 @pytest.fixture
+def mock_search_apartments_query() -> MagicMock:
+    """ApartmentUseCases completamente mockeado para tests de API."""
+    return MagicMock()
+
+
+@pytest.fixture
 def apartment_api_client(
     mock_search_apartments_use_case: MagicMock,
     mock_get_apartment_by_id_use_case: MagicMock,
@@ -169,46 +175,6 @@ def apartment_api_client(
     finally:
         app.dependency_overrides.pop(get_search_apartments_use_case, None)
         app.dependency_overrides.pop(get_apartment_by_id_use_case, None)
-        app.dependency_overrides.pop(get_current_user, None)
-
-
-@pytest.fixture
-def mock_search_apartments_query() -> MagicMock:
-    """ApartmentUseCases completamente mockeado para tests de API."""
-    return MagicMock()
-
-
-@pytest.fixture
-def apartment_api_client(
-    mock_search_apartments_query: MagicMock,
-    mock_get_apartment_by_id_query: MagicMock,
-) -> TestClient:
-    from api.dependencies import (
-        get_apartment_by_id_query,
-        get_current_user,
-        get_search_apartments_query,
-    )
-    from main import app
-
-    now = datetime.now(UTC)
-    admin_payload = TokenPayload(
-        subject="1",
-        expires_at=now + timedelta(minutes=30),
-        issued_at=now,
-        username="admin",
-        role=Role.ADMIN,
-    )
-
-    app.dependency_overrides[get_search_apartments_query] = lambda: mock_search_apartments_query
-    app.dependency_overrides[get_apartment_by_id_query] = lambda: mock_get_apartment_by_id_query
-    app.dependency_overrides[get_current_user] = lambda: admin_payload
-
-    try:
-        with TestClient(app, raise_server_exceptions=True) as client:
-            yield client
-    finally:
-        app.dependency_overrides.pop(get_search_apartments_query, None)
-        app.dependency_overrides.pop(get_apartment_by_id_query, None)
         app.dependency_overrides.pop(get_current_user, None)
 
 

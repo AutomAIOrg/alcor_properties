@@ -10,9 +10,9 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
 from application.apartments.use_cases import (
-    GetApartmentByIdUseCase, 
-    GetApartmentStatsUseCase, 
-    SearchApartmentsUseCase
+    GetApartmentByIdUseCase,
+    GetApartmentStatsUseCase,
+    SearchApartmentsUseCase,
 )
 from application.auth.login_use_case import LoginUseCase
 from application.auth.refresh_token_use_case import RefreshTokenUseCase

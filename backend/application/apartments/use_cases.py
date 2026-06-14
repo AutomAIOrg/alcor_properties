@@ -5,12 +5,13 @@ Caso de uso para buscar apartamentos disponibles según filtros.
 import calendar
 from datetime import date
 
+from application.bookings.queries import _apply_all, _compute_stats
 from domain.apartments.entity import Apartment
 from domain.apartments.filters import ApartmentSearchFilters
 from domain.apartments.repository import IApartmentRepository
+from domain.bookings.entity import Booking
 from domain.bookings.repository import IBookingRepository
 from domain.exceptions import ApartmentNotFound
-from application.bookings.queries import _apply_all, _compute_stats
 
 
 class SearchApartmentsUseCase:
@@ -46,7 +47,7 @@ class GetApartmentStatsUseCase:
     - by_year: cubre TODOS los años con reservas del apartamento (ignora el filtro de fechas).
         occupancy_pct = noches_activas / días_del_año × 100.
     """
-    
+
     def __init__(
         self,
         apartment_repository: IApartmentRepository,
@@ -155,4 +156,3 @@ class GetApartmentStatsUseCase:
             "filtered_range": filtered_range,
             "by_year": by_year,
         }
-     

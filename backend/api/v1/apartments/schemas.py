@@ -3,6 +3,7 @@ Schemas de API para apartamentos
 """
 
 from datetime import date
+
 from pydantic import BaseModel, Field
 
 
