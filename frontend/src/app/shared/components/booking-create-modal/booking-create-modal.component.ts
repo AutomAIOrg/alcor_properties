@@ -30,6 +30,10 @@ type CalendarDay = {
   canSelect: boolean;
 };
 
+type AvailabilityLoadOptions = {
+  preserveSelectedApartment?: boolean;
+};
+
 @Component({
   selector: 'app-booking-create-modal',
   standalone: true,
@@ -47,6 +51,7 @@ export class BookingCreateModalComponent implements OnInit {
 
   private bookingService = inject(BookingService);
   private apartmentService = inject(ApartmentService);
+  private bookingsRequestId = 0;
   readonly BASE_STATUSES = BASE_STATUSES;
   readonly WEEKDAYS = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
 
@@ -133,6 +138,8 @@ export class BookingCreateModalComponent implements OnInit {
   });
 
   availableApartmentIds = signal<string[]>([]);
+  apartmentBookings = signal<Booking[]>([]);
+  apartmentBookingsLoadedFor = signal<string | null>(null);
   loadingAvailableApartments = signal(false);
   availableApartmentsError = signal<string | null>(null);
 
@@ -166,7 +173,7 @@ export class BookingCreateModalComponent implements OnInit {
     this.applyInitialValues();
   }
 
-  loadAvailableApartmentsForSelectedDates(): void {
+  loadAvailableApartmentsForSelectedDates(options: AvailabilityLoadOptions = {}): void {
     const d = this.draft();
 
     if (!d.check_in || !d.check_out || this.nights() <= 0) {
@@ -180,11 +187,17 @@ export class BookingCreateModalComponent implements OnInit {
 
     this.apartmentService.getAvailableApartmentIds(d.check_in, d.check_out).subscribe({
       next: apartmentIds => {
-        this.availableApartmentIds.set(apartmentIds);
+        const selectedApartment = this.draft().apartment_id?.trim() || null;
+        const nextApartmentIds =
+          options.preserveSelectedApartment &&
+          selectedApartment &&
+          !apartmentIds.includes(selectedApartment)
+            ? [selectedApartment, ...apartmentIds]
+            : apartmentIds;
 
-        const selectedApartment = this.draft().apartment_id;
+        this.availableApartmentIds.set(nextApartmentIds);
 
-        if (selectedApartment && !apartmentIds.includes(selectedApartment)) {
+        if (selectedApartment && !nextApartmentIds.includes(selectedApartment)) {
           this.draft.update(current => ({
             ...current,
             apartment_id: null,
@@ -312,6 +325,7 @@ export class BookingCreateModalComponent implements OnInit {
         apartment_id: value,
       }));
 
+      this.loadBookingsForApartment(value);
       this.rangeHoverIso.set(null);
       return;
     }
@@ -391,12 +405,16 @@ export class BookingCreateModalComponent implements OnInit {
       return true;
     }
 
+    if (this.isBookedNight(iso)) {
+      return false;
+    }
+
     if (!start || end) {
-      return !this.isBookedNight(iso);
+      return true;
     }
 
     if (iso <= start) {
-      return !this.isBookedNight(iso);
+      return true;
     }
 
     return !this.rangeHasBookedNights(start, iso);
@@ -421,10 +439,43 @@ export class BookingCreateModalComponent implements OnInit {
 
     if (!apartment) return [];
 
-    return this.bookings().filter(
+    const bookings =
+      this.apartmentBookingsLoadedFor() === apartment ? this.apartmentBookings() : this.bookings();
+
+    return bookings.filter(
       booking =>
         booking.apartment_id?.trim() === apartment && !this.isNonBlockingStatus(booking.status)
     );
+  }
+
+  private loadBookingsForApartment(apartmentId: string | null | undefined): void {
+    const apartment = apartmentId?.trim();
+
+    if (!apartment) {
+      this.apartmentBookings.set([]);
+      this.apartmentBookingsLoadedFor.set(null);
+      return;
+    }
+
+    const requestId = ++this.bookingsRequestId;
+    this.apartmentBookings.set([]);
+    this.apartmentBookingsLoadedFor.set(null);
+
+    this.bookingService.searchBookings({ apartment_id: apartment }).subscribe({
+      next: bookings => {
+        if (requestId !== this.bookingsRequestId) return;
+        if (this.draft().apartment_id?.trim() !== apartment) return;
+
+        this.apartmentBookings.set(bookings);
+        this.apartmentBookingsLoadedFor.set(apartment);
+      },
+      error: () => {
+        if (requestId !== this.bookingsRequestId) return;
+
+        this.apartmentBookings.set([]);
+        this.apartmentBookingsLoadedFor.set(null);
+      },
+    });
   }
 
   private isNonBlockingStatus(status: string | null | undefined): boolean {
@@ -466,6 +517,8 @@ export class BookingCreateModalComponent implements OnInit {
       check_out: checkOut,
     }));
 
+    this.loadBookingsForApartment(apartmentId);
+
     if (checkIn) {
       this.rangeCalendarMonth.set(this.fromIso(checkIn));
     }
@@ -475,7 +528,7 @@ export class BookingCreateModalComponent implements OnInit {
         this.availableApartmentIds.set([apartmentId]);
       }
 
-      this.loadAvailableApartmentsForSelectedDates();
+      this.loadAvailableApartmentsForSelectedDates({ preserveSelectedApartment: true });
     }
   }
 }

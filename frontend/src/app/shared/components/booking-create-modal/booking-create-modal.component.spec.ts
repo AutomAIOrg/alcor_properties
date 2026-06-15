@@ -37,31 +37,18 @@ describe('BookingCreateModalComponent', () => {
   let component: BookingCreateModalComponent;
   let bookingServiceSpy: jest.Mocked<BookingService>;
   let apartmentServiceSpy: jest.Mocked<ApartmentService>;
+  let inputBookings: Booking[];
 
   beforeEach(async () => {
     bookingServiceSpy = {
       createBooking: jest.fn(),
+      searchBookings: jest.fn(),
     } as unknown as jest.Mocked<BookingService>;
     apartmentServiceSpy = {
       getAvailableApartmentIds: jest.fn(),
     } as unknown as jest.Mocked<ApartmentService>;
 
-    bookingServiceSpy.createBooking.mockReturnValue(of(makeCreatedBooking()));
-    apartmentServiceSpy.getAvailableApartmentIds.mockReturnValue(of(['R101', 'R202']));
-
-    await TestBed.configureTestingModule({
-      imports: [BookingCreateModalComponent],
-      providers: [
-        { provide: BookingService, useValue: bookingServiceSpy },
-        { provide: ApartmentService, useValue: apartmentServiceSpy },
-      ],
-    }).compileComponents();
-
-    fixture = TestBed.createComponent(BookingCreateModalComponent);
-    component = fixture.componentInstance;
-
-    fixture.componentRef.setInput('apartments', ['R180', 'R101', 'R202']);
-    fixture.componentRef.setInput('bookings', [
+    inputBookings = [
       makeCreatedBooking({
         record_id: 1,
         apartment_id: 'R180',
@@ -76,7 +63,27 @@ describe('BookingCreateModalComponent', () => {
         check_out: '2025-07-25',
         status: 'Cancelled',
       }),
-    ]);
+    ];
+
+    bookingServiceSpy.createBooking.mockReturnValue(of(makeCreatedBooking()));
+    bookingServiceSpy.searchBookings.mockImplementation(filters =>
+      of(inputBookings.filter(booking => booking.apartment_id === filters.apartment_id))
+    );
+    apartmentServiceSpy.getAvailableApartmentIds.mockReturnValue(of(['R101', 'R202']));
+
+    await TestBed.configureTestingModule({
+      imports: [BookingCreateModalComponent],
+      providers: [
+        { provide: BookingService, useValue: bookingServiceSpy },
+        { provide: ApartmentService, useValue: apartmentServiceSpy },
+      ],
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(BookingCreateModalComponent);
+    component = fixture.componentInstance;
+
+    fixture.componentRef.setInput('apartments', ['R180', 'R101', 'R202']);
+    fixture.componentRef.setInput('bookings', inputBookings);
     fixture.detectChanges();
   });
 
@@ -154,6 +161,26 @@ describe('BookingCreateModalComponent', () => {
         '2025-07-05'
       );
     });
+
+    it('mantiene el piso inicial aunque la recarga de disponibilidad no lo devuelva', () => {
+      apartmentServiceSpy.getAvailableApartmentIds.mockReturnValue(of(['R202']));
+
+      const initialFixture = TestBed.createComponent(BookingCreateModalComponent);
+      const initialComponent = initialFixture.componentInstance;
+
+      initialFixture.componentRef.setInput('apartments', ['R101', 'R202']);
+      initialFixture.componentRef.setInput('bookings', []);
+      initialFixture.componentRef.setInput('initialValues', {
+        apartment_id: 'R101',
+        check_in: '2025-07-01',
+        check_out: '2025-07-05',
+      });
+
+      initialFixture.detectChanges();
+
+      expect(initialComponent.draft().apartment_id).toBe('R101');
+      expect(initialComponent.availableApartmentIds()).toEqual(['R101', 'R202']);
+    });
   });
 
   // ── range calendar ────────────────────────────────────────────────────────────
@@ -213,6 +240,16 @@ describe('BookingCreateModalComponent', () => {
   // ── booked days ──────────────────────────────────────────────────────────────
 
   describe('booked days', () => {
+    it('carga reservas frescas del piso seleccionado para marcar conflictos', () => {
+      bookingServiceSpy.searchBookings.mockClear();
+
+      component.patchSelect('apartment_id', { target: { value: 'R180' } } as unknown as Event);
+
+      expect(bookingServiceSpy.searchBookings).toHaveBeenCalledWith({ apartment_id: 'R180' });
+      expect(component.apartmentBookingsLoadedFor()).toBe('R180');
+      expect(component.apartmentBookings()).toEqual([inputBookings[0]]);
+    });
+
     it('marca como booked los días ocupados del piso seleccionado', () => {
       component.patch('apartment_id', 'R180');
       component.rangeCalendarMonth.set(new Date(2025, 6, 1)); // julio 2025
