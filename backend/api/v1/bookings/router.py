@@ -122,7 +122,7 @@ async def update_booking(
     payload: BookingUpdateRequest,
     use_cases: BookingUseCases = Depends(get_booking_use_cases),
 ):
-    update_data = BookingUpdateData(**payload.model_dump())
+    update_data = BookingUpdateData(**payload.model_dump(exclude_unset=True))
     return use_cases.update_command.execute(record_id, update_data)
 
 

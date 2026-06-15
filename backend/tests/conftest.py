@@ -36,7 +36,9 @@ from infrastructure.models.user import UserORM
 @pytest.fixture
 def mock_repo() -> MagicMock:
     """Repositorio mockeado con spec de IBookingRepository."""
-    return MagicMock(spec=IBookingRepository)
+    repo = MagicMock(spec=IBookingRepository)
+    repo.find_overlapping_active.return_value = False
+    return repo
 
 
 @pytest.fixture

@@ -4,10 +4,10 @@ Implementación de IBookingRepository usando SQLAlchemy.
 
 from datetime import date
 
-from sqlalchemy import and_, func
+from sqlalchemy import and_, func, or_
 from sqlalchemy.orm import Session
 
-from domain.bookings.entity import Booking
+from domain.bookings.entity import NON_BLOCKING_STATUSES, Booking
 from domain.bookings.repository import IBookingRepository
 from domain.exceptions import BookingNotFound
 from infrastructure.models.booking import BookingORM
@@ -45,12 +45,11 @@ class SQLAlchemyBookingRepository(IBookingRepository):
         query = self._db.query(BookingORM)
 
         if start_date is not None and end_date is not None:
-            # Reservas cuya estancia se solapa con el rango dado:
-            # check_in <= end_date  Y  check_out >= start_date
+            # Solape de intervalos semiabiertos: [check_in, check_out)
             query = query.filter(
                 and_(
-                    BookingORM.check_in <= end_date,
-                    BookingORM.check_out >= start_date,
+                    BookingORM.check_in < end_date,
+                    BookingORM.check_out > start_date,
                 )
             ).order_by(BookingORM.check_in)
 
@@ -114,6 +113,22 @@ class SQLAlchemyBookingRepository(IBookingRepository):
             raise BookingNotFound(record_id)
         self._db.delete(orm)
         self._db.commit()
+
+    def find_overlapping_active(self, apartment_id: str, check_in: date, check_out: date) -> bool:
+        return (
+            self._db.query(BookingORM)
+            .filter(
+                BookingORM.apartment_id == apartment_id,
+                BookingORM.check_in < check_out,
+                BookingORM.check_out > check_in,
+                or_(
+                    BookingORM.status.is_(None),
+                    func.lower(BookingORM.status).notin_(NON_BLOCKING_STATUSES),
+                ),
+            )
+            .first()
+            is not None
+        )
 
     # ------------------------------------------------------------------ #
     # Helpers privados de conversión                                   #

@@ -14,7 +14,7 @@ from application.bookings.commands import (
     DeleteBookingUseCase,
     UpdateBookingUseCase,
 )
-from domain.exceptions import BookingNotFound
+from domain.exceptions import BookingConflict, BookingNotFound
 from tests.helpers import make_booking
 
 pytestmark = pytest.mark.unit
@@ -46,6 +46,15 @@ class TestCreateBookingUseCase:
 
         assert result.electric_allowance is None
 
+    def test_raises_booking_conflict_when_active_booking_overlaps(self, mock_repo):
+        booking = make_booking(apartment_id="R180")
+        mock_repo.find_overlapping_active.return_value = True
+
+        with pytest.raises(BookingConflict):
+            CreateBookingUseCase(mock_repo, set()).execute(booking)
+
+        mock_repo.create.assert_not_called()
+
 
 # ---------------------------------------------------------------------------
 # UpdateBookingUseCase
@@ -58,18 +67,12 @@ class TestUpdateBookingUseCase:
             record_id=1,
             guest_name="Ana García",
             status="Confirmed",
-            check_in=date(2026, 6, 1),
-            check_out=date(2026, 6, 5),
-        )
-        saved = make_booking(
-            record_id=1,
-            guest_name="Carlos López",
-            status="Confirmed",
+            email="ana@example.com",
             check_in=date(2026, 6, 1),
             check_out=date(2026, 6, 5),
         )
         mock_repo.get_by_id.return_value = existing
-        mock_repo.update.return_value = saved
+        mock_repo.update.side_effect = lambda booking: booking
 
         result = UpdateBookingUseCase(mock_repo, set()).execute(
             1, BookingUpdateData(guest_name="Carlos López")
@@ -77,6 +80,23 @@ class TestUpdateBookingUseCase:
 
         assert result.guest_name == "Carlos López"
         assert result.status == "Confirmed"  # campo no enviado se conserva
+        assert result.email == "ana@example.com"
+
+    def test_partial_merge_clears_optional_fields_when_none_is_provided(self, mock_repo):
+        existing = make_booking(
+            record_id=1,
+            email="ana@example.com",
+            phone="+34 600 000 000",
+            notes="Llegada tarde",
+        )
+        mock_repo.get_by_id.return_value = existing
+        mock_repo.update.side_effect = lambda booking: booking
+
+        result = UpdateBookingUseCase(mock_repo, set()).execute(1, BookingUpdateData(email=None))
+
+        assert result.email is None
+        assert result.phone == "+34 600 000 000"
+        assert result.notes == "Llegada tarde"
 
     def test_propagates_booking_not_found_from_repository(self, mock_repo):
         mock_repo.get_by_id.side_effect = BookingNotFound(99)

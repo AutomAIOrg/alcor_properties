@@ -9,22 +9,33 @@ from domain.bookings.entity import Booking
 from domain.bookings.repository import IBookingRepository
 
 
+class _UnsetType:
+    pass
+
+
+_UNSET = _UnsetType()
+
+
 @dataclass
 class BookingUpdateData:
-    apartment_id: str | None = None
-    guest_name: str | None = None
-    check_in: date | None = None
-    check_out: date | None = None
-    status: str | None = None
-    persons: int | None = None
-    adults: int | None = None
-    children: int | None = None
-    price: float | None = None
-    charges: float | None = None
-    email: str | None = None
-    phone: str | None = None
-    booking_number: str | None = None
-    notes: str | None = None
+    apartment_id: str | None | _UnsetType = _UNSET
+    guest_name: str | None | _UnsetType = _UNSET
+    check_in: date | None | _UnsetType = _UNSET
+    check_out: date | None | _UnsetType = _UNSET
+    status: str | None | _UnsetType = _UNSET
+    persons: int | None | _UnsetType = _UNSET
+    adults: int | None | _UnsetType = _UNSET
+    children: int | None | _UnsetType = _UNSET
+    price: float | None | _UnsetType = _UNSET
+    charges: float | None | _UnsetType = _UNSET
+    email: str | None | _UnsetType = _UNSET
+    phone: str | None | _UnsetType = _UNSET
+    booking_number: str | None | _UnsetType = _UNSET
+    notes: str | None | _UnsetType = _UNSET
+
+    def as_update_dict(self) -> dict[str, object]:
+        """Devuelve solo los campos enviados; conserva None como limpieza explícita."""
+        return {k: v for k, v in vars(self).items() if v is not _UNSET}
 
 
 def _apply_electric_allowance(booking: Booking, electric_ids: set[str]) -> Booking:
@@ -48,6 +59,20 @@ class CreateBookingUseCase:
         self._electric_ids = electric_apartment_ids
 
     def execute(self, booking: Booking) -> Booking:
+        # Validar que no haya otra reserva bloqueante para el mismo apartamento y rango de fechas
+        overlapping = self._repo.find_overlapping_active(
+            apartment_id=booking.apartment_id,
+            check_in=booking.check_in,
+            check_out=booking.check_out,
+        )
+        if overlapping:
+            from domain.exceptions import BookingConflict
+
+            raise BookingConflict(
+                check_in=str(booking.check_in),
+                check_out=str(booking.check_out),
+            )
+
         created = self._repo.create(booking)
         return _apply_electric_allowance(created, self._electric_ids)
 
@@ -66,7 +91,7 @@ class UpdateBookingUseCase:
     def execute(self, record_id: int, data: BookingUpdateData) -> Booking:
         existing = self._repo.get_by_id(record_id)  # lanza BookingNotFound si no existe
 
-        updates = {k: v for k, v in vars(data).items() if v is not None}
+        updates = data.as_update_dict()
 
         # Revalida usando model_validate para que el validador de nights se aplique si cambian las fechas.
         updated = Booking.model_validate({**existing.model_dump(), **updates})

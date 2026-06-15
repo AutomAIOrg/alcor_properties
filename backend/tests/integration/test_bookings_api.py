@@ -184,6 +184,17 @@ class TestUpdateBooking:
         response = api_client.put("/api/v1/bookings/1", json={"guest_name": "Nombre Nuevo"})
 
         assert response.status_code == 200
+        _, update_data = mock_use_cases.update_command.execute.call_args.args
+        assert update_data.as_update_dict() == {"guest_name": "Nombre Nuevo"}
+
+    def test_update_forwards_explicit_null_for_optional_fields(self, api_client, mock_use_cases):
+        mock_use_cases.update_command.execute.return_value = make_booking(record_id=1, email=None)
+
+        response = api_client.put("/api/v1/bookings/1", json={"email": None})
+
+        assert response.status_code == 200
+        _, update_data = mock_use_cases.update_command.execute.call_args.args
+        assert update_data.as_update_dict() == {"email": None}
 
     def test_returns_404_when_not_found(self, api_client, mock_use_cases):
         mock_use_cases.update_command.execute.side_effect = BookingNotFound(99)
