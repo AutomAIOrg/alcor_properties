@@ -22,6 +22,23 @@ def _apply_all(bookings: list[Booking], electric_ids: set[str]) -> list[Booking]
     return [_apply_electric_allowance(b, electric_ids) for b in bookings]
 
 
+def _booking_overlap_nights(booking: Booking, start_date: date, end_date: date) -> int:
+    return max((min(booking.check_out, end_date) - max(booking.check_in, start_date)).days, 0)
+
+
+def _sum_occupied_nights(
+    bookings: list[Booking],
+    start_date: date,
+    end_date: date,
+) -> int:
+    """Suma solo las noches ocupadas dentro del rango semiabierto [start_date, end_date)."""
+    return sum(
+        _booking_overlap_nights(booking, start_date, end_date)
+        for booking in bookings
+        if not booking.is_cancelled()
+    )
+
+
 def _compute_stats(
     bookings: list[Booking],
     start_date: date | None = None,
@@ -176,21 +193,26 @@ class GetBookingStatsQuery:
         guest_name: str | None = None,
         booking_number: str | None = None,
     ) -> dict:
+        range_start: date | None = None
+        range_end: date | None = None
+
         if start_date and end_date:
+            range_start = start_date
+            range_end = end_date
             bookings = self._repo.list(
-                start_date=start_date,
-                end_date=end_date,
+                start_date=range_start,
+                end_date=range_end,
                 apartment_id=apartment_id,
                 status=status,
                 guest_name=guest_name,
                 booking_number=booking_number,
             )
         elif days is not None:
-            resolved_start = start_date or date.today()
-            resolved_end = resolved_start + timedelta(days=days)
+            range_start = start_date or date.today()
+            range_end = range_start + timedelta(days=days)
             bookings = self._repo.list(
-                start_date=resolved_start,
-                end_date=resolved_end,
+                start_date=range_start,
+                end_date=range_end,
                 apartment_id=apartment_id,
                 status=status,
                 guest_name=guest_name,
@@ -207,15 +229,14 @@ class GetBookingStatsQuery:
         bookings = _apply_all(bookings, self._electric_ids)
 
         occupancy_pct = None
-        if start_date and end_date:
-            range_days = (end_date - start_date).days
+        if range_start and range_end:
+            range_days = (range_end - range_start).days
             if range_days > 0:
-                active = [b for b in bookings if b.status.lower() != "cancelled"]
-                total_nights = sum(b.nights for b in active)
-                occupancy_pct = round(total_nights / range_days * 100, 2)
+                occupied_nights = _sum_occupied_nights(bookings, range_start, range_end)
+                occupancy_pct = round(occupied_nights / range_days * 100, 2)
 
         return _compute_stats(
-            bookings, start_date=start_date, end_date=end_date, occupancy_pct=occupancy_pct
+            bookings, start_date=range_start, end_date=range_end, occupancy_pct=occupancy_pct
         )
 
 
@@ -236,7 +257,7 @@ class GetBookingByIdQuery:
 
 
 class GetActiveBookingsQuery:
-    """Devuelve reservas donde los huéspedes están actualmente alojados (check_in <= hoy <= check_out)."""
+    """Devuelve reservas donde los huéspedes están actualmente alojados (check_in <= hoy < check_out)."""
 
     def __init__(
         self,
@@ -248,7 +269,7 @@ class GetActiveBookingsQuery:
 
     def execute(self) -> list[Booking]:
         today = date.today()
-        bookings = self._repo.list(start_date=today, end_date=today)
+        bookings = self._repo.list(start_date=today, end_date=today + timedelta(days=1))
         active = [b for b in bookings if b.is_active()]
         return _apply_all(active, self._electric_ids)
 
@@ -267,7 +288,7 @@ class GetUpcomingCheckinsQuery:
     def execute(self, days: int = 7) -> list[Booking]:
         today = date.today()
         end_date = today + timedelta(days=days)
-        bookings = self._repo.list(start_date=today, end_date=end_date)
+        bookings = self._repo.list(start_date=today, end_date=end_date + timedelta(days=1))
         upcoming = [b for b in bookings if b.has_upcoming_checkin(days)]
         upcoming.sort(key=lambda b: b.check_in)
         return _apply_all(upcoming, self._electric_ids)
@@ -287,7 +308,10 @@ class GetUpcomingCheckoutsQuery:
     def execute(self, days: int = 7) -> list[Booking]:
         today = date.today()
         end_date = today + timedelta(days=days)
-        bookings = self._repo.list(start_date=today, end_date=end_date)
+        bookings = self._repo.list(
+            start_date=today - timedelta(days=1),
+            end_date=end_date + timedelta(days=1),
+        )
         upcoming = [b for b in bookings if b.has_upcoming_checkout(days)]
         upcoming.sort(key=lambda b: b.check_out)
         return _apply_all(upcoming, self._electric_ids)

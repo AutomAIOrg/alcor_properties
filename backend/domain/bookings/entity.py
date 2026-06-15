@@ -91,7 +91,7 @@ class Booking(BaseModel):
     def is_active(self, reference_date: date | None = None) -> bool:
         """Devuelve True si la reserva cubre *reference_date* (por defecto hoy)."""
         today = reference_date or date.today()
-        return self.check_in <= today <= self.check_out
+        return self.check_in <= today < self.check_out
 
     def is_cancelled(self) -> bool:
         return self.status.lower() in NON_BLOCKING_STATUSES

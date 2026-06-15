@@ -5,13 +5,22 @@ Caso de uso para buscar apartamentos disponibles según filtros.
 import calendar
 from datetime import date
 
-from application.bookings.queries import _apply_all, _compute_stats
+from application.bookings.queries import (
+    _apply_all,
+    _booking_overlap_nights,
+    _compute_stats,
+    _sum_occupied_nights,
+)
 from domain.apartments.entity import Apartment
 from domain.apartments.filters import ApartmentSearchFilters
 from domain.apartments.repository import IApartmentRepository
 from domain.bookings.entity import Booking
 from domain.bookings.repository import IBookingRepository
 from domain.exceptions import ApartmentNotFound
+
+
+def _booking_years(booking: Booking) -> range:
+    return range(booking.check_in.year, booking.check_out.year + 1)
 
 
 class SearchApartmentsUseCase:
@@ -86,9 +95,8 @@ class GetApartmentStatsUseCase:
         if start_date and end_date:
             range_days = (end_date - start_date).days
             if range_days > 0:
-                active = [b for b in range_bookings if b.status.lower() != "cancelled"]
-                total_nights = sum(b.nights for b in active)
-                range_occupancy_pct = round(total_nights / range_days * 100, 2)
+                occupied_nights = _sum_occupied_nights(range_bookings, start_date, end_date)
+                range_occupancy_pct = round(occupied_nights / range_days * 100, 2)
 
         filtered_range = _compute_stats(
             range_bookings,
@@ -103,19 +111,28 @@ class GetApartmentStatsUseCase:
             self._electric_ids,
         )
 
-        # Agrupar por año de check_in
+        # Agrupar por años tocados por la estancia. Una reserva que cruza de año
+        # contribuye a cada año solo con las noches e importes proporcionales.
         by_year_map: dict[int, list[Booking]] = {}
-        for b in all_bookings:
-            yr = b.check_in.year
-            by_year_map.setdefault(yr, []).append(b)
+        for booking in all_bookings:
+            for yr in _booking_years(booking):
+                year_start = date(yr, 1, 1)
+                year_end = date(yr + 1, 1, 1)
+                if _booking_overlap_nights(booking, year_start, year_end) > 0:
+                    by_year_map.setdefault(yr, []).append(booking)
 
         by_year = []
         for yr in sorted(by_year_map.keys()):
             year_bookings = by_year_map[yr]
             total_days_in_year = 366 if calendar.isleap(yr) else 365
+            year_start = date(yr, 1, 1)
+            year_end = date(yr + 1, 1, 1)
 
             active = [b for b in year_bookings if b.status.lower() != "cancelled"]
-            total_nights = sum(b.nights for b in active)
+            active_year_nights = [
+                (b, _booking_overlap_nights(b, year_start, year_end)) for b in active
+            ]
+            total_nights = sum(nights for _, nights in active_year_nights)
             occupancy_pct = round(total_nights / total_days_in_year * 100, 2)
 
             cancelled_count = len(year_bookings) - len(active)
@@ -124,7 +141,11 @@ class GetApartmentStatsUseCase:
 
             avg_nights = round(total_nights / len(active), 2) if active else None
 
-            prices = [float(b.price) for b in active if b.price is not None]
+            prices = [
+                float(b.price) * year_nights / b.nights
+                for b, year_nights in active_year_nights
+                if b.price is not None
+            ]
             total_revenue = round(sum(prices), 2) if prices else None
             avg_rev_booking = (
                 round(total_revenue / len(active), 2)
@@ -132,11 +153,17 @@ class GetApartmentStatsUseCase:
                 else None
             )
 
-            charges = [float(b.charges) for b in active if b.charges is not None]
+            charges = [
+                float(b.charges) * year_nights / b.nights
+                for b, year_nights in active_year_nights
+                if b.charges is not None
+            ]
             total_charges = round(sum(charges), 2) if charges else None
 
             electric = [
-                float(b.electric_allowance) for b in active if b.electric_allowance is not None
+                float(b.electric_allowance) * year_nights / b.nights
+                for b, year_nights in active_year_nights
+                if b.electric_allowance is not None
             ]
             total_electric = round(sum(electric), 2) if electric else None
 

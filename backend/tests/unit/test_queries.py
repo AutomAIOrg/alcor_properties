@@ -9,7 +9,9 @@ from datetime import date, timedelta
 import pytest
 
 from application.bookings.queries import (
+    GetActiveBookingsQuery,
     GetBookingByIdQuery,
+    GetBookingStatsQuery,
     GetCalendarEventsQuery,
     GetUpcomingCheckinsQuery,
     GetUpcomingCheckoutsQuery,
@@ -72,6 +74,64 @@ class TestListBookingsQuery:
 
 
 # ---------------------------------------------------------------------------
+# GetBookingStatsQuery
+# ---------------------------------------------------------------------------
+
+
+class TestGetBookingStatsQuery:
+    def test_occupancy_pct_uses_only_nights_overlapping_requested_range(self, mock_repo):
+        booking = make_booking(
+            check_in=date(2026, 6, 1),
+            check_out=date(2026, 6, 20),
+        )
+        mock_repo.list.return_value = [booking]
+
+        result = GetBookingStatsQuery(mock_repo, set()).execute(
+            start_date=date(2026, 6, 10),
+            end_date=date(2026, 6, 15),
+        )
+
+        assert result["occupancy_pct"] == 100.0
+
+    def test_occupancy_pct_ignores_cancelled_overlapping_bookings(self, mock_repo):
+        booking = make_booking(
+            status="Cancelled",
+            check_in=date(2026, 6, 1),
+            check_out=date(2026, 6, 20),
+        )
+        mock_repo.list.return_value = [booking]
+
+        result = GetBookingStatsQuery(mock_repo, set()).execute(
+            start_date=date(2026, 6, 10),
+            end_date=date(2026, 6, 15),
+        )
+
+        assert result["occupancy_pct"] == 0.0
+
+    def test_days_range_is_used_for_occupancy_and_response_dates(self, mock_repo):
+        start = date(2026, 6, 10)
+        booking = make_booking(
+            check_in=date(2026, 6, 1),
+            check_out=date(2026, 6, 20),
+        )
+        mock_repo.list.return_value = [booking]
+
+        result = GetBookingStatsQuery(mock_repo, set()).execute(start_date=start, days=5)
+
+        mock_repo.list.assert_called_once_with(
+            start_date=start,
+            end_date=start + timedelta(days=5),
+            apartment_id=None,
+            status=None,
+            guest_name=None,
+            booking_number=None,
+        )
+        assert result["start_date"] == start
+        assert result["end_date"] == start + timedelta(days=5)
+        assert result["occupancy_pct"] == 100.0
+
+
+# ---------------------------------------------------------------------------
 # GetBookingByIdQuery
 # ---------------------------------------------------------------------------
 
@@ -91,6 +151,24 @@ class TestGetBookingByIdQuery:
 
         with pytest.raises(BookingNotFound):
             GetBookingByIdQuery(mock_repo, set()).execute(99)
+
+
+# ---------------------------------------------------------------------------
+# GetActiveBookingsQuery
+# ---------------------------------------------------------------------------
+
+
+class TestGetActiveBookingsQuery:
+    def test_prefilters_current_day_as_half_open_range(self, mock_repo):
+        mock_repo.list.return_value = []
+        today = date.today()
+
+        GetActiveBookingsQuery(mock_repo, set()).execute()
+
+        mock_repo.list.assert_called_once_with(
+            start_date=today,
+            end_date=today + timedelta(days=1),
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -137,6 +215,17 @@ class TestGetUpcomingCheckinsQuery:
         assert results[0].record_id == 2  # check_in más temprano primero
         assert results[1].record_id == 1
 
+    def test_prefilter_includes_upper_boundary_day(self, mock_repo):
+        mock_repo.list.return_value = []
+        today = date.today()
+
+        GetUpcomingCheckinsQuery(mock_repo, set()).execute(days=7)
+
+        mock_repo.list.assert_called_once_with(
+            start_date=today,
+            end_date=today + timedelta(days=8),
+        )
+
 
 # ---------------------------------------------------------------------------
 # GetUpcomingCheckoutsQuery
@@ -162,6 +251,17 @@ class TestGetUpcomingCheckoutsQuery:
 
         assert len(results) == 1
         assert results[0].record_id == 1
+
+    def test_prefilter_includes_checkout_today(self, mock_repo):
+        mock_repo.list.return_value = []
+        today = date.today()
+
+        GetUpcomingCheckoutsQuery(mock_repo, set()).execute(days=7)
+
+        mock_repo.list.assert_called_once_with(
+            start_date=today - timedelta(days=1),
+            end_date=today + timedelta(days=8),
+        )
 
 
 # ---------------------------------------------------------------------------
