@@ -53,6 +53,12 @@ def mock_get_apartment_by_id_use_case() -> MagicMock:
     return MagicMock()
 
 
+@pytest.fixture
+def mock_get_apartment_stats_use_case() -> MagicMock:
+    """GetApartmentStatsUseCase mockeado para tests de API."""
+    return MagicMock()
+
+
 # ---------------------------------------------------------------------------
 # Infraestructura SQLite compartida
 # ---------------------------------------------------------------------------
@@ -146,9 +152,11 @@ def mock_search_apartments_query() -> MagicMock:
 def apartment_api_client(
     mock_search_apartments_use_case: MagicMock,
     mock_get_apartment_by_id_use_case: MagicMock,
+    mock_get_apartment_stats_use_case: MagicMock,
 ) -> TestClient:
     from api.dependencies import (
         get_apartment_by_id_use_case,
+        get_apartment_stats_use_case,
         get_current_user,
         get_search_apartments_use_case,
     )
@@ -169,6 +177,9 @@ def apartment_api_client(
     app.dependency_overrides[get_apartment_by_id_use_case] = lambda: (
         mock_get_apartment_by_id_use_case
     )
+    app.dependency_overrides[get_apartment_stats_use_case] = lambda: (
+        mock_get_apartment_stats_use_case
+    )
     app.dependency_overrides[get_current_user] = lambda: admin_payload
 
     try:
@@ -177,6 +188,7 @@ def apartment_api_client(
     finally:
         app.dependency_overrides.pop(get_search_apartments_use_case, None)
         app.dependency_overrides.pop(get_apartment_by_id_use_case, None)
+        app.dependency_overrides.pop(get_apartment_stats_use_case, None)
         app.dependency_overrides.pop(get_current_user, None)
 
 

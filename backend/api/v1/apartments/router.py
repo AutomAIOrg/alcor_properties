@@ -72,6 +72,12 @@ def get_apartment_stats(
     """
     Devuelve estadísticas de un apartamento: métricas del rango filtrado y desglose anual.
     """
+    if (start_date is None) != (end_date is None):
+        raise HTTPException(
+            status_code=422,
+            detail="start_date y end_date deben informarse juntas",
+        )
+
     try:
         stats = query.execute(
             apartment_id,

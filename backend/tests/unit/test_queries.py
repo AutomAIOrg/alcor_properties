@@ -79,6 +79,26 @@ class TestListBookingsQuery:
 
 
 class TestGetBookingStatsQuery:
+    def test_without_range_forwards_text_filters_and_has_no_occupancy(self, mock_repo):
+        mock_repo.list.return_value = []
+
+        result = GetBookingStatsQuery(mock_repo, set()).execute(
+            apartment_id="R180",
+            status="Confirmed",
+            guest_name="Ana",
+            booking_number="BK-1",
+        )
+
+        mock_repo.list.assert_called_once_with(
+            apartment_id="R180",
+            status="Confirmed",
+            guest_name="Ana",
+            booking_number="BK-1",
+        )
+        assert result["start_date"] is None
+        assert result["end_date"] is None
+        assert result["occupancy_pct"] is None
+
     def test_occupancy_pct_uses_only_nights_overlapping_requested_range(self, mock_repo):
         booking = make_booking(
             check_in=date(2026, 6, 1),
@@ -107,6 +127,45 @@ class TestGetBookingStatsQuery:
         )
 
         assert result["occupancy_pct"] == 0.0
+
+    def test_stats_exclude_cancelled_bookings_from_financial_and_night_totals(self, mock_repo):
+        active = make_booking(
+            record_id=1,
+            status="Confirmed",
+            check_in=date(2026, 6, 1),
+            check_out=date(2026, 6, 5),
+            nights=4,
+            persons=2,
+            price=400,
+            charges=40,
+        )
+        cancelled = make_booking(
+            record_id=2,
+            status="Cancelled",
+            check_in=date(2026, 6, 10),
+            check_out=date(2026, 6, 15),
+            nights=5,
+            persons=6,
+            price=900,
+            charges=90,
+        )
+        mock_repo.list.return_value = [active, cancelled]
+
+        result = GetBookingStatsQuery(mock_repo, {"TEST-001"}).execute(
+            start_date=date(2026, 6, 1),
+            end_date=date(2026, 6, 20),
+        )
+
+        assert result["total_bookings"] == 2
+        assert result["active_bookings"] == 1
+        assert result["cancelled_bookings"] == 1
+        assert result["cancellation_rate"] == 50.0
+        assert result["total_nights"] == 4
+        assert result["total_persons"] == 2
+        assert result["total_revenue"] == 400.0
+        assert result["total_charges"] == 40.0
+        assert result["total_electric_allowance"] == 16.0
+        assert result["status_breakdown"] == {"Confirmed": 1, "Cancelled": 1}
 
     def test_days_range_is_used_for_occupancy_and_response_dates(self, mock_repo):
         start = date(2026, 6, 10)
