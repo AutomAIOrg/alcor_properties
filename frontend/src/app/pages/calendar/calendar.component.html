@@ -24,7 +24,7 @@
       }
     </div>
     @if (authService.hasPermission('bookings:create')) {
-      <button class="btn-new-booking" (click)="showCreateModal.set(true)">+ Nueva reserva</button>
+      <button class="btn-new-booking" (click)="openCreateModal()">+ Nueva reserva</button>
     }
   </div>
 
@@ -115,10 +115,20 @@
 
     <!-- Selector Mes/Semana (margin-left: auto lo empuja a la derecha) -->
     <div class="view-toggle">
-      <button [class.active]="viewMode() === 'month'" (click)="viewMode.set('month')">Mes</button>
-      <button [class.active]="viewMode() === 'week'" (click)="viewMode.set('week')">Semana</button>
+      <button [class.active]="viewMode() === 'month'" (click)="changeViewMode('month')">Mes</button>
+      <button [class.active]="viewMode() === 'week'" (click)="changeViewMode('week')">
+        Semana
+      </button>
     </div>
   </div>
+
+  @if (calendarError()) {
+    <p class="calendar-error">{{ calendarError() }}</p>
+  }
+
+  @if (apartmentIdsError()) {
+    <p class="calendar-error">{{ apartmentIdsError() }}</p>
+  }
 
   <!-- Fila 3: Header del calendario -->
   <app-calendar-header
@@ -129,8 +139,12 @@
     (next)="nextPeriod()"
     (today)="goToToday()"
     (dateChange)="goToDate($event)"
-    (viewModeChange)="viewMode.set($event)"
+    (viewModeChange)="changeViewMode($event)"
   />
+
+  @if (calendarLoading()) {
+    <p class="calendar-loading">Cargando reservas...</p>
+  }
 
   <!-- Grid del Calendario -->
   @switch (viewMode()) {
@@ -171,8 +185,7 @@
 
 @if (showCreateModal()) {
   <app-booking-create-modal
-    [apartments]="bookingIdOptions()"
-    [bookings]="bookings()"
+    [apartments]="allApartmentIds()"
     (close)="showCreateModal.set(false)"
     (created)="onBookingCreated($event)"
   />

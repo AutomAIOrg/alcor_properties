@@ -44,6 +44,10 @@
     </button>
   </nav>
 
+  @if (apartmentIdsError()) {
+    <p class="page-error">{{ apartmentIdsError() }}</p>
+  }
+
   <app-availability-search
     [hidden]="activeTab() !== 'availability'"
     (apartmentSelected)="openApartmentDetail($event)"
@@ -75,7 +79,6 @@
 @if (createBookingInitialValues()) {
   <app-booking-create-modal
     [apartments]="allApartmentIds()"
-    [bookings]="bookings()"
     [initialValues]="createBookingInitialValues()"
     (close)="closeCreateBookingModal()"
     (created)="onBookingCreated($event)"

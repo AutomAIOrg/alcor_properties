@@ -23,6 +23,7 @@ export type AvailabilityBookingCreateRequest = {
 })
 export class AvailabilitySearchComponent {
   private apartmentService = inject(ApartmentService);
+  private availabilityRequestId = 0;
 
   apartmentSelected = output<Apartment>();
   bookingCreateRequested = output<AvailabilityBookingCreateRequest>();
@@ -43,6 +44,9 @@ export class AvailabilitySearchComponent {
 
   searchAvailability(): void {
     if (!this.avail.from() || !this.avail.to()) return;
+
+    const requestId = ++this.availabilityRequestId;
+
     this.avail.loading.set(true);
     this.avail.error.set('');
     this.avail.results.set([]);
@@ -64,10 +68,14 @@ export class AvailabilitySearchComponent {
 
     this.apartmentService.searchApartments(filters).subscribe({
       next: apartments => {
+        if (requestId !== this.availabilityRequestId) return;
+
         this.avail.results.set(apartments);
         this.avail.loading.set(false);
       },
       error: () => {
+        if (requestId !== this.availabilityRequestId) return;
+
         this.avail.error.set('Error al cargar pisos. Comprueba los filtros.');
         this.avail.loading.set(false);
       },
@@ -75,6 +83,7 @@ export class AvailabilitySearchComponent {
   }
 
   clearAvailability(): void {
+    this.availabilityRequestId += 1;
     this.avail.from.set('');
     this.avail.to.set('');
     this.avail.q.set('');
@@ -83,6 +92,7 @@ export class AvailabilitySearchComponent {
     this.avail.minBathrooms.set(null);
     this.avail.minOccupants.set(null);
     this.avail.parking.set(null);
+    this.avail.loading.set(false);
     this.avail.results.set([]);
     this.avail.error.set('');
   }

@@ -1,12 +1,12 @@
-import { CurrencyPipe, DatePipe, DecimalPipe, KeyValuePipe } from '@angular/common';
+import { CurrencyPipe, DatePipe, DecimalPipe } from '@angular/common';
 import { Component, Input, inject, output, signal } from '@angular/core';
-import { forkJoin } from 'rxjs';
 
-import { Booking } from '../../../../models/booking.model';
+import { BASE_STATUSES, Booking } from '../../../../models/booking.model';
 import { ApartmentStatsResponse, BookingSearchFilters } from '../../../../models/search.model';
 import { BookingColorPipe } from '../../../../pipes/booking-color.pipe';
 import { ApartmentService } from '../../../../services/apartment.service';
 import { BookingService } from '../../../../services/booking.service';
+import { SearchStatsGridComponent } from '../search-stats-grid/search-stats-grid.component';
 import {
   DateRangePickerComponent,
   type DateRangeValue,
@@ -24,9 +24,9 @@ export type ApartmentLoadRequest = {
     CurrencyPipe,
     DatePipe,
     DecimalPipe,
-    KeyValuePipe,
     BookingColorPipe,
     DateRangePickerComponent,
+    SearchStatsGridComponent,
   ],
   templateUrl: './apartment-search.component.html',
   styleUrl: './apartment-search.component.scss',
@@ -35,6 +35,7 @@ export class ApartmentSearchComponent {
   private apartmentService = inject(ApartmentService);
   private bookingService = inject(BookingService);
   private lastLoadRequestId = 0;
+  private apartmentSearchRequestId = 0;
 
   @Input() allApartmentIds: string[] = [];
 
@@ -52,7 +53,7 @@ export class ApartmentSearchComponent {
 
   bookingSelected = output<Booking>();
 
-  readonly STATUS_OPTIONS = ['', 'Confirmed', 'Pending', 'Cancelled', 'ok'];
+  readonly STATUS_OPTIONS = ['', ...BASE_STATUSES] as const;
 
   apt = {
     id: signal(''),
@@ -68,6 +69,16 @@ export class ApartmentSearchComponent {
   searchApartmentDetail(): void {
     const id = this.apt.id().trim();
     if (!id) return;
+
+    const requestId = ++this.apartmentSearchRequestId;
+    let pendingRequests = 2;
+    const finishRequest = () => {
+      pendingRequests -= 1;
+      if (pendingRequests === 0 && requestId === this.apartmentSearchRequestId) {
+        this.apt.loading.set(false);
+      }
+    };
+
     this.apt.loading.set(true);
     this.apt.error.set('');
     this.apt.bookings.set([]);
@@ -78,35 +89,50 @@ export class ApartmentSearchComponent {
     if (this.apt.to()) bookingFilters.end_date = this.apt.to();
     if (this.apt.status()) bookingFilters.status = this.apt.status();
 
-    forkJoin({
-      bookings: this.bookingService.searchBookings(bookingFilters),
-      stats: this.apartmentService.getApartmentStats(
-        id,
-        this.apt.from() || undefined,
-        this.apt.to() || undefined
-      ),
-    }).subscribe({
-      next: ({ bookings, stats }) => {
+    this.bookingService.searchBookings(bookingFilters).subscribe({
+      next: bookings => {
+        if (requestId !== this.apartmentSearchRequestId) return;
+
         this.apt.bookings.set(bookings);
-        this.apt.stats.set(stats);
-        this.apt.loading.set(false);
+        finishRequest();
       },
-      error: err => {
-        const msg =
-          err?.status === 404
-            ? `El piso '${id}' no existe en la base de datos.`
-            : 'Error al cargar datos del piso.';
-        this.apt.error.set(msg);
-        this.apt.loading.set(false);
+      error: () => {
+        if (requestId !== this.apartmentSearchRequestId) return;
+
+        this.apt.error.set('No se pudieron cargar las reservas del piso.');
+        finishRequest();
       },
     });
+
+    this.apartmentService
+      .getApartmentStats(id, this.apt.from() || undefined, this.apt.to() || undefined)
+      .subscribe({
+        next: stats => {
+          if (requestId !== this.apartmentSearchRequestId) return;
+
+          this.apt.stats.set(stats);
+          finishRequest();
+        },
+        error: err => {
+          if (requestId !== this.apartmentSearchRequestId) return;
+
+          const msg =
+            err?.status === 404
+              ? `El piso '${id}' no existe en la base de datos.`
+              : 'No se pudieron cargar las estadísticas del piso.';
+          this.apt.error.set(msg);
+          finishRequest();
+        },
+      });
   }
 
   clearApartmentDetail(): void {
+    this.apartmentSearchRequestId += 1;
     this.apt.id.set('');
     this.apt.from.set('');
     this.apt.to.set('');
     this.apt.status.set('');
+    this.apt.loading.set(false);
     this.apt.bookings.set([]);
     this.apt.stats.set(null);
     this.apt.error.set('');
@@ -143,9 +169,5 @@ export class ApartmentSearchComponent {
 
   selectValue(event: Event): string {
     return (event.target as HTMLSelectElement).value;
-  }
-
-  statusBreakdownEntries(breakdown: Record<string, number>): { key: string; value: number }[] {
-    return Object.entries(breakdown).map(([key, value]) => ({ key, value }));
   }
 }

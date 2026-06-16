@@ -1,9 +1,8 @@
-import { Component, OnInit, ViewChild, inject, signal } from '@angular/core';
+import { Component, ViewChild, inject, signal } from '@angular/core';
 
 import { Apartment } from '../../models/apartment.model';
 import { Booking } from '../../models/booking.model';
 import { ApartmentService } from '../../services/apartment.service';
-import { BookingService } from '../../services/booking.service';
 import {
   BookingCreateModalComponent,
   type BookingCreateInitialValues,
@@ -34,9 +33,8 @@ type Tab = 'availability' | 'apartment' | 'bookings';
   templateUrl: './searches.component.html',
   styleUrl: './searches.component.scss',
 })
-export class SearchesComponent implements OnInit {
+export class SearchesComponent {
   private apartmentService = inject(ApartmentService);
-  private bookingService = inject(BookingService);
 
   @ViewChild(AvailabilitySearchComponent) private availabilitySearch?: AvailabilitySearchComponent;
   @ViewChild(ApartmentSearchComponent) private apartmentSearch?: ApartmentSearchComponent;
@@ -49,20 +47,16 @@ export class SearchesComponent implements OnInit {
   createBookingInitialValues = signal<BookingCreateInitialValues | null>(null);
   apartmentToLoad = signal<ApartmentLoadRequest | null>(null);
   allApartmentIds = signal<string[]>([]);
-  bookings = signal<Booking[]>([]);
-
-  ngOnInit(): void {
-    this.apartmentService.getAllApartmentIds().subscribe({
-      next: ids => this.allApartmentIds.set(ids),
-    });
-
-    this.bookingService.getBookings().subscribe({
-      next: bookings => this.bookings.set(bookings),
-    });
-  }
+  loadingApartmentIds = signal(false);
+  apartmentIdsError = signal<string | null>(null);
+  private apartmentIdsLoaded = false;
 
   selectTab(tab: Tab): void {
     this.activeTab.set(tab);
+
+    if (tab === 'apartment' || tab === 'bookings') {
+      this.ensureApartmentIdsLoaded();
+    }
   }
 
   openApartmentDetail(apartment: Apartment): void {
@@ -83,6 +77,7 @@ export class SearchesComponent implements OnInit {
   }
 
   openCreateBookingModal(request: AvailabilityBookingCreateRequest): void {
+    this.ensureApartmentIdsLoaded();
     this.createBookingInitialValues.set({
       apartment_id: request.apartment.apartment_id,
       check_in: request.checkIn,
@@ -95,7 +90,6 @@ export class SearchesComponent implements OnInit {
   }
 
   onBookingCreated(created: Booking): void {
-    this.bookings.update(bookings => [created, ...bookings]);
     this.createBookingInitialValues.set(null);
     this.availabilitySearch?.searchAvailabilityIfDatesReady();
     this.apartmentSearch?.refreshAfterBookingSaved(created);
@@ -103,11 +97,28 @@ export class SearchesComponent implements OnInit {
   }
 
   onBookingSaved(updated: Booking): void {
-    this.bookings.update(bookings =>
-      bookings.map(booking => (booking.record_id === updated.record_id ? updated : booking))
-    );
     this.apartmentSearch?.refreshAfterBookingSaved(updated);
     this.bookingSearch?.refreshAfterBookingSaved(updated);
     this.selectedBooking.set(updated);
+  }
+
+  private ensureApartmentIdsLoaded(): void {
+    if (this.apartmentIdsLoaded || this.loadingApartmentIds()) return;
+
+    this.loadingApartmentIds.set(true);
+    this.apartmentIdsError.set(null);
+
+    this.apartmentService.getAllApartmentIds().subscribe({
+      next: ids => {
+        this.allApartmentIds.set(ids);
+        this.apartmentIdsLoaded = true;
+        this.loadingApartmentIds.set(false);
+      },
+      error: () => {
+        this.allApartmentIds.set([]);
+        this.apartmentIdsError.set('No se pudieron cargar los pisos.');
+        this.loadingApartmentIds.set(false);
+      },
+    });
   }
 }

@@ -13,7 +13,7 @@
         <input
           type="text"
           list="apt-ids-list-bkg"
-          placeholder="R180…"
+          placeholder="R180..."
           [value]="bkg.apartmentId()"
           (input)="bkg.apartmentId.set(inputValue($event))"
         />
@@ -32,19 +32,19 @@
         </select>
       </div>
       <div class="field">
-        <label>Huésped</label>
+        <label>Hu&eacute;sped</label>
         <input
           type="text"
-          placeholder="Nombre del huésped…"
+          placeholder="Nombre del hu&eacute;sped..."
           [value]="bkg.guestName()"
           (input)="bkg.guestName.set(inputValue($event))"
         />
       </div>
       <div class="field">
-        <label>Nº Reserva</label>
+        <label>N&ordm; Reserva</label>
         <input
           type="text"
-          placeholder="Referencia…"
+          placeholder="Referencia..."
           [value]="bkg.bookingNumber()"
           (input)="bkg.bookingNumber.set(inputValue($event))"
         />
@@ -69,94 +69,8 @@
   }
 
   @if (bkg.stats(); as stats) {
-    <div class="section-title">Estadísticas</div>
-    <div class="stats-grid">
-      <div class="stat-card">
-        <span class="stat-label">Total reservas</span>
-        <span class="stat-value">{{ stats.total_bookings }}</span>
-      </div>
-      <div class="stat-card stat-card--green">
-        <span class="stat-label">Activas</span>
-        <span class="stat-value">{{ stats.active_bookings }}</span>
-      </div>
-      <div class="stat-card stat-card--red">
-        <span class="stat-label">Canceladas</span>
-        <span class="stat-value">{{ stats.cancelled_bookings }}</span>
-        @if (stats.cancellation_rate != null) {
-          <span class="stat-sub">{{ stats.cancellation_rate | number: '1.1-1' }}% cancelación</span>
-        }
-      </div>
-      <div class="stat-card">
-        <span class="stat-label">Noches totales</span>
-        <span class="stat-value">{{ stats.total_nights }}</span>
-        @if (stats.avg_nights_per_booking != null) {
-          <span class="stat-sub"
-            >{{ stats.avg_nights_per_booking | number: '1.1-1' }} media/reserva</span
-          >
-        }
-      </div>
-      <div class="stat-card">
-        <span class="stat-label">Total personas</span>
-        <span class="stat-value">{{ stats.total_persons }}</span>
-        @if (stats.avg_persons_per_booking != null) {
-          <span class="stat-sub"
-            >{{ stats.avg_persons_per_booking | number: '1.1-1' }} media/reserva</span
-          >
-        }
-      </div>
-      @if (stats.occupancy_pct != null) {
-        <div class="stat-card stat-card--blue">
-          <span class="stat-label">% Ocupación rango</span>
-          <span class="stat-value">{{ stats.occupancy_pct | number: '1.1-1' }}%</span>
-        </div>
-      }
-      @if (stats.total_revenue != null) {
-        <div class="stat-card stat-card--gold">
-          <span class="stat-label">Ingresos totales</span>
-          <span class="stat-value">{{
-            stats.total_revenue | currency: 'EUR' : 'symbol' : '1.0-0'
-          }}</span>
-          @if (stats.avg_revenue_per_booking != null) {
-            <span class="stat-sub">
-              {{ stats.avg_revenue_per_booking | currency: 'EUR' : 'symbol' : '1.0-0' }}
-              media/reserva
-            </span>
-          }
-        </div>
-      }
-      @if (stats.avg_revenue_per_night != null) {
-        <div class="stat-card">
-          <span class="stat-label">Precio medio/noche</span>
-          <span class="stat-value">{{
-            stats.avg_revenue_per_night | currency: 'EUR' : 'symbol' : '1.0-0'
-          }}</span>
-        </div>
-      }
-      @if (stats.total_charges != null) {
-        <div class="stat-card">
-          <span class="stat-label">Cargos extra</span>
-          <span class="stat-value">{{
-            stats.total_charges | currency: 'EUR' : 'symbol' : '1.0-0'
-          }}</span>
-        </div>
-      }
-      @if (stats.total_electric_allowance != null) {
-        <div class="stat-card stat-card--electric">
-          <span class="stat-label">Electricidad</span>
-          <span class="stat-value">
-            {{ stats.total_electric_allowance | currency: 'EUR' : 'symbol' : '1.0-0' }}
-          </span>
-        </div>
-      }
-    </div>
-
-    <div class="breakdown-row">
-      @for (entry of statusBreakdownEntries(stats.status_breakdown); track entry.key) {
-        <span class="status-chip" [attr.data-status]="entry.key.toLowerCase()">
-          {{ entry.key }}: {{ entry.value }}
-        </span>
-      }
-    </div>
+    <div class="section-title">Estad&iacute;sticas</div>
+    <app-search-stats-grid [stats]="stats" />
   }
 
   @if (bkg.results().length > 0) {
@@ -171,7 +85,7 @@
         <thead>
           <tr>
             <th>Piso</th>
-            <th>Huésped</th>
+            <th>Hu&eacute;sped</th>
             <th>Check-in</th>
             <th>Check-out</th>
             <th class="text-center">Noches</th>
@@ -180,7 +94,7 @@
             <th class="text-right">Precio</th>
             <th class="text-right">Cargos</th>
             <th class="text-right">Luz</th>
-            <th>Nº Reserva</th>
+            <th>N&ordm; Reserva</th>
             <th>Notas</th>
           </tr>
         </thead>
@@ -206,24 +120,24 @@
                 {{
                   booking.price != null
                     ? (booking.price | currency: 'EUR' : 'symbol' : '1.0-0')
-                    : '—'
+                    : '--'
                 }}
               </td>
               <td class="text-right">
                 {{
                   booking.charges != null
                     ? (booking.charges | currency: 'EUR' : 'symbol' : '1.0-0')
-                    : '—'
+                    : '--'
                 }}
               </td>
               <td class="text-right">
                 {{
                   booking.electric_allowance != null
                     ? (booking.electric_allowance | currency: 'EUR' : 'symbol' : '1.0-0')
-                    : '—'
+                    : '--'
                 }}
               </td>
-              <td class="text-muted">{{ booking.booking_number ?? '—' }}</td>
+              <td class="text-muted">{{ booking.booking_number ?? '--' }}</td>
               <td class="notes-cell">{{ booking.notes ?? '' }}</td>
             </tr>
           }

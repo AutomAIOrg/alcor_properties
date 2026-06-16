@@ -1,11 +1,11 @@
-import { CurrencyPipe, DatePipe, DecimalPipe } from '@angular/common';
+import { CurrencyPipe, DatePipe } from '@angular/common';
 import { Component, Input, inject, output, signal } from '@angular/core';
-import { forkJoin } from 'rxjs';
 
-import { Booking } from '../../../../models/booking.model';
+import { BASE_STATUSES, Booking } from '../../../../models/booking.model';
 import { BookingSearchFilters, BookingStatsResponse } from '../../../../models/search.model';
 import { BookingColorPipe } from '../../../../pipes/booking-color.pipe';
 import { BookingService } from '../../../../services/booking.service';
+import { SearchStatsGridComponent } from '../search-stats-grid/search-stats-grid.component';
 import {
   DateRangePickerComponent,
   type DateRangeValue,
@@ -14,18 +14,25 @@ import {
 @Component({
   selector: 'app-booking-search',
   standalone: true,
-  imports: [CurrencyPipe, DatePipe, DecimalPipe, BookingColorPipe, DateRangePickerComponent],
+  imports: [
+    CurrencyPipe,
+    DatePipe,
+    BookingColorPipe,
+    DateRangePickerComponent,
+    SearchStatsGridComponent,
+  ],
   templateUrl: './booking-search.component.html',
   styleUrl: './booking-search.component.scss',
 })
 export class BookingSearchComponent {
   private bookingService = inject(BookingService);
+  private bookingSearchRequestId = 0;
 
   @Input() allApartmentIds: string[] = [];
 
   bookingSelected = output<Booking>();
 
-  readonly STATUS_OPTIONS = ['', 'Confirmed', 'Pending', 'Cancelled', 'ok'];
+  readonly STATUS_OPTIONS = ['', ...BASE_STATUSES] as const;
 
   bkg = {
     from: signal(''),
@@ -41,6 +48,15 @@ export class BookingSearchComponent {
   };
 
   searchBookings(): void {
+    const requestId = ++this.bookingSearchRequestId;
+    let pendingRequests = 2;
+    const finishRequest = () => {
+      pendingRequests -= 1;
+      if (pendingRequests === 0 && requestId === this.bookingSearchRequestId) {
+        this.bkg.loading.set(false);
+      }
+    };
+
     this.bkg.loading.set(true);
     this.bkg.error.set('');
     this.bkg.results.set([]);
@@ -54,29 +70,46 @@ export class BookingSearchComponent {
     if (this.bkg.guestName()) filters.guest_name = this.bkg.guestName();
     if (this.bkg.bookingNumber()) filters.booking_number = this.bkg.bookingNumber();
 
-    forkJoin({
-      bookings: this.bookingService.searchBookings(filters),
-      stats: this.bookingService.getBookingStats(filters),
-    }).subscribe({
-      next: ({ bookings, stats }) => {
+    this.bookingService.searchBookings(filters).subscribe({
+      next: bookings => {
+        if (requestId !== this.bookingSearchRequestId) return;
+
         this.bkg.results.set(bookings);
-        this.bkg.stats.set(stats);
-        this.bkg.loading.set(false);
+        finishRequest();
       },
       error: () => {
-        this.bkg.error.set('Error al buscar reservas.');
-        this.bkg.loading.set(false);
+        if (requestId !== this.bookingSearchRequestId) return;
+
+        this.bkg.error.set('No se pudieron cargar las reservas.');
+        finishRequest();
+      },
+    });
+
+    this.bookingService.getBookingStats(filters).subscribe({
+      next: stats => {
+        if (requestId !== this.bookingSearchRequestId) return;
+
+        this.bkg.stats.set(stats);
+        finishRequest();
+      },
+      error: () => {
+        if (requestId !== this.bookingSearchRequestId) return;
+
+        this.bkg.error.set('No se pudieron cargar las estadísticas de reservas.');
+        finishRequest();
       },
     });
   }
 
   clearBookings(): void {
+    this.bookingSearchRequestId += 1;
     this.bkg.from.set('');
     this.bkg.to.set('');
     this.bkg.apartmentId.set('');
     this.bkg.status.set('');
     this.bkg.guestName.set('');
     this.bkg.bookingNumber.set('');
+    this.bkg.loading.set(false);
     this.bkg.results.set([]);
     this.bkg.stats.set(null);
     this.bkg.error.set('');
@@ -118,9 +151,5 @@ export class BookingSearchComponent {
 
   selectValue(event: Event): string {
     return (event.target as HTMLSelectElement).value;
-  }
-
-  statusBreakdownEntries(breakdown: Record<string, number>): { key: string; value: number }[] {
-    return Object.entries(breakdown).map(([key, value]) => ({ key, value }));
   }
 }

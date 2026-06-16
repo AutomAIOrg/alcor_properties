@@ -4,6 +4,7 @@ import { of } from 'rxjs';
 
 import { CalendarComponent } from './calendar.component';
 import { BookingService } from '../../services/booking.service';
+import { ApartmentService } from '../../services/apartment.service';
 import { CalendarLayoutService } from '../../services/calendar-layout.service';
 import { AuthService } from '../../auth/auth.service';
 import { Booking } from '../../models/booking.model';
@@ -87,19 +88,24 @@ describe('CalendarComponent', () => {
   let fixture: ComponentFixture<CalendarComponent>;
   let component: CalendarComponent;
   let bookingServiceSpy: jest.Mocked<BookingService>;
+  let apartmentServiceSpy: jest.Mocked<ApartmentService>;
   let layout: CalendarLayoutService;
 
   beforeEach(async () => {
     bookingServiceSpy = {
-      getBookings: jest.fn().mockReturnValue(of([])),
+      getCalendarBookings: jest.fn().mockReturnValue(of([])),
       updateBooking: jest.fn(),
       createBooking: jest.fn(),
     } as unknown as jest.Mocked<BookingService>;
+    apartmentServiceSpy = {
+      getAllApartmentIds: jest.fn().mockReturnValue(of([])),
+    } as unknown as jest.Mocked<ApartmentService>;
 
     await TestBed.configureTestingModule({
       imports: [CalendarComponent],
       providers: [
         { provide: BookingService, useValue: bookingServiceSpy },
+        { provide: ApartmentService, useValue: apartmentServiceSpy },
         {
           provide: AuthService,
           useValue: {
@@ -139,12 +145,12 @@ describe('CalendarComponent', () => {
 
   describe('A — ngOnInit', () => {
     it('carga las reservas desde el servicio al iniciar', () => {
-      expect(bookingServiceSpy.getBookings).toHaveBeenCalledTimes(1);
+      expect(bookingServiceSpy.getCalendarBookings).toHaveBeenCalledTimes(1);
     });
 
     it('almacena las reservas recibidas en el signal bookings', () => {
       const bookings = [makeBooking({ record_id: 1 }), makeBooking({ record_id: 2 })];
-      bookingServiceSpy.getBookings.mockReturnValue(of(bookings));
+      bookingServiceSpy.getCalendarBookings.mockReturnValue(of(bookings));
 
       fixture = TestBed.createComponent(CalendarComponent);
       component = fixture.componentInstance;
@@ -389,9 +395,10 @@ describe('CalendarComponent', () => {
     it('onBookingCreated añade la reserva y cierra el modal de creación', () => {
       component.showCreateModal.set(true);
       component.bookings.set([makeBooking({ record_id: 1 })]);
+      bookingServiceSpy.getCalendarBookings.mockClear();
       component.onBookingCreated(makeBooking({ record_id: 2 }));
-      expect(component.bookings().length).toBe(2);
       expect(component.showCreateModal()).toBe(false);
+      expect(bookingServiceSpy.getCalendarBookings).toHaveBeenCalledTimes(1);
     });
 
     it('el output close de booking-modal cierra selectedBooking', () => {

@@ -1,5 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { of, throwError } from 'rxjs';
+import { of, Subject, throwError } from 'rxjs';
 
 import { Booking } from '../../../../models/booking.model';
 import { ApartmentStatsResponse } from '../../../../models/search.model';
@@ -36,7 +36,7 @@ function makeStats(overrides: Partial<ApartmentStatsResponse> = {}): ApartmentSt
     apartment: {
       apartment_id: 'R101',
       community: 'Centro',
-      booking_name: null,
+      apartment_description: null,
       address: 'Calle Mayor 1',
       rooms: 2,
       bathrooms: 1,
@@ -125,6 +125,65 @@ describe('ApartmentSearchComponent', () => {
     );
     expect(component.apt.bookings()).toEqual(bookings);
     expect(component.apt.stats()).toEqual(stats);
+    expect(component.apt.loading()).toBe(false);
+  });
+
+  it('muestra reservas aunque falle la carga de estadisticas', () => {
+    const bookings = [makeBooking({ record_id: 2 })];
+    bookingServiceSpy.searchBookings.mockReturnValue(of(bookings));
+    apartmentServiceSpy.getApartmentStats.mockReturnValue(throwError(() => new Error('network')));
+    component.apt.id.set('R202');
+
+    component.searchApartmentDetail();
+
+    expect(component.apt.bookings()).toEqual(bookings);
+    expect(component.apt.stats()).toBeNull();
+    expect(component.apt.error()).toBe('No se pudieron cargar las estadísticas del piso.');
+    expect(component.apt.loading()).toBe(false);
+  });
+
+  it('muestra estadisticas aunque falle la carga de reservas', () => {
+    const stats = makeStats({ apartment_id: 'R202' });
+    bookingServiceSpy.searchBookings.mockReturnValue(throwError(() => new Error('network')));
+    apartmentServiceSpy.getApartmentStats.mockReturnValue(of(stats));
+    component.apt.id.set('R202');
+
+    component.searchApartmentDetail();
+
+    expect(component.apt.bookings()).toEqual([]);
+    expect(component.apt.stats()).toEqual(stats);
+    expect(component.apt.error()).toBe('No se pudieron cargar las reservas del piso.');
+    expect(component.apt.loading()).toBe(false);
+  });
+
+  it('ignora respuestas antiguas si ya hay una busqueda mas reciente', () => {
+    const firstBookings = new Subject<Booking[]>();
+    const firstStats = new Subject<ApartmentStatsResponse>();
+    const secondBookings = new Subject<Booking[]>();
+    const secondStats = new Subject<ApartmentStatsResponse>();
+    bookingServiceSpy.searchBookings
+      .mockReturnValueOnce(firstBookings.asObservable())
+      .mockReturnValueOnce(secondBookings.asObservable());
+    apartmentServiceSpy.getApartmentStats
+      .mockReturnValueOnce(firstStats.asObservable())
+      .mockReturnValueOnce(secondStats.asObservable());
+    component.apt.id.set('R101');
+
+    component.searchApartmentDetail();
+    component.apt.id.set('R202');
+    component.searchApartmentDetail();
+
+    secondBookings.next([makeBooking({ record_id: 2, apartment_id: 'R202' })]);
+    secondBookings.complete();
+    secondStats.next(makeStats({ apartment_id: 'R202' }));
+    secondStats.complete();
+    firstBookings.next([makeBooking({ record_id: 1, apartment_id: 'R101' })]);
+    firstBookings.complete();
+    firstStats.next(makeStats({ apartment_id: 'R101' }));
+    firstStats.complete();
+
+    expect(component.apt.bookings().map(booking => booking.apartment_id)).toEqual(['R202']);
+    expect(component.apt.stats()?.apartment_id).toBe('R202');
     expect(component.apt.loading()).toBe(false);
   });
 

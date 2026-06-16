@@ -1,5 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { of, throwError } from 'rxjs';
+import { of, Subject, throwError } from 'rxjs';
 
 import { Apartment } from '../../../../models/apartment.model';
 import { ApartmentService } from '../../../../services/apartment.service';
@@ -9,7 +9,7 @@ function makeApartment(overrides: Partial<Apartment> = {}): Apartment {
   return {
     apartment_id: 'R101',
     community: 'Centro',
-    booking_name: null,
+    apartment_description: null,
     address: 'Calle Mayor 1',
     rooms: 2,
     bathrooms: 1,
@@ -91,6 +91,52 @@ describe('AvailabilitySearchComponent', () => {
     expect(component.avail.error()).toBe('Error al cargar pisos. Comprueba los filtros.');
   });
 
+  it('ignora una respuesta antigua si ya hay una busqueda mas reciente', () => {
+    const firstSearch = new Subject<Apartment[]>();
+    const secondSearch = new Subject<Apartment[]>();
+    apartmentServiceSpy.searchApartments
+      .mockReturnValueOnce(firstSearch.asObservable())
+      .mockReturnValueOnce(secondSearch.asObservable());
+    component.avail.from.set('2025-07-01');
+    component.avail.to.set('2025-07-05');
+
+    component.searchAvailability();
+    component.avail.q.set('nueva');
+    component.searchAvailability();
+
+    secondSearch.next([makeApartment({ apartment_id: 'R202' })]);
+    secondSearch.complete();
+    firstSearch.next([makeApartment({ apartment_id: 'R101' })]);
+    firstSearch.complete();
+
+    expect(component.avail.results().map(apartment => apartment.apartment_id)).toEqual(['R202']);
+    expect(component.avail.loading()).toBe(false);
+    expect(component.avail.error()).toBe('');
+  });
+
+  it('ignora un error antiguo si ya hay una busqueda mas reciente en curso', () => {
+    const firstSearch = new Subject<Apartment[]>();
+    const secondSearch = new Subject<Apartment[]>();
+    apartmentServiceSpy.searchApartments
+      .mockReturnValueOnce(firstSearch.asObservable())
+      .mockReturnValueOnce(secondSearch.asObservable());
+    component.avail.from.set('2025-07-01');
+    component.avail.to.set('2025-07-05');
+
+    component.searchAvailability();
+    component.searchAvailability();
+    firstSearch.error(new Error('old network error'));
+
+    expect(component.avail.error()).toBe('');
+    expect(component.avail.loading()).toBe(true);
+
+    secondSearch.next([makeApartment({ apartment_id: 'R202' })]);
+    secondSearch.complete();
+
+    expect(component.avail.results().map(apartment => apartment.apartment_id)).toEqual(['R202']);
+    expect(component.avail.loading()).toBe(false);
+  });
+
   it('clearAvailability limpia filtros, resultados y error', () => {
     component.avail.from.set('2025-07-01');
     component.avail.to.set('2025-07-05');
@@ -114,6 +160,22 @@ describe('AvailabilitySearchComponent', () => {
     expect(component.avail.minOccupants()).toBeNull();
     expect(component.avail.parking()).toBeNull();
     expect(component.avail.results()).toEqual([]);
+    expect(component.avail.error()).toBe('');
+  });
+
+  it('clearAvailability invalida una busqueda pendiente', () => {
+    const pendingSearch = new Subject<Apartment[]>();
+    apartmentServiceSpy.searchApartments.mockReturnValue(pendingSearch.asObservable());
+    component.avail.from.set('2025-07-01');
+    component.avail.to.set('2025-07-05');
+
+    component.searchAvailability();
+    component.clearAvailability();
+    pendingSearch.next([makeApartment({ apartment_id: 'R999' })]);
+    pendingSearch.complete();
+
+    expect(component.avail.results()).toEqual([]);
+    expect(component.avail.loading()).toBe(false);
     expect(component.avail.error()).toBe('');
   });
 

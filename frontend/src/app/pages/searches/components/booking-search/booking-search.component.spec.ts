@@ -1,5 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { of, throwError } from 'rxjs';
+import { of, Subject, throwError } from 'rxjs';
 
 import { Booking } from '../../../../models/booking.model';
 import { BookingStatsResponse } from '../../../../models/search.model';
@@ -120,6 +120,62 @@ describe('BookingSearchComponent', () => {
     });
   });
 
+  it('muestra reservas aunque falle la carga de estadisticas', () => {
+    const bookings = [makeBooking({ record_id: 2 })];
+    bookingServiceSpy.searchBookings.mockReturnValue(of(bookings));
+    bookingServiceSpy.getBookingStats.mockReturnValue(throwError(() => new Error('network')));
+
+    component.searchBookings();
+
+    expect(component.bkg.results()).toEqual(bookings);
+    expect(component.bkg.stats()).toBeNull();
+    expect(component.bkg.error()).toBe('No se pudieron cargar las estadísticas de reservas.');
+    expect(component.bkg.loading()).toBe(false);
+  });
+
+  it('muestra estadisticas aunque falle la carga de reservas', () => {
+    const stats = makeStats({ total_bookings: 3 });
+    bookingServiceSpy.searchBookings.mockReturnValue(throwError(() => new Error('network')));
+    bookingServiceSpy.getBookingStats.mockReturnValue(of(stats));
+
+    component.searchBookings();
+
+    expect(component.bkg.results()).toEqual([]);
+    expect(component.bkg.stats()).toEqual(stats);
+    expect(component.bkg.error()).toBe('No se pudieron cargar las reservas.');
+    expect(component.bkg.loading()).toBe(false);
+  });
+
+  it('ignora respuestas antiguas si ya hay una busqueda mas reciente', () => {
+    const firstBookings = new Subject<Booking[]>();
+    const firstStats = new Subject<BookingStatsResponse>();
+    const secondBookings = new Subject<Booking[]>();
+    const secondStats = new Subject<BookingStatsResponse>();
+    bookingServiceSpy.searchBookings
+      .mockReturnValueOnce(firstBookings.asObservable())
+      .mockReturnValueOnce(secondBookings.asObservable());
+    bookingServiceSpy.getBookingStats
+      .mockReturnValueOnce(firstStats.asObservable())
+      .mockReturnValueOnce(secondStats.asObservable());
+
+    component.searchBookings();
+    component.bkg.apartmentId.set('R202');
+    component.searchBookings();
+
+    secondBookings.next([makeBooking({ record_id: 2, apartment_id: 'R202' })]);
+    secondBookings.complete();
+    secondStats.next(makeStats({ total_bookings: 1 }));
+    secondStats.complete();
+    firstBookings.next([makeBooking({ record_id: 1, apartment_id: 'R101' })]);
+    firstBookings.complete();
+    firstStats.next(makeStats({ total_bookings: 99 }));
+    firstStats.complete();
+
+    expect(component.bkg.results().map(booking => booking.apartment_id)).toEqual(['R202']);
+    expect(component.bkg.stats()?.total_bookings).toBe(1);
+    expect(component.bkg.loading()).toBe(false);
+  });
+
   it('guarda error si falla la búsqueda', () => {
     bookingServiceSpy.searchBookings.mockReturnValue(throwError(() => new Error('network')));
     bookingServiceSpy.getBookingStats.mockReturnValue(of(makeStats()));
@@ -127,8 +183,8 @@ describe('BookingSearchComponent', () => {
     component.searchBookings();
 
     expect(component.bkg.results()).toEqual([]);
-    expect(component.bkg.stats()).toBeNull();
-    expect(component.bkg.error()).toBe('Error al buscar reservas.');
+    expect(component.bkg.stats()).toEqual(makeStats());
+    expect(component.bkg.error()).toBe('No se pudieron cargar las reservas.');
     expect(component.bkg.loading()).toBe(false);
   });
 
@@ -153,6 +209,25 @@ describe('BookingSearchComponent', () => {
     expect(component.bkg.bookingNumber()).toBe('');
     expect(component.bkg.results()).toEqual([]);
     expect(component.bkg.stats()).toBeNull();
+    expect(component.bkg.error()).toBe('');
+  });
+
+  it('clearBookings invalida una busqueda pendiente', () => {
+    const pendingBookings = new Subject<Booking[]>();
+    const pendingStats = new Subject<BookingStatsResponse>();
+    bookingServiceSpy.searchBookings.mockReturnValue(pendingBookings.asObservable());
+    bookingServiceSpy.getBookingStats.mockReturnValue(pendingStats.asObservable());
+
+    component.searchBookings();
+    component.clearBookings();
+    pendingBookings.next([makeBooking({ record_id: 99 })]);
+    pendingBookings.complete();
+    pendingStats.next(makeStats({ total_bookings: 99 }));
+    pendingStats.complete();
+
+    expect(component.bkg.results()).toEqual([]);
+    expect(component.bkg.stats()).toBeNull();
+    expect(component.bkg.loading()).toBe(false);
     expect(component.bkg.error()).toBe('');
   });
 
