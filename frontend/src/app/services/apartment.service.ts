@@ -10,7 +10,7 @@ type ApartmentSearchParams = {
   q?: string;
   apartment_id?: string;
   community?: string;
-  booking_name?: string;
+  apartment_description?: string;
   address?: string;
   parking?: string;
   owner_name?: string;

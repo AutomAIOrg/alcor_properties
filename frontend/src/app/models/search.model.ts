@@ -68,7 +68,7 @@ export interface ApartmentStatsYear {
 export interface ApartmentInfo {
   apartment_id: string;
   community: string | null;
-  booking_name: string | null;
+  apartment_description: string | null;
   address: string | null;
   rooms: number;
   bathrooms: number;
