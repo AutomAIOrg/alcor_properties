@@ -187,8 +187,45 @@ describe('BookingCreateModalComponent', () => {
 
   describe('range calendar', () => {
     it('openRangeCalendar abre el calendario', () => {
-      component.openRangeCalendar();
+      component.openRangeCalendar(new MouseEvent('click'));
 
+      expect(component.rangeCalendarOpen()).toBe(true);
+    });
+
+    it('onDocumentClick cierra y borra el rango parcial fuera del calendario', () => {
+      component.patch('check_in', '2025-07-01');
+      component.rangeCalendarOpen.set(true);
+
+      const outside = document.createElement('div');
+      component.onDocumentClick(outside);
+
+      expect(component.draft().check_in).toBeNull();
+      expect(component.draft().check_out).toBeNull();
+      expect(component.rangeCalendarOpen()).toBe(false);
+    });
+
+    it('onDocumentClick cierra sin borrar el rango completo fuera del calendario', () => {
+      component.patch('check_in', '2025-07-01');
+      component.patch('check_out', '2025-07-05');
+      component.rangeCalendarOpen.set(true);
+
+      const outside = document.createElement('div');
+      component.onDocumentClick(outside);
+
+      expect(component.draft().check_in).toBe('2025-07-01');
+      expect(component.draft().check_out).toBe('2025-07-05');
+      expect(component.rangeCalendarOpen()).toBe(false);
+    });
+
+    it('onDocumentClick no cierra si el clic es dentro del calendario', () => {
+      component.patch('check_in', '2025-07-01');
+      component.rangeCalendarOpen.set(true);
+
+      const calendar = document.createElement('div');
+      calendar.classList.add('range-calendar');
+      component.onDocumentClick(calendar);
+
+      expect(component.draft().check_in).toBe('2025-07-01');
       expect(component.rangeCalendarOpen()).toBe(true);
     });
 

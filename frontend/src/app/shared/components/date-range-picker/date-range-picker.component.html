@@ -11,7 +11,7 @@
       class="date-range-input"
       [attr.aria-expanded]="calendarOpen()"
       aria-haspopup="dialog"
-      (click)="openCalendar()"
+      (click)="onDateInputClick($event)"
     >
       {{ formatDisplayDate(from()) || fromPlaceholder() }}
     </button>
@@ -29,7 +29,7 @@
       class="date-range-input"
       [attr.aria-expanded]="calendarOpen()"
       aria-haspopup="dialog"
-      (click)="openCalendar()"
+      (click)="onDateInputClick($event)"
     >
       {{ formatDisplayDate(to()) || toPlaceholder() }}
     </button>

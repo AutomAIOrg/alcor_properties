@@ -81,4 +81,65 @@ describe('DateRangePickerComponent', () => {
     expect(component.calendarMonth().getFullYear()).toBe(2026);
     expect(component.calendarMonth().getMonth()).toBe(3);
   });
+
+  it('click fuera cierra y borra el rango si solo hay fecha inicial', () => {
+    const emitted: DateRangeValue[] = [];
+    const outside = document.createElement('div');
+    component.rangeChange.subscribe(value => emitted.push(value));
+    fixture.componentRef.setInput('from', '2026-06-10');
+    fixture.componentRef.setInput('to', '');
+    fixture.detectChanges();
+    component.openCalendar();
+
+    component.onDocumentClick(outside);
+
+    expect(emitted).toEqual([{ from: '', to: '' }]);
+    expect(component.calendarOpen()).toBe(false);
+  });
+
+  it('click fuera solo cierra si el rango esta completo', () => {
+    const emitted: DateRangeValue[] = [];
+    const outside = document.createElement('div');
+    component.rangeChange.subscribe(value => emitted.push(value));
+    fixture.componentRef.setInput('from', '2026-06-10');
+    fixture.componentRef.setInput('to', '2026-06-14');
+    fixture.detectChanges();
+    component.openCalendar();
+
+    component.onDocumentClick(outside);
+
+    expect(emitted).toEqual([]);
+    expect(component.calendarOpen()).toBe(false);
+  });
+
+  it('click en un input de fecha cierra y borra el rango parcial', () => {
+    const emitted: DateRangeValue[] = [];
+    const input = fixture.nativeElement.querySelector('.date-range-input') as HTMLButtonElement;
+    component.rangeChange.subscribe(value => emitted.push(value));
+    fixture.componentRef.setInput('from', '2026-06-10');
+    fixture.componentRef.setInput('to', '');
+    fixture.detectChanges();
+    component.openCalendar();
+
+    input.click();
+
+    expect(emitted).toEqual([{ from: '', to: '' }]);
+    expect(component.calendarOpen()).toBe(false);
+  });
+
+  it('click dentro del calendario no cierra ni borra el rango parcial', () => {
+    const emitted: DateRangeValue[] = [];
+    component.rangeChange.subscribe(value => emitted.push(value));
+    fixture.componentRef.setInput('from', '2026-06-10');
+    fixture.componentRef.setInput('to', '');
+    fixture.detectChanges();
+    component.openCalendar();
+    fixture.detectChanges();
+
+    const calendar = fixture.nativeElement.querySelector('.range-calendar') as HTMLElement;
+    component.onDocumentClick(calendar);
+
+    expect(emitted).toEqual([]);
+    expect(component.calendarOpen()).toBe(true);
+  });
 });

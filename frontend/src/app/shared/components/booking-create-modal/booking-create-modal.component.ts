@@ -1,4 +1,13 @@
-import { Component, OnInit, computed, inject, input, output, signal } from '@angular/core';
+import {
+  Component,
+  HostListener,
+  OnInit,
+  computed,
+  inject,
+  input,
+  output,
+  signal,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Booking, BASE_STATUSES } from '../../../models/booking.model';
 import { BookingService } from '../../../services/booking.service';
@@ -214,7 +223,15 @@ export class BookingCreateModalComponent implements OnInit {
     });
   }
 
-  openRangeCalendar(): void {
+  openRangeCalendar(event?: MouseEvent): void {
+    event?.stopPropagation();
+
+    if (this.rangeCalendarOpen() && this.hasIncompleteRange()) {
+      this.clearRangeDates();
+      this.closeRangeCalendar();
+      return;
+    }
+
     const d = this.draft();
 
     if (d.check_in) {
@@ -224,6 +241,47 @@ export class BookingCreateModalComponent implements OnInit {
     }
 
     this.rangeCalendarOpen.set(true);
+  }
+
+  onBackdropClick(): void {
+    if (this.rangeCalendarOpen() && this.hasIncompleteRange()) {
+      this.clearRangeDates();
+    }
+
+    this.closeRangeCalendar();
+    this.close.emit();
+  }
+
+  @HostListener('document:click', ['$event.target'])
+  onDocumentClick(target: EventTarget | null): void {
+    if (!(target instanceof Element)) return;
+    if (
+      !this.rangeCalendarOpen() ||
+      target.closest('.range-calendar') ||
+      target.closest('.date-range-input')
+    ) {
+      return;
+    }
+
+    if (this.hasIncompleteRange()) {
+      this.clearRangeDates();
+    }
+
+    this.closeRangeCalendar();
+  }
+
+  onModalCardClick(event: Event): void {
+    event.stopPropagation();
+    if (!this.rangeCalendarOpen()) return;
+
+    const target = event.target as Element;
+    if (target.closest('.range-calendar') || target.closest('.date-range-input')) return;
+
+    if (this.hasIncompleteRange()) {
+      this.clearRangeDates();
+    }
+
+    this.closeRangeCalendar();
   }
 
   closeRangeCalendar(): void {
@@ -480,6 +538,11 @@ export class BookingCreateModalComponent implements OnInit {
 
   private isNonBlockingStatus(status: string | null | undefined): boolean {
     return status?.trim().toLowerCase() === 'cancelled';
+  }
+
+  private hasIncompleteRange(): boolean {
+    const d = this.draft();
+    return (!!d.check_in && !d.check_out) || (!d.check_in && !!d.check_out);
   }
 
   private toIso(date: Date): string {

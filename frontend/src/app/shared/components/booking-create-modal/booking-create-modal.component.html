@@ -1,5 +1,5 @@
-<div class="modal-backdrop" (click)="close.emit()">
-  <div class="modal-card" (click)="$event.stopPropagation()" role="dialog" aria-modal="true">
+<div class="modal-backdrop" (click)="onBackdropClick()">
+  <div class="modal-card" (click)="onModalCardClick($event)" role="dialog" aria-modal="true">
     <div class="modal-header">
       <h2 class="modal-title">Nueva reserva</h2>
       <button class="close-btn" (click)="close.emit()" aria-label="Cerrar">&#10005;</button>
@@ -60,14 +60,14 @@
       <div class="field-row">
         <div class="field">
           <label>Entrada *</label>
-          <button type="button" class="date-range-input" (click)="openRangeCalendar()">
+          <button type="button" class="date-range-input" (click)="openRangeCalendar($event)">
             {{ formatDisplayDate(draft().check_in) || 'Seleccionar entrada' }}
           </button>
         </div>
 
         <div class="field">
           <label>Salida *</label>
-          <button type="button" class="date-range-input" (click)="openRangeCalendar()">
+          <button type="button" class="date-range-input" (click)="openRangeCalendar($event)">
             {{ formatDisplayDate(draft().check_out) || 'Seleccionar salida' }}
           </button>
         </div>

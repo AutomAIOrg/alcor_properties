@@ -1,4 +1,4 @@
-import { Component, computed, input, output, signal } from '@angular/core';
+import { Component, HostListener, computed, input, output, signal } from '@angular/core';
 
 export type DateRangeValue = {
   from: string;
@@ -78,6 +78,18 @@ export class DateRangePickerComponent {
     this.calendarOpen.set(true);
   }
 
+  onDateInputClick(event: MouseEvent): void {
+    event.stopPropagation();
+
+    if (this.calendarOpen() && this.hasIncompleteRange()) {
+      this.emitRange({ from: '', to: '' });
+      this.closeCalendar();
+      return;
+    }
+
+    this.openCalendar();
+  }
+
   prevMonth(): void {
     const date = this.calendarMonth();
     this.calendarMonth.set(new Date(date.getFullYear(), date.getMonth() - 1, 1));
@@ -118,6 +130,18 @@ export class DateRangePickerComponent {
     this.hoverIso.set(day.iso);
   }
 
+  @HostListener('document:click', ['$event.target'])
+  onDocumentClick(target: EventTarget | null): void {
+    if (!(target instanceof Element)) return;
+    if (!this.calendarOpen() || target.closest('.range-calendar')) return;
+
+    if (this.hasIncompleteRange()) {
+      this.emitRange({ from: '', to: '' });
+    }
+
+    this.closeCalendar();
+  }
+
   formatDisplayDate(iso: string): string {
     if (!iso) return '';
     const [year, month, day] = iso.split('-');
@@ -131,6 +155,10 @@ export class DateRangePickerComponent {
 
   private emitRange(range: DateRangeValue): void {
     this.rangeChange.emit(range);
+  }
+
+  private hasIncompleteRange(): boolean {
+    return (!!this.from() && !this.to()) || (!this.from() && !!this.to());
   }
 
   private isoFromDate(date: Date): string {
