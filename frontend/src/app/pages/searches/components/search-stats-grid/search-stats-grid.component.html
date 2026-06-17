@@ -7,6 +7,10 @@
     <span class="stat-label">Activas</span>
     <span class="stat-value">{{ stats.active_bookings }}</span>
   </div>
+  <div class="stat-card stat-card--gold">
+    <span class="stat-label">Pendientes</span>
+    <span class="stat-value">{{ pendingBookings() }}</span>
+  </div>
   <div class="stat-card stat-card--red">
     <span class="stat-label">Canceladas</span>
     <span class="stat-value">{{ stats.cancelled_bookings }}</span>

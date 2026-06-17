@@ -30,6 +30,15 @@ export class SearchStatsGridComponent {
   @Input({ required: true }) stats!: SearchStatsGridData;
   @Input() nightsLabel = 'Noches totales';
 
+  pendingBookings(): number {
+    return Object.entries(this.stats.status_breakdown).reduce((total, [status, count]) => {
+      const normalizedStatus = status.trim().toLowerCase();
+      return normalizedStatus === 'pending' || normalizedStatus === 'pendiente'
+        ? total + count
+        : total;
+    }, 0);
+  }
+
   statusBreakdownEntries(): { key: string; value: number }[] {
     return Object.entries(this.stats.status_breakdown).map(([key, value]) => ({ key, value }));
   }
