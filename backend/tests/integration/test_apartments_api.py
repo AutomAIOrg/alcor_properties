@@ -67,13 +67,10 @@ class TestSearchApartments:
     ):
         mock_search_apartments_use_case.execute.return_value = []
 
-        apartment_api_client.get(
-            "/api/v1/apartments/search?min_rooms=2&max_rooms=4&min_occupants=4"
-        )
+        apartment_api_client.get("/api/v1/apartments/search?min_rooms=2&min_occupants=4")
 
         filters = mock_search_apartments_use_case.execute.call_args[0][0]
         assert filters.min_rooms == 2
-        assert filters.max_rooms == 4
         assert filters.min_occupants == 4
 
     def test_date_filters_are_forwarded_to_use_case(
@@ -96,15 +93,6 @@ class TestSearchApartments:
 
         assert response.status_code == 422
         assert "available_from y available_to deben informarse juntas" in response.text
-
-    def test_returns_422_when_min_rooms_greater_than_max_rooms(
-        self,
-        apartment_api_client,
-    ):
-        response = apartment_api_client.get("/api/v1/apartments/search?min_rooms=5&max_rooms=2")
-
-        assert response.status_code == 422
-        assert "min_rooms no puede ser mayor que max_rooms" in response.text
 
     def test_returns_422_when_min_rooms_is_negative(self, apartment_api_client):
         response = apartment_api_client.get("/api/v1/apartments/search?min_rooms=-1")

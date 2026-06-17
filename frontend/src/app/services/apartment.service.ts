@@ -17,9 +17,7 @@ type ApartmentSearchParams = {
   email?: string;
   phone?: string;
   min_rooms?: number;
-  max_rooms?: number;
   min_bathrooms?: number;
-  max_bathrooms?: number;
   min_occupants?: number;
   max_occupants?: number;
   available_from?: string;
