@@ -11,6 +11,7 @@ import {
   DateRangePickerComponent,
   type DateRangeValue,
 } from '../../../../shared/components/date-range-picker/date-range-picker.component';
+import { exportApartmentStatsToExcel } from '../../../../shared/utils/stats-excel-export';
 
 export type ApartmentLoadRequest = {
   apartmentId: string;
@@ -165,6 +166,13 @@ export class ApartmentSearchComponent {
   setApartmentId(value: string): void {
     this.apt.id.set(value);
     this.scheduleAutoSearch();
+  }
+
+  downloadStatsExcel(): void {
+    const stats = this.apt.stats();
+    if (!stats) return;
+
+    exportApartmentStatsToExcel(stats);
   }
 
   openModal(booking: Booking): void {

@@ -4,7 +4,12 @@ import { of, Subject, throwError } from 'rxjs';
 import { Booking } from '../../../../models/booking.model';
 import { BookingStatsResponse } from '../../../../models/search.model';
 import { BookingService } from '../../../../services/booking.service';
+import { exportBookingStatsToExcel } from '../../../../shared/utils/stats-excel-export';
 import { BookingSearchComponent } from './booking-search.component';
+
+jest.mock('../../../../shared/utils/stats-excel-export', () => ({
+  exportBookingStatsToExcel: jest.fn(),
+}));
 
 function makeBooking(overrides: Partial<Booking> = {}): Booking {
   return {
@@ -287,5 +292,14 @@ describe('BookingSearchComponent', () => {
     component.openModal(booking);
 
     expect(emitted).toEqual([booking]);
+  });
+
+  it('downloadStatsExcel descarga las estadisticas si existen', () => {
+    const stats = makeStats();
+    component.bkg.stats.set(stats);
+
+    component.downloadStatsExcel();
+
+    expect(exportBookingStatsToExcel).toHaveBeenCalledWith(stats);
   });
 });

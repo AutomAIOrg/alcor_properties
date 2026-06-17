@@ -69,16 +69,25 @@
       </div>
     </div>
 
-    <div class="section-title">
-      Estad&iacute;sticas del per&iacute;odo
-      @if (stats.filtered_range.start_date && stats.filtered_range.end_date) {
-        <span class="date-range-label">
-          {{ stats.filtered_range.start_date | date: 'd MMM y' }} -
-          {{ stats.filtered_range.end_date | date: 'd MMM y' }}
-        </span>
-      } @else {
-        <span class="date-range-label">Todas las reservas</span>
-      }
+    <div class="section-title section-title--actions">
+      <span>
+        Estad&iacute;sticas del per&iacute;odo
+        @if (stats.filtered_range.start_date && stats.filtered_range.end_date) {
+          <span class="date-range-label">
+            {{ stats.filtered_range.start_date | date: 'd MMM y' }} -
+            {{ stats.filtered_range.end_date | date: 'd MMM y' }}
+          </span>
+        } @else {
+          <span class="date-range-label">Todas las reservas</span>
+        }
+      </span>
+      <button
+        type="button"
+        class="btn-secondary btn-secondary--compact"
+        (click)="downloadStatsExcel()"
+      >
+        Descargar Excel
+      </button>
     </div>
     <app-search-stats-grid [stats]="stats.filtered_range" nightsLabel="Noches ocupadas" />
 

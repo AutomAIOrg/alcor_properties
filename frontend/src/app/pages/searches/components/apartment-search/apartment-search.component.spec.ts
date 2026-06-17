@@ -5,7 +5,12 @@ import { Booking } from '../../../../models/booking.model';
 import { ApartmentStatsResponse, ApartmentStatsYear } from '../../../../models/search.model';
 import { ApartmentService } from '../../../../services/apartment.service';
 import { BookingService } from '../../../../services/booking.service';
+import { exportApartmentStatsToExcel } from '../../../../shared/utils/stats-excel-export';
 import { ApartmentSearchComponent } from './apartment-search.component';
+
+jest.mock('../../../../shared/utils/stats-excel-export', () => ({
+  exportApartmentStatsToExcel: jest.fn(),
+}));
 
 function makeBooking(overrides: Partial<Booking> = {}): Booking {
   return {
@@ -352,5 +357,14 @@ describe('ApartmentSearchComponent', () => {
     component.openModal(booking);
 
     expect(emitted).toEqual([booking]);
+  });
+
+  it('downloadStatsExcel descarga las estadisticas si existen', () => {
+    const stats = makeStats();
+    component.apt.stats.set(stats);
+
+    component.downloadStatsExcel();
+
+    expect(exportApartmentStatsToExcel).toHaveBeenCalledWith(stats);
   });
 });

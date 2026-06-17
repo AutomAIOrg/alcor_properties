@@ -77,7 +77,16 @@
   }
 
   @if (bkg.stats(); as stats) {
-    <div class="section-title">Estad&iacute;sticas</div>
+    <div class="section-title section-title--actions">
+      <span>Estad&iacute;sticas</span>
+      <button
+        type="button"
+        class="btn-secondary btn-secondary--compact"
+        (click)="downloadStatsExcel()"
+      >
+        Descargar Excel
+      </button>
+    </div>
     <app-search-stats-grid [stats]="stats" />
   }
 

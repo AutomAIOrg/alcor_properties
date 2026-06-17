@@ -10,6 +10,7 @@ import {
   DateRangePickerComponent,
   type DateRangeValue,
 } from '../../../../shared/components/date-range-picker/date-range-picker.component';
+import { exportBookingStatsToExcel } from '../../../../shared/utils/stats-excel-export';
 
 @Component({
   selector: 'app-booking-search',
@@ -130,6 +131,13 @@ export class BookingSearchComponent {
     this.bkg.from.set(`${year}-01-01`);
     this.bkg.to.set(`${year}-12-31`);
     this.searchBookings();
+  }
+
+  downloadStatsExcel(): void {
+    const stats = this.bkg.stats();
+    if (!stats) return;
+
+    exportBookingStatsToExcel(stats);
   }
 
   openModal(booking: Booking): void {

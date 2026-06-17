@@ -94,6 +94,11 @@
   border: 1.5px solid #d0d5dd;
   background: #fff;
   color: #344054;
+
+  &--compact {
+    padding: 0.4rem 0.75rem;
+    font-size: 0.78rem;
+  }
 }
 
 .spinner {
@@ -147,6 +152,13 @@
   text-transform: uppercase;
   letter-spacing: 0.06em;
   margin: 1.25rem 0 0.75rem;
+
+  &--actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+  }
 }
 
 .stats-grid {
