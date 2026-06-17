@@ -137,6 +137,62 @@ class TestList:
         apartment_ids = [r.apartment_id for r in results]
         assert apartment_ids == ["OVERLAPS"]
 
+    def test_start_date_only_returns_bookings_with_checkin_from_start(self, sqlite_session):
+        _insert_orm(
+            sqlite_session,
+            apartment_id="CHECKIN_BEFORE",
+            check_in=date(2026, 5, 20),
+            check_out=date(2026, 6, 3),
+            nights=12,
+        )
+        _insert_orm(
+            sqlite_session,
+            apartment_id="CHECKIN_AT_START",
+            check_in=date(2026, 6, 1),
+            check_out=date(2026, 6, 3),
+            nights=2,
+        )
+        _insert_orm(
+            sqlite_session,
+            apartment_id="CHECKIN_AFTER",
+            check_in=date(2026, 7, 1),
+            check_out=date(2026, 7, 5),
+            nights=4,
+        )
+
+        results = SQLAlchemyBookingRepository(sqlite_session).list(start_date=date(2026, 6, 1))
+
+        apartment_ids = [r.apartment_id for r in results]
+        assert apartment_ids == ["CHECKIN_AT_START", "CHECKIN_AFTER"]
+
+    def test_end_date_only_returns_bookings_with_checkin_until_end(self, sqlite_session):
+        _insert_orm(
+            sqlite_session,
+            apartment_id="CHECKIN_BEFORE_END",
+            check_in=date(2026, 5, 28),
+            check_out=date(2026, 6, 3),
+            nights=6,
+        )
+        _insert_orm(
+            sqlite_session,
+            apartment_id="CHECKIN_AT_END",
+            check_in=date(2026, 6, 30),
+            check_out=date(2026, 7, 2),
+            nights=2,
+        )
+        _insert_orm(
+            sqlite_session,
+            apartment_id="CHECKIN_AFTER_END",
+            check_in=date(2026, 7, 1),
+            check_out=date(2026, 7, 5),
+            nights=4,
+        )
+
+        results = SQLAlchemyBookingRepository(sqlite_session).list(end_date=date(2026, 6, 30))
+
+        apartment_ids = [r.apartment_id for r in results]
+        assert apartment_ids == ["CHECKIN_BEFORE_END", "CHECKIN_AT_END"]
+
     def test_limit_restricts_result_count(self, sqlite_session):
         for i in range(5):
             _insert_orm(sqlite_session, apartment_id=f"B{i}")

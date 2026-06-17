@@ -74,7 +74,7 @@ export class BookingSearchComponent {
       next: bookings => {
         if (requestId !== this.bookingSearchRequestId) return;
 
-        this.bkg.results.set(bookings);
+        this.bkg.results.set(this.filterBookingsByCheckIn(bookings));
         finishRequest();
       },
       error: () => {
@@ -125,6 +125,13 @@ export class BookingSearchComponent {
     this.searchBookings();
   }
 
+  searchCurrentYearBookings(): void {
+    const year = new Date().getFullYear();
+    this.bkg.from.set(`${year}-01-01`);
+    this.bkg.to.set(`${year}-12-31`);
+    this.searchBookings();
+  }
+
   openModal(booking: Booking): void {
     this.bookingSelected.emit(booking);
   }
@@ -151,5 +158,16 @@ export class BookingSearchComponent {
 
   selectValue(event: Event): string {
     return (event.target as HTMLSelectElement).value;
+  }
+
+  private filterBookingsByCheckIn(bookings: Booking[]): Booking[] {
+    const from = this.bkg.from();
+    const to = this.bkg.to();
+
+    return bookings.filter(booking => {
+      if (from && booking.check_in < from) return false;
+      if (to && booking.check_in > to) return false;
+      return true;
+    });
   }
 }

@@ -120,6 +120,37 @@ describe('BookingSearchComponent', () => {
     });
   });
 
+  it('searchCurrentYearBookings rellena el año actual y busca reservas', () => {
+    const year = new Date().getFullYear();
+
+    component.searchCurrentYearBookings();
+
+    expect(component.bkg.from()).toBe(`${year}-01-01`);
+    expect(component.bkg.to()).toBe(`${year}-12-31`);
+    expect(bookingServiceSpy.searchBookings).toHaveBeenCalledWith({
+      start_date: `${year}-01-01`,
+      end_date: `${year}-12-31`,
+    });
+    expect(bookingServiceSpy.getBookingStats).toHaveBeenCalledWith({
+      start_date: `${year}-01-01`,
+      end_date: `${year}-12-31`,
+    });
+  });
+
+  it('oculta resultados con check-in anterior a la fecha desde seleccionada', () => {
+    bookingServiceSpy.searchBookings.mockReturnValue(
+      of([
+        makeBooking({ record_id: 1, check_in: '2025-09-02', check_out: '2025-09-08' }),
+        makeBooking({ record_id: 2, check_in: '2026-09-02', check_out: '2026-09-08' }),
+      ])
+    );
+    component.bkg.from.set('2026-06-01');
+
+    component.searchBookings();
+
+    expect(component.bkg.results().map(booking => booking.record_id)).toEqual([2]);
+  });
+
   it('muestra reservas aunque falle la carga de estadisticas', () => {
     const bookings = [makeBooking({ record_id: 2 })];
     bookingServiceSpy.searchBookings.mockReturnValue(of(bookings));

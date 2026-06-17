@@ -51,7 +51,11 @@ class SQLAlchemyBookingRepository(IBookingRepository):
                     BookingORM.check_in < end_date,
                     BookingORM.check_out > start_date,
                 )
-            ).order_by(BookingORM.check_in)
+            )
+        elif start_date is not None:
+            query = query.filter(BookingORM.check_in >= start_date)
+        elif end_date is not None:
+            query = query.filter(BookingORM.check_in <= end_date)
 
         if apartment_id is not None:
             query = query.filter(BookingORM.apartment_id == apartment_id)
@@ -68,6 +72,8 @@ class SQLAlchemyBookingRepository(IBookingRepository):
             query = query.filter(
                 func.lower(BookingORM.booking_number).like(f"%{booking_number.strip().lower()}%")
             )
+
+        query = query.order_by(BookingORM.check_in)
 
         if limit is not None:
             query = query.limit(limit)

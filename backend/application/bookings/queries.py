@@ -159,6 +159,15 @@ class ListBookingsQuery:
                 guest_name=guest_name,
                 booking_number=booking_number,
             )
+        elif start_date or end_date:
+            bookings = self._repo.list(
+                start_date=start_date,
+                end_date=end_date,
+                apartment_id=apartment_id,
+                status=status,
+                guest_name=guest_name,
+                booking_number=booking_number,
+            )
         else:
             bookings = self._repo.list(
                 limit=limit,
@@ -210,6 +219,17 @@ class GetBookingStatsQuery:
         elif days is not None:
             range_start = start_date or date.today()
             range_end = range_start + timedelta(days=days)
+            bookings = self._repo.list(
+                start_date=range_start,
+                end_date=range_end,
+                apartment_id=apartment_id,
+                status=status,
+                guest_name=guest_name,
+                booking_number=booking_number,
+            )
+        elif start_date or end_date:
+            range_start = start_date
+            range_end = end_date
             bookings = self._repo.list(
                 start_date=range_start,
                 end_date=range_end,

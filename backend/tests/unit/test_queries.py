@@ -44,6 +44,36 @@ class TestListBookingsQuery:
             booking_number=None,
         )
 
+    def test_with_start_date_only_delegates_open_range_to_repo(self, mock_repo):
+        mock_repo.list.return_value = []
+        start = date(2026, 6, 1)
+
+        ListBookingsQuery(mock_repo, set()).execute(start_date=start)
+
+        mock_repo.list.assert_called_once_with(
+            start_date=start,
+            end_date=None,
+            apartment_id=None,
+            status=None,
+            guest_name=None,
+            booking_number=None,
+        )
+
+    def test_with_end_date_only_delegates_open_range_to_repo(self, mock_repo):
+        mock_repo.list.return_value = []
+        end = date(2026, 6, 30)
+
+        ListBookingsQuery(mock_repo, set()).execute(end_date=end)
+
+        mock_repo.list.assert_called_once_with(
+            start_date=None,
+            end_date=end,
+            apartment_id=None,
+            status=None,
+            guest_name=None,
+            booking_number=None,
+        )
+
     def test_with_days_calculates_end_date_from_start(self, mock_repo):
         mock_repo.list.return_value = []
         start = date(2026, 6, 1)
@@ -97,6 +127,42 @@ class TestGetBookingStatsQuery:
         )
         assert result["start_date"] is None
         assert result["end_date"] is None
+        assert result["occupancy_pct"] is None
+
+    def test_start_date_only_forwards_filter_and_has_no_occupancy(self, mock_repo):
+        mock_repo.list.return_value = []
+        start = date(2026, 6, 1)
+
+        result = GetBookingStatsQuery(mock_repo, set()).execute(start_date=start)
+
+        mock_repo.list.assert_called_once_with(
+            start_date=start,
+            end_date=None,
+            apartment_id=None,
+            status=None,
+            guest_name=None,
+            booking_number=None,
+        )
+        assert result["start_date"] == start
+        assert result["end_date"] is None
+        assert result["occupancy_pct"] is None
+
+    def test_end_date_only_forwards_filter_and_has_no_occupancy(self, mock_repo):
+        mock_repo.list.return_value = []
+        end = date(2026, 6, 30)
+
+        result = GetBookingStatsQuery(mock_repo, set()).execute(end_date=end)
+
+        mock_repo.list.assert_called_once_with(
+            start_date=None,
+            end_date=end,
+            apartment_id=None,
+            status=None,
+            guest_name=None,
+            booking_number=None,
+        )
+        assert result["start_date"] is None
+        assert result["end_date"] == end
         assert result["occupancy_pct"] is None
 
     def test_occupancy_pct_uses_only_nights_overlapping_requested_range(self, mock_repo):

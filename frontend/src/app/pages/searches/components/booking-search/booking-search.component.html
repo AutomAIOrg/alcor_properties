@@ -5,6 +5,7 @@
         #bookingDateRange
         [from]="bkg.from()"
         [to]="bkg.to()"
+        [allowPartialRange]="true"
         (rangeChange)="setBookingRange($event)"
         (rangeComplete)="completeBookingRange($event)"
       />
@@ -54,6 +55,13 @@
     <div class="filter-actions">
       <button class="btn-secondary" (click)="clearBookings(); bookingDateRange.closeCalendar()">
         Limpiar
+      </button>
+      <button
+        class="btn-secondary"
+        [disabled]="bkg.loading()"
+        (click)="searchCurrentYearBookings(); bookingDateRange.closeCalendar()"
+      >
+        Reservas de este a&ntilde;o
       </button>
       <button class="btn-primary" [disabled]="bkg.loading()" (click)="searchBookings()">
         @if (bkg.loading()) {
