@@ -28,15 +28,18 @@ export class DateRangePickerComponent {
   fromPlaceholder = input('Seleccionar entrada');
   toPlaceholder = input('Seleccionar salida');
   required = input(false);
+  allowPartialRange = input(false);
 
   rangeChange = output<DateRangeValue>();
   rangeComplete = output<DateRangeValue>();
+  calendarClosed = output<void>();
 
   readonly weekdays = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
 
   calendarOpen = signal(false);
   calendarMonth = signal(new Date());
   hoverIso = signal<string | null>(null);
+  activeField = signal<'from' | 'to'>('from');
 
   calendarTitle = computed(() =>
     new Intl.DateTimeFormat('es-ES', { month: 'long', year: 'numeric' }).format(
@@ -72,22 +75,23 @@ export class DateRangePickerComponent {
     });
   });
 
-  openCalendar(): void {
-    const from = this.from();
-    this.calendarMonth.set(from ? this.dateFromIso(from) : new Date());
+  openCalendar(field: 'from' | 'to' = 'from'): void {
+    const selectedDate = field === 'to' ? this.to() || this.from() : this.from() || this.to();
+    this.activeField.set(field);
+    this.calendarMonth.set(selectedDate ? this.dateFromIso(selectedDate) : new Date());
     this.calendarOpen.set(true);
   }
 
-  onDateInputClick(event: MouseEvent): void {
+  onDateInputClick(event: MouseEvent, field: 'from' | 'to'): void {
     event.stopPropagation();
 
-    if (this.calendarOpen() && this.hasIncompleteRange()) {
+    if (this.calendarOpen() && this.hasIncompleteRange() && !this.allowPartialRange()) {
       this.emitRange({ from: '', to: '' });
       this.closeCalendar();
       return;
     }
 
-    this.openCalendar();
+    this.openCalendar(field);
   }
 
   prevMonth(): void {
@@ -104,8 +108,17 @@ export class DateRangePickerComponent {
     const from = this.from();
     const to = this.to();
 
+    if (this.allowPartialRange() && this.activeField() === 'to') {
+      const range = from && iso > from ? { from, to: iso } : { from: '', to: iso };
+      this.emitRange(range);
+      this.closeCalendar();
+      if (range.from && range.to) this.rangeComplete.emit(range);
+      return;
+    }
+
     if (!from || to) {
       this.emitRange({ from: iso, to: '' });
+      if (this.allowPartialRange()) this.closeCalendar();
       return;
     }
 
@@ -135,7 +148,7 @@ export class DateRangePickerComponent {
     if (!(target instanceof Element)) return;
     if (!this.calendarOpen() || target.closest('.range-calendar')) return;
 
-    if (this.hasIncompleteRange()) {
+    if (this.hasIncompleteRange() && !this.allowPartialRange()) {
       this.emitRange({ from: '', to: '' });
     }
 
@@ -149,8 +162,10 @@ export class DateRangePickerComponent {
   }
 
   closeCalendar(): void {
+    const wasOpen = this.calendarOpen();
     this.calendarOpen.set(false);
     this.hoverIso.set(null);
+    if (wasOpen) this.calendarClosed.emit();
   }
 
   private emitRange(range: DateRangeValue): void {

@@ -1,7 +1,7 @@
 import { CurrencyPipe, DatePipe, DecimalPipe } from '@angular/common';
 import { Component, Input, inject, output, signal } from '@angular/core';
 
-import { BASE_STATUSES, Booking } from '../../../../models/booking.model';
+import { Booking } from '../../../../models/booking.model';
 import { ApartmentStatsResponse, BookingSearchFilters } from '../../../../models/search.model';
 import { BookingColorPipe } from '../../../../pipes/booking-color.pipe';
 import { ApartmentService } from '../../../../services/apartment.service';
@@ -36,6 +36,8 @@ export class ApartmentSearchComponent {
   private bookingService = inject(BookingService);
   private lastLoadRequestId = 0;
   private apartmentSearchRequestId = 0;
+  private autoSearchTimeout: ReturnType<typeof setTimeout> | null = null;
+  private searchWithoutDatesOnCalendarClose = false;
 
   @Input() allApartmentIds: string[] = [];
 
@@ -47,19 +49,17 @@ export class ApartmentSearchComponent {
     this.apt.id.set(id);
     this.apt.from.set('');
     this.apt.to.set('');
-    this.apt.status.set('');
+    this.searchWithoutDatesOnCalendarClose = false;
+    this.cancelAutoSearch();
     this.searchApartmentDetail();
   }
 
   bookingSelected = output<Booking>();
 
-  readonly STATUS_OPTIONS = ['', ...BASE_STATUSES] as const;
-
   apt = {
     id: signal(''),
     from: signal(''),
     to: signal(''),
-    status: signal(''),
     loading: signal(false),
     error: signal(''),
     bookings: signal<Booking[]>([]),
@@ -87,13 +87,12 @@ export class ApartmentSearchComponent {
     const bookingFilters: BookingSearchFilters = { apartment_id: id };
     if (this.apt.from()) bookingFilters.start_date = this.apt.from();
     if (this.apt.to()) bookingFilters.end_date = this.apt.to();
-    if (this.apt.status()) bookingFilters.status = this.apt.status();
 
     this.bookingService.searchBookings(bookingFilters).subscribe({
       next: bookings => {
         if (requestId !== this.apartmentSearchRequestId) return;
 
-        this.apt.bookings.set(bookings);
+        this.apt.bookings.set(this.sortBookingsByNewestCheckIn(bookings));
         finishRequest();
       },
       error: () => {
@@ -110,7 +109,7 @@ export class ApartmentSearchComponent {
         next: stats => {
           if (requestId !== this.apartmentSearchRequestId) return;
 
-          this.apt.stats.set(stats);
+          this.apt.stats.set(this.sortStatsByNewestYear(stats));
           finishRequest();
         },
         error: err => {
@@ -128,10 +127,11 @@ export class ApartmentSearchComponent {
 
   clearApartmentDetail(): void {
     this.apartmentSearchRequestId += 1;
+    this.cancelAutoSearch();
     this.apt.id.set('');
     this.apt.from.set('');
     this.apt.to.set('');
-    this.apt.status.set('');
+    this.searchWithoutDatesOnCalendarClose = false;
     this.apt.loading.set(false);
     this.apt.bookings.set([]);
     this.apt.stats.set(null);
@@ -139,8 +139,32 @@ export class ApartmentSearchComponent {
   }
 
   setApartmentRange(range: DateRangeValue): void {
+    const hadDateFilter = !!this.apt.from() || !!this.apt.to();
+    const rangeIsEmpty = !range.from && !range.to;
+
     this.apt.from.set(range.from);
     this.apt.to.set(range.to);
+
+    this.searchWithoutDatesOnCalendarClose =
+      rangeIsEmpty && hadDateFilter && this.hasActiveSearch() && !!this.apt.id().trim();
+  }
+
+  completeApartmentRange(range: DateRangeValue): void {
+    this.setApartmentRange(range);
+    this.searchWithoutDatesOnCalendarClose = false;
+    this.searchApartmentDetail();
+  }
+
+  handleApartmentCalendarClosed(): void {
+    if (!this.searchWithoutDatesOnCalendarClose) return;
+
+    this.searchWithoutDatesOnCalendarClose = false;
+    this.searchApartmentDetail();
+  }
+
+  setApartmentId(value: string): void {
+    this.apt.id.set(value);
+    this.scheduleAutoSearch();
   }
 
   openModal(booking: Booking): void {
@@ -154,8 +178,7 @@ export class ApartmentSearchComponent {
   }
 
   refreshAfterBookingSaved(updated: Booking): void {
-    const hasActiveSearch = !!this.apt.stats() || this.apt.bookings().length > 0;
-    if (hasActiveSearch) {
+    if (this.hasActiveSearch()) {
       this.searchApartmentDetail();
       return;
     }
@@ -167,7 +190,38 @@ export class ApartmentSearchComponent {
     return (event.target as HTMLInputElement).value;
   }
 
-  selectValue(event: Event): string {
-    return (event.target as HTMLSelectElement).value;
+  private scheduleAutoSearch(): void {
+    this.cancelAutoSearch();
+    if (!this.apt.id().trim()) return;
+
+    this.autoSearchTimeout = setTimeout(() => {
+      this.autoSearchTimeout = null;
+      this.searchApartmentDetail();
+    }, 300);
+  }
+
+  private cancelAutoSearch(): void {
+    if (this.autoSearchTimeout === null) return;
+
+    clearTimeout(this.autoSearchTimeout);
+    this.autoSearchTimeout = null;
+  }
+
+  private hasActiveSearch(): boolean {
+    return !!this.apt.stats() || this.apt.bookings().length > 0;
+  }
+
+  private sortBookingsByNewestCheckIn(bookings: Booking[]): Booking[] {
+    return [...bookings].sort((a, b) => {
+      const dateComparison = b.check_in.localeCompare(a.check_in);
+      return dateComparison !== 0 ? dateComparison : b.record_id - a.record_id;
+    });
+  }
+
+  private sortStatsByNewestYear(stats: ApartmentStatsResponse): ApartmentStatsResponse {
+    return {
+      ...stats,
+      by_year: [...stats.by_year].sort((a, b) => b.year - a.year),
+    };
   }
 }

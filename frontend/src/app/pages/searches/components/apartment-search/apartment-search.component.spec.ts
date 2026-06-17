@@ -2,7 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { of, Subject, throwError } from 'rxjs';
 
 import { Booking } from '../../../../models/booking.model';
-import { ApartmentStatsResponse } from '../../../../models/search.model';
+import { ApartmentStatsResponse, ApartmentStatsYear } from '../../../../models/search.model';
 import { ApartmentService } from '../../../../services/apartment.service';
 import { BookingService } from '../../../../services/booking.service';
 import { ApartmentSearchComponent } from './apartment-search.component';
@@ -70,6 +70,25 @@ function makeStats(overrides: Partial<ApartmentStatsResponse> = {}): ApartmentSt
   };
 }
 
+function makeStatsYear(overrides: Partial<ApartmentStatsYear> = {}): ApartmentStatsYear {
+  return {
+    year: 2025,
+    total_bookings: 1,
+    active_bookings: 1,
+    cancelled_bookings: 0,
+    cancellation_rate: 0,
+    total_nights: 4,
+    avg_nights_per_booking: 4,
+    total_days_in_year: 365,
+    occupancy_pct: 1.1,
+    total_revenue: 500,
+    avg_revenue_per_booking: 500,
+    total_charges: null,
+    total_electric_allowance: null,
+    ...overrides,
+  };
+}
+
 describe('ApartmentSearchComponent', () => {
   let fixture: ComponentFixture<ApartmentSearchComponent>;
   let component: ApartmentSearchComponent;
@@ -108,7 +127,6 @@ describe('ApartmentSearchComponent', () => {
     component.apt.id.set(' R202 ');
     component.apt.from.set('2025-07-01');
     component.apt.to.set('2025-07-05');
-    component.apt.status.set('Confirmed');
 
     component.searchApartmentDetail();
 
@@ -116,7 +134,6 @@ describe('ApartmentSearchComponent', () => {
       apartment_id: 'R202',
       start_date: '2025-07-01',
       end_date: '2025-07-05',
-      status: 'Confirmed',
     });
     expect(apartmentServiceSpy.getApartmentStats).toHaveBeenCalledWith(
       'R202',
@@ -126,6 +143,35 @@ describe('ApartmentSearchComponent', () => {
     expect(component.apt.bookings()).toEqual(bookings);
     expect(component.apt.stats()).toEqual(stats);
     expect(component.apt.loading()).toBe(false);
+  });
+
+  it('ordena las reservas por check-in descendente y los años de estadisticas descendentes', () => {
+    const bookings = [
+      makeBooking({ record_id: 1, check_in: '2025-09-01' }),
+      makeBooking({ record_id: 2, check_in: '2026-10-01' }),
+      makeBooking({ record_id: 3, check_in: '2026-09-01' }),
+    ];
+    const stats = makeStats({
+      by_year: [
+        makeStatsYear({ year: 2025 }),
+        makeStatsYear({ year: 2026 }),
+        makeStatsYear({ year: 2024 }),
+      ],
+    });
+    bookingServiceSpy.searchBookings.mockReturnValue(of(bookings));
+    apartmentServiceSpy.getApartmentStats.mockReturnValue(of(stats));
+    component.apt.id.set('R202');
+
+    component.searchApartmentDetail();
+
+    expect(component.apt.bookings().map(booking => booking.check_in)).toEqual([
+      '2026-10-01',
+      '2026-09-01',
+      '2025-09-01',
+    ]);
+    expect(component.apt.stats()?.by_year.map(yearStats => yearStats.year)).toEqual([
+      2026, 2025, 2024,
+    ]);
   });
 
   it('muestra reservas aunque falle la carga de estadisticas', () => {
@@ -190,7 +236,6 @@ describe('ApartmentSearchComponent', () => {
   it('apartmentToLoad carga el piso, limpia filtros y evita repetir requestId', () => {
     component.apt.from.set('2025-06-01');
     component.apt.to.set('2025-06-05');
-    component.apt.status.set('Cancelled');
 
     fixture.componentRef.setInput('apartmentToLoad', { apartmentId: ' R303 ', requestId: 1 });
     fixture.detectChanges();
@@ -198,7 +243,6 @@ describe('ApartmentSearchComponent', () => {
     expect(component.apt.id()).toBe('R303');
     expect(component.apt.from()).toBe('');
     expect(component.apt.to()).toBe('');
-    expect(component.apt.status()).toBe('');
     expect(bookingServiceSpy.searchBookings).toHaveBeenCalledTimes(1);
 
     bookingServiceSpy.searchBookings.mockClear();
@@ -209,6 +253,66 @@ describe('ApartmentSearchComponent', () => {
 
     expect(bookingServiceSpy.searchBookings).not.toHaveBeenCalled();
     expect(apartmentServiceSpy.getApartmentStats).not.toHaveBeenCalled();
+  });
+
+  it('setApartmentId lanza la busqueda automaticamente tras escribir un ID', () => {
+    jest.useFakeTimers();
+    bookingServiceSpy.searchBookings.mockClear();
+    apartmentServiceSpy.getApartmentStats.mockClear();
+
+    component.setApartmentId('R202');
+    expect(bookingServiceSpy.searchBookings).not.toHaveBeenCalled();
+
+    jest.advanceTimersByTime(300);
+
+    expect(bookingServiceSpy.searchBookings).toHaveBeenCalledWith({ apartment_id: 'R202' });
+    expect(apartmentServiceSpy.getApartmentStats).toHaveBeenCalledWith(
+      'R202',
+      undefined,
+      undefined
+    );
+
+    jest.useRealTimers();
+  });
+
+  it('completeApartmentRange relanza la busqueda si ya hay ID de piso', () => {
+    component.apt.id.set('R202');
+    bookingServiceSpy.searchBookings.mockClear();
+    apartmentServiceSpy.getApartmentStats.mockClear();
+
+    component.completeApartmentRange({ from: '2025-07-01', to: '2025-07-05' });
+
+    expect(bookingServiceSpy.searchBookings).toHaveBeenCalledWith({
+      apartment_id: 'R202',
+      start_date: '2025-07-01',
+      end_date: '2025-07-05',
+    });
+    expect(apartmentServiceSpy.getApartmentStats).toHaveBeenCalledWith(
+      'R202',
+      '2025-07-01',
+      '2025-07-05'
+    );
+  });
+
+  it('al cerrar el calendario tras borrar fechas relanza la busqueda sin fechas', () => {
+    component.apt.id.set('R202');
+    component.apt.from.set('2025-07-01');
+    component.apt.to.set('2025-07-05');
+    component.apt.stats.set(makeStats({ apartment_id: 'R202' }));
+    bookingServiceSpy.searchBookings.mockClear();
+    apartmentServiceSpy.getApartmentStats.mockClear();
+
+    component.setApartmentRange({ from: '', to: '' });
+    expect(bookingServiceSpy.searchBookings).not.toHaveBeenCalled();
+
+    component.handleApartmentCalendarClosed();
+
+    expect(bookingServiceSpy.searchBookings).toHaveBeenCalledWith({ apartment_id: 'R202' });
+    expect(apartmentServiceSpy.getApartmentStats).toHaveBeenCalledWith(
+      'R202',
+      undefined,
+      undefined
+    );
   });
 
   it('muestra mensaje específico si el piso no existe', () => {

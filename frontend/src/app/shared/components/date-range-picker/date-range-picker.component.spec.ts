@@ -97,10 +97,41 @@ describe('DateRangePickerComponent', () => {
     expect(component.calendarOpen()).toBe(false);
   });
 
-  it('click fuera solo cierra si el rango esta completo', () => {
+  it('click fuera mantiene rango parcial si allowPartialRange esta activo', () => {
     const emitted: DateRangeValue[] = [];
     const outside = document.createElement('div');
     component.rangeChange.subscribe(value => emitted.push(value));
+    fixture.componentRef.setInput('allowPartialRange', true);
+    fixture.componentRef.setInput('from', '2026-06-10');
+    fixture.componentRef.setInput('to', '');
+    fixture.detectChanges();
+    component.openCalendar('from');
+
+    component.onDocumentClick(outside);
+
+    expect(emitted).toEqual([]);
+    expect(component.calendarOpen()).toBe(false);
+  });
+
+  it('permite seleccionar solo fecha hasta cuando allowPartialRange esta activo', () => {
+    const emitted: DateRangeValue[] = [];
+    component.rangeChange.subscribe(value => emitted.push(value));
+    fixture.componentRef.setInput('allowPartialRange', true);
+    fixture.detectChanges();
+    component.openCalendar('to');
+
+    component.selectDate('2026-06-14');
+
+    expect(emitted).toEqual([{ from: '', to: '2026-06-14' }]);
+    expect(component.calendarOpen()).toBe(false);
+  });
+
+  it('click fuera solo cierra si el rango esta completo', () => {
+    const emitted: DateRangeValue[] = [];
+    let closeCount = 0;
+    const outside = document.createElement('div');
+    component.rangeChange.subscribe(value => emitted.push(value));
+    component.calendarClosed.subscribe(() => closeCount++);
     fixture.componentRef.setInput('from', '2026-06-10');
     fixture.componentRef.setInput('to', '2026-06-14');
     fixture.detectChanges();
@@ -110,6 +141,7 @@ describe('DateRangePickerComponent', () => {
 
     expect(emitted).toEqual([]);
     expect(component.calendarOpen()).toBe(false);
+    expect(closeCount).toBe(1);
   });
 
   it('click en un input de fecha cierra y borra el rango parcial', () => {

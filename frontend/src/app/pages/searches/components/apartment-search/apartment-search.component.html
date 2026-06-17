@@ -8,7 +8,7 @@
           list="apt-ids-list"
           placeholder="R180, R200..."
           [value]="apt.id()"
-          (input)="apt.id.set(inputValue($event))"
+          (input)="setApartmentId(inputValue($event))"
         />
         <datalist id="apt-ids-list">
           @for (id of allApartmentIds; track id) {
@@ -21,15 +21,9 @@
         [from]="apt.from()"
         [to]="apt.to()"
         (rangeChange)="setApartmentRange($event)"
+        (rangeComplete)="completeApartmentRange($event)"
+        (calendarClosed)="handleApartmentCalendarClosed()"
       />
-      <div class="field">
-        <label>Estado reserva</label>
-        <select [value]="apt.status()" (change)="apt.status.set(selectValue($event))">
-          @for (status of STATUS_OPTIONS; track status) {
-            <option [value]="status">{{ status || 'Todos' }}</option>
-          }
-        </select>
-      </div>
     </div>
 
     <div class="filter-actions">
