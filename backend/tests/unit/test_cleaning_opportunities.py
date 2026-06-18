@@ -9,6 +9,8 @@ import pytest
 from application.bookings.queries import (
     GetCleaningOpportunitiesUseCase,
     _build_cleaning_opportunities,
+    _cleaning_operational_range,
+    _cleaning_window_overlaps_range,
 )
 from tests.helpers import make_booking
 
@@ -190,10 +192,73 @@ class TestBuildCleaningOpportunities:
         assert opportunities[0].comments == ""
 
 
+class TestCleaningOperationalRange:
+    def test_returns_current_week_plus_three_following(self):
+        range_start, range_end = _cleaning_operational_range(date(2026, 6, 18))
+
+        assert range_start == date(2026, 6, 15)
+        assert range_end == date(2026, 7, 12)
+
+
+class TestCleaningWindowOverlapsRange:
+    def test_includes_window_with_check_in_inside_range(self):
+        assert _cleaning_window_overlaps_range(
+            date(2026, 6, 2),
+            date(2026, 6, 18),
+            date(2026, 6, 15),
+            date(2026, 7, 12),
+        )
+
+    def test_excludes_open_ended_window_before_range(self):
+        assert not _cleaning_window_overlaps_range(
+            date(2026, 5, 1),
+            None,
+            date(2026, 6, 15),
+            date(2026, 7, 12),
+        )
+
+    def test_includes_open_ended_window_with_checkout_in_range(self):
+        assert _cleaning_window_overlaps_range(
+            date(2026, 6, 20),
+            None,
+            date(2026, 6, 15),
+            date(2026, 7, 12),
+        )
+
+
 class TestGetCleaningOpportunitiesUseCase:
-    def test_delegates_to_repository_list(self, mock_repo):
+    def test_delegates_to_repository_with_operational_date_range(self, mock_repo):
         mock_repo.list.return_value = []
         use_case = GetCleaningOpportunitiesUseCase(mock_repo)
+        reference_date = date(2026, 6, 18)
 
-        assert use_case.execute() == []
-        mock_repo.list.assert_called_once_with()
+        assert use_case.execute(reference_date=reference_date) == []
+        mock_repo.list.assert_called_once_with(
+            start_date=date(2026, 5, 18),
+            end_date=date(2026, 7, 12),
+        )
+
+    def test_excludes_windows_outside_operational_range(self, mock_repo):
+        mock_repo.list.return_value = [
+            make_booking(
+                record_id=1,
+                apartment_id="R180",
+                check_in=date(2026, 4, 1),
+                check_out=date(2026, 4, 5),
+            ),
+            make_booking(
+                record_id=2,
+                apartment_id="R180",
+                check_in=date(2026, 4, 10),
+                check_out=date(2026, 4, 15),
+            ),
+            make_booking(
+                record_id=3,
+                apartment_id="R200",
+                check_in=date(2026, 8, 1),
+                check_out=date(2026, 8, 5),
+            ),
+        ]
+        use_case = GetCleaningOpportunitiesUseCase(mock_repo)
+
+        assert use_case.execute(reference_date=date(2026, 6, 18)) == []
