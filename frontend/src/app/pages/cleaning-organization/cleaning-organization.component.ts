@@ -102,9 +102,7 @@ export class CleaningOrganizationComponent implements OnInit, OnDestroy {
     nextWeekStart.setDate(nextWeekStart.getDate() + 7);
     return this.layout.toIso(nextWeekStart);
   });
-  canGoPrevWeek = computed(
-    () => this.isAdmin() || this.weekStartIso() > this.currentWeekStartIso()
-  );
+  canGoPrevWeek = computed(() => this.weekStartIso() > this.currentWeekStartIso());
   canGoNextWeek = computed(() => this.isAdmin() || this.weekStartIso() < this.nextWeekStartIso());
 
   cleaningOpportunities = computed<CleaningWindow[]>(() =>

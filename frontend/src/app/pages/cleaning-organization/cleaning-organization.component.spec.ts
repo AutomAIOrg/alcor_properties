@@ -121,20 +121,21 @@ describe('CleaningOrganizationComponent', () => {
     expect(component.weekStartIso()).toBe(nextWeek);
   });
 
-  it('mantiene navegación semanal completa para admin', () => {
+  it('permite a admin avanzar semanas pero no retroceder antes de la actual', () => {
     setup([], true);
 
     const currentWeek = component.weekStartIso();
 
-    expect(component.canGoPrevWeek()).toBe(true);
+    expect(component.canGoPrevWeek()).toBe(false);
     expect(component.canGoNextWeek()).toBe(true);
 
     component.prevWeek();
-    expect(component.weekStartIso()).not.toBe(currentWeek);
+    expect(component.weekStartIso()).toBe(currentWeek);
 
     component.nextWeek();
     component.nextWeek();
     expect(component.weekStartIso()).not.toBe(currentWeek);
+    expect(component.canGoPrevWeek()).toBe(true);
   });
 
   it('filtra ventanas visibles en la semana seleccionada', () => {
