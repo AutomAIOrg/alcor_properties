@@ -137,9 +137,19 @@ class TestSpecialCollectionEndpoints:
 
         assert api_client.get("/api/v1/bookings/calendar-events").status_code == 200
 
-    def test_cleaning_opportunities_returns_minimal_schema(self, api_client, mock_use_cases):
+    def test_cleaning_opportunities_returns_cleaning_window_schema(
+        self, api_client, mock_use_cases
+    ):
+        from domain.bookings.entity import CleaningOpportunity
+
         mock_use_cases.get_cleaning_opportunities_query.execute.return_value = [
-            make_booking(record_id=7, apartment_id="R180", booking_number="BK-001")
+            CleaningOpportunity(
+                source_booking_record_id=7,
+                apartment_id="R180",
+                available_from=date(2026, 6, 5),
+                available_until=date(2026, 6, 10),
+                comments="",
+            )
         ]
 
         response = api_client.get("/api/v1/bookings/cleaning-opportunities")
@@ -148,12 +158,11 @@ class TestSpecialCollectionEndpoints:
         data = response.json()
         assert data == [
             {
-                "record_id": 7,
+                "source_booking_record_id": 7,
                 "apartment_id": "R180",
-                "check_in": "2026-06-01",
-                "check_out": "2026-06-05",
-                "status": "Confirmed",
-                "notes": None,
+                "available_from": "2026-06-05",
+                "available_until": "2026-06-10",
+                "comments": "",
             }
         ]
         mock_use_cases.get_cleaning_opportunities_query.execute.assert_called_once_with()

@@ -194,27 +194,54 @@ class GetCalendarEventsQuery:
         return events
 
 
+def _build_cleaning_opportunities(bookings: list[Booking]) -> list[CleaningOpportunity]:
+    """Calcula ventanas de limpieza a partir de reservas activas agrupadas por apartamento."""
+    active_bookings = [
+        booking
+        for booking in bookings
+        if not booking.is_cancelled() and booking.record_id is not None
+    ]
+
+    by_apartment: dict[str, list[Booking]] = {}
+    for booking in active_bookings:
+        by_apartment.setdefault(booking.apartment_id, []).append(booking)
+
+    opportunities: list[CleaningOpportunity] = []
+    for apartment_bookings in by_apartment.values():
+        apartment_bookings.sort(key=lambda b: (b.check_in, b.check_out, b.record_id))
+        for index, booking in enumerate(apartment_bookings):
+            if booking.record_id is None:
+                continue
+
+            next_booking = (
+                apartment_bookings[index + 1] if index + 1 < len(apartment_bookings) else None
+            )
+            opportunities.append(
+                CleaningOpportunity(
+                    source_booking_record_id=booking.record_id,
+                    apartment_id=booking.apartment_id,
+                    available_from=booking.check_out,
+                    available_until=next_booking.check_in if next_booking else None,
+                    comments=(booking.notes or "").strip(),
+                )
+            )
+
+    opportunities.sort(
+        key=lambda opportunity: (
+            opportunity.available_until is None,
+            opportunity.available_until or date.min,
+            opportunity.available_from,
+            opportunity.apartment_id,
+        )
+    )
+    return opportunities
+
+
 class GetCleaningOpportunitiesUseCase:
-    """Obtiene reservas no canceladas para calcular oportunidades de limpieza."""
+    """Obtiene ventanas de limpieza calculadas a partir de reservas activas."""
 
     def __init__(self, repository: IBookingRepository) -> None:
         self._repo = repository
 
     def execute(self) -> list[CleaningOpportunity]:
-        bookings = [booking for booking in self._repo.list() if not booking.is_cancelled()]
-        cleaning_opportunities: list[CleaningOpportunity] = []
-        for booking in bookings:
-            if booking.record_id is None:
-                continue
-
-            cleaning_opportunities.append(
-                CleaningOpportunity(
-                    record_id=booking.record_id,
-                    apartment_id=booking.apartment_id,
-                    check_in=booking.check_in,
-                    check_out=booking.check_out,
-                    status=booking.status,
-                    notes=booking.notes,
-                )
-            )
-        return cleaning_opportunities
+        return _build_cleaning_opportunities(self._repo.list())

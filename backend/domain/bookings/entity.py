@@ -108,13 +108,12 @@ class Booking(BaseModel):
 
 
 class CleaningOpportunity(BaseModel):
-    """Oportunidad de limpieza."""
+    """Ventana de limpieza entre el checkout de una reserva y el check-in de la siguiente."""
 
     model_config = ConfigDict(from_attributes=True)
 
-    record_id: int
+    source_booking_record_id: int
     apartment_id: str
-    check_in: date
-    check_out: date
-    status: str
-    notes: str | None = None
+    available_from: date
+    available_until: date | None = None
+    comments: str = ""
