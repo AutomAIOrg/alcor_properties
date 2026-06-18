@@ -63,7 +63,7 @@ export class CleaningOrganizationComponent implements OnInit, OnDestroy {
   private readonly barTopPad = 8;
 
   currentDate = signal(new Date());
-  bookings = signal<CleaningOpportunityDto[]>([]);
+  apiCleaningOpportunities = signal<CleaningOpportunityDto[]>([]);
   isLoading = signal(false);
   loadError = signal<string | null>(null);
   selectedCommentOpportunity = signal<CleaningWindow | null>(null);
@@ -107,38 +107,24 @@ export class CleaningOrganizationComponent implements OnInit, OnDestroy {
   );
   canGoNextWeek = computed(() => this.isAdmin() || this.weekStartIso() < this.nextWeekStartIso());
 
-  cleaningOpportunities = computed<CleaningWindow[]>(() => {
-    const groupedBookings = this.groupActiveBookingsByApartment(this.bookings());
-    const opportunities: CleaningWindow[] = [];
-
-    for (const apartmentBookings of groupedBookings.values()) {
-      apartmentBookings.forEach((booking, index) => {
-        const nextBooking = apartmentBookings[index + 1] ?? null;
-        const availableUntilDate = nextBooking?.check_in ?? null;
-
-        if (!this.isCleaningWindowVisibleInCurrentWeek(booking.check_out, availableUntilDate)) {
-          return;
-        }
-
-        opportunities.push({
-          apartmentId: booking.apartment_id,
-          availableFromDate: booking.check_out,
-          availableFromTime: this.pendingTime,
-          availableUntilDate,
-          availableUntilTime: this.pendingTime,
-          comments: booking.notes?.trim() ?? '',
-          sourceBookingRecordId: booking.record_id,
-        });
-      });
-    }
-
-    return opportunities.sort(
-      (a, b) =>
-        this.compareNullableIsoDates(a.availableUntilDate, b.availableUntilDate) ||
-        a.availableFromDate.localeCompare(b.availableFromDate) ||
-        a.apartmentId.localeCompare(b.apartmentId)
-    );
-  });
+  cleaningOpportunities = computed<CleaningWindow[]>(() =>
+    this.apiCleaningOpportunities()
+      .filter(opportunity =>
+        this.isCleaningWindowVisibleInCurrentWeek(
+          opportunity.available_from,
+          opportunity.available_until
+        )
+      )
+      .map(opportunity => ({
+        apartmentId: opportunity.apartment_id,
+        availableFromDate: opportunity.available_from,
+        availableFromTime: this.pendingTime,
+        availableUntilDate: opportunity.available_until,
+        availableUntilTime: this.pendingTime,
+        comments: opportunity.comments,
+        sourceBookingRecordId: opportunity.source_booking_record_id,
+      }))
+  );
 
   cleaningBars = computed<CleaningBar[]>(() => {
     const bars = this.cleaningOpportunities()
@@ -195,12 +181,12 @@ export class CleaningOrganizationComponent implements OnInit, OnDestroy {
     this.loadError.set(null);
 
     this.bookingService.getCleaningOpportunities().subscribe({
-      next: bookings => {
-        this.bookings.set(bookings);
+      next: opportunities => {
+        this.apiCleaningOpportunities.set(opportunities);
         this.isLoading.set(false);
       },
       error: () => {
-        this.bookings.set([]);
+        this.apiCleaningOpportunities.set([]);
         this.loadError.set('No se han podido cargar las reservas para organizar las limpiezas.');
         this.isLoading.set(false);
       },
@@ -267,9 +253,11 @@ export class CleaningOrganizationComponent implements OnInit, OnDestroy {
 
     this.bookingService.updateBooking(opportunity.sourceBookingRecordId, { notes }).subscribe({
       next: updatedBooking => {
-        this.bookings.update(bookings =>
-          bookings.map(booking =>
-            booking.record_id === updatedBooking.record_id ? updatedBooking : booking
+        this.apiCleaningOpportunities.update(opportunities =>
+          opportunities.map(item =>
+            item.source_booking_record_id === updatedBooking.record_id
+              ? { ...item, comments: (updatedBooking.notes ?? '').trim() }
+              : item
           )
         );
         this.isSavingComment.set(false);
@@ -303,38 +291,6 @@ export class CleaningOrganizationComponent implements OnInit, OnDestroy {
       availableUntilDate <= this.weekEndIso();
 
     return hasCheckOutInWeek || hasCheckInInWeek;
-  }
-
-  private groupActiveBookingsByApartment(
-    bookings: CleaningOpportunityDto[]
-  ): Map<string, CleaningOpportunityDto[]> {
-    const grouped = new Map<string, CleaningOpportunityDto[]>();
-
-    for (const booking of bookings) {
-      if (booking.status?.toLowerCase() === 'cancelled') continue;
-
-      const apartmentBookings = grouped.get(booking.apartment_id) ?? [];
-      apartmentBookings.push(booking);
-      grouped.set(booking.apartment_id, apartmentBookings);
-    }
-
-    for (const apartmentBookings of grouped.values()) {
-      apartmentBookings.sort(
-        (a, b) =>
-          a.check_in.localeCompare(b.check_in) ||
-          a.check_out.localeCompare(b.check_out) ||
-          a.record_id - b.record_id
-      );
-    }
-
-    return grouped;
-  }
-
-  private compareNullableIsoDates(a: string | null, b: string | null): number {
-    if (a && b) return a.localeCompare(b);
-    if (a) return -1;
-    if (b) return 1;
-    return 0;
   }
 
   private buildCleaningBar(opportunity: CleaningWindow): PendingCleaningBar | null {

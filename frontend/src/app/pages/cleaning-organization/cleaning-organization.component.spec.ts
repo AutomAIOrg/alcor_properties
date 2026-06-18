@@ -7,6 +7,19 @@ import { Booking, CleaningOpportunity as CleaningOpportunityDto } from '../../mo
 import { BookingService } from '../../services/booking.service';
 import { CalendarLayoutService } from '../../services/calendar-layout.service';
 
+function makeCleaningOpportunity(
+  overrides: Partial<CleaningOpportunityDto> = {}
+): CleaningOpportunityDto {
+  return {
+    source_booking_record_id: 1,
+    apartment_id: 'R180',
+    available_from: '2026-06-02',
+    available_until: null,
+    comments: '',
+    ...overrides,
+  };
+}
+
 function makeBooking(overrides: Partial<Booking> = {}): Booking {
   return {
     record_id: 1,
@@ -36,9 +49,9 @@ describe('CleaningOrganizationComponent', () => {
   let bookingServiceSpy: jest.Mocked<BookingService>;
   let authServiceSpy: jest.Mocked<AuthService>;
 
-  function setup(bookings: CleaningOpportunityDto[] = [], isAdmin = false): void {
+  function setup(opportunities: CleaningOpportunityDto[] = [], isAdmin = false): void {
     bookingServiceSpy = {
-      getCleaningOpportunities: jest.fn().mockReturnValue(of(bookings)),
+      getCleaningOpportunities: jest.fn().mockReturnValue(of(opportunities)),
       updateBooking: jest.fn(),
     } as unknown as jest.Mocked<BookingService>;
 
@@ -64,11 +77,11 @@ describe('CleaningOrganizationComponent', () => {
     TestBed.resetTestingModule();
   });
 
-  it('carga las reservas al iniciar', () => {
-    setup([makeBooking()]);
+  it('carga las oportunidades de limpieza al iniciar', () => {
+    setup([makeCleaningOpportunity()]);
 
     expect(bookingServiceSpy.getCleaningOpportunities).toHaveBeenCalledTimes(1);
-    expect(component.bookings().length).toBe(1);
+    expect(component.apiCleaningOpportunities().length).toBe(1);
   });
 
   it('construye una semana de lunes a domingo', () => {
@@ -124,27 +137,20 @@ describe('CleaningOrganizationComponent', () => {
     expect(component.weekStartIso()).not.toBe(currentWeek);
   });
 
-  it('genera limpiezas desde check-out hasta el siguiente check-in del mismo piso', () => {
+  it('filtra ventanas visibles en la semana seleccionada', () => {
     setup([
-      makeBooking({
-        record_id: 1,
+      makeCleaningOpportunity({
+        source_booking_record_id: 1,
         apartment_id: 'R180',
-        check_in: '2026-05-30',
-        check_out: '2026-06-02',
-        notes: 'Llevar llaves',
+        available_from: '2026-06-02',
+        available_until: '2026-06-05',
+        comments: 'Llevar llaves',
       }),
-      makeBooking({
-        record_id: 2,
-        apartment_id: 'R180',
-        check_in: '2026-06-05',
-        check_out: '2026-06-08',
-      }),
-      makeBooking({
-        record_id: 3,
+      makeCleaningOpportunity({
+        source_booking_record_id: 2,
         apartment_id: 'R181',
-        check_in: '2026-06-01',
-        check_out: '2026-06-03',
-        status: 'Cancelled',
+        available_from: '2026-06-20',
+        available_until: '2026-06-25',
       }),
     ]);
 
@@ -163,65 +169,13 @@ describe('CleaningOrganizationComponent', () => {
     ]);
   });
 
-  it('ordena las limpiezas por fecha de entrada de más cercana a más lejana', () => {
-    setup([
-      makeBooking({
-        record_id: 1,
-        apartment_id: 'R180',
-        check_in: '2026-05-30',
-        check_out: '2026-06-01',
-      }),
-      makeBooking({
-        record_id: 2,
-        apartment_id: 'R180',
-        check_in: '2026-06-06',
-        check_out: '2026-06-08',
-      }),
-      makeBooking({
-        record_id: 3,
-        apartment_id: 'R181',
-        check_in: '2026-05-31',
-        check_out: '2026-06-02',
-      }),
-      makeBooking({
-        record_id: 4,
-        apartment_id: 'R181',
-        check_in: '2026-06-04',
-        check_out: '2026-06-09',
-      }),
-      makeBooking({
-        record_id: 5,
-        apartment_id: 'R182',
-        check_in: '2026-05-31',
-        check_out: '2026-06-03',
-      }),
-    ]);
-
-    component.currentDate.set(new Date(2026, 5, 3));
-
-    expect(component.cleaningOpportunities().map(opportunity => opportunity.apartmentId)).toEqual([
-      'R181',
-      'R180',
-      'R182',
-    ]);
-    expect(
-      component.cleaningOpportunities().map(opportunity => opportunity.availableUntilDate)
-    ).toEqual(['2026-06-04', '2026-06-06', null]);
-  });
-
   it('calcula barras semanales desde la fecha disponible hasta la fecha límite', () => {
     setup([
-      makeBooking({
-        record_id: 1,
+      makeCleaningOpportunity({
+        source_booking_record_id: 1,
         apartment_id: 'R180',
-        check_in: '2026-05-30',
-        check_out: '2026-06-02',
-      }),
-      makeBooking({
-        record_id: 2,
-        apartment_id: 'R180',
-        check_in: '2026-06-05',
-        check_out: '2026-06-08',
+        available_from: '2026-06-02',
+        available_until: '2026-06-05',
       }),
     ]);
 
@@ -239,17 +193,11 @@ describe('CleaningOrganizationComponent', () => {
 
   it('continúa la barra en la semana del check-in si el check-out fue en una semana anterior', () => {
     setup([
-      makeBooking({
-        record_id: 1,
+      makeCleaningOpportunity({
+        source_booking_record_id: 1,
         apartment_id: 'R180',
-        check_in: '2026-05-30',
-        check_out: '2026-06-02',
-      }),
-      makeBooking({
-        record_id: 2,
-        apartment_id: 'R180',
-        check_in: '2026-06-10',
-        check_out: '2026-06-14',
+        available_from: '2026-06-02',
+        available_until: '2026-06-10',
       }),
     ]);
 
@@ -267,17 +215,11 @@ describe('CleaningOrganizationComponent', () => {
 
   it('oculta ventanas de limpieza en semanas intermedias sin check-out ni check-in', () => {
     setup([
-      makeBooking({
-        record_id: 1,
+      makeCleaningOpportunity({
+        source_booking_record_id: 1,
         apartment_id: 'R180',
-        check_in: '2026-05-30',
-        check_out: '2026-06-02',
-      }),
-      makeBooking({
-        record_id: 2,
-        apartment_id: 'R180',
-        check_in: '2026-06-18',
-        check_out: '2026-06-22',
+        available_from: '2026-06-02',
+        available_until: '2026-06-18',
       }),
     ]);
 
@@ -289,11 +231,11 @@ describe('CleaningOrganizationComponent', () => {
 
   it('no repite indefinidamente limpiezas sin siguiente check-in en semanas futuras', () => {
     setup([
-      makeBooking({
-        record_id: 1,
+      makeCleaningOpportunity({
+        source_booking_record_id: 1,
         apartment_id: 'R180',
-        check_in: '2026-05-30',
-        check_out: '2026-06-02',
+        available_from: '2026-06-02',
+        available_until: null,
       }),
     ]);
 
@@ -305,35 +247,23 @@ describe('CleaningOrganizationComponent', () => {
 
   it('asigna el mismo color a barras del mismo piso y colores distintos a pisos diferentes', () => {
     setup([
-      makeBooking({
-        record_id: 1,
+      makeCleaningOpportunity({
+        source_booking_record_id: 1,
         apartment_id: 'R180',
-        check_in: '2026-05-29',
-        check_out: '2026-06-01',
+        available_from: '2026-06-01',
+        available_until: '2026-06-03',
       }),
-      makeBooking({
-        record_id: 2,
+      makeCleaningOpportunity({
+        source_booking_record_id: 2,
         apartment_id: 'R180',
-        check_in: '2026-06-03',
-        check_out: '2026-06-05',
+        available_from: '2026-06-03',
+        available_until: '2026-06-07',
       }),
-      makeBooking({
-        record_id: 3,
-        apartment_id: 'R180',
-        check_in: '2026-06-07',
-        check_out: '2026-06-10',
-      }),
-      makeBooking({
-        record_id: 4,
+      makeCleaningOpportunity({
+        source_booking_record_id: 3,
         apartment_id: 'R181',
-        check_in: '2026-05-31',
-        check_out: '2026-06-03',
-      }),
-      makeBooking({
-        record_id: 5,
-        apartment_id: 'R181',
-        check_in: '2026-06-06',
-        check_out: '2026-06-09',
+        available_from: '2026-06-02',
+        available_until: '2026-06-06',
       }),
     ]);
 
@@ -351,10 +281,11 @@ describe('CleaningOrganizationComponent', () => {
 
   it('muestra pendiente como fecha final si no hay siguiente reserva del mismo piso', () => {
     setup([
-      makeBooking({
-        record_id: 1,
+      makeCleaningOpportunity({
+        source_booking_record_id: 1,
         apartment_id: 'R180',
-        check_out: '2026-06-02',
+        available_from: '2026-06-02',
+        available_until: null,
       }),
     ]);
 
@@ -369,18 +300,12 @@ describe('CleaningOrganizationComponent', () => {
 
   it('renderiza el calendario semanal y la tabla de detalle', () => {
     setup([
-      makeBooking({
-        record_id: 1,
+      makeCleaningOpportunity({
+        source_booking_record_id: 1,
         apartment_id: 'R180',
-        check_in: '2026-05-30',
-        check_out: '2026-06-02',
-        notes: 'Llevar llaves',
-      }),
-      makeBooking({
-        record_id: 2,
-        apartment_id: 'R180',
-        check_in: '2026-06-05',
-        check_out: '2026-06-08',
+        available_from: '2026-06-02',
+        available_until: '2026-06-05',
+        comments: 'Llevar llaves',
       }),
     ]);
 
@@ -404,14 +329,17 @@ describe('CleaningOrganizationComponent', () => {
   });
 
   it('muestra el lápiz de comentarios solo para admin', () => {
-    setup([makeBooking({ record_id: 1, notes: 'Comentario' })], false);
+    setup(
+      [makeCleaningOpportunity({ source_booking_record_id: 1, comments: 'Comentario' })],
+      false
+    );
     component.currentDate.set(new Date(2026, 5, 3));
     fixture.detectChanges();
 
     expect(fixture.nativeElement.querySelector('.edit-btn')).toBeNull();
 
     TestBed.resetTestingModule();
-    setup([makeBooking({ record_id: 1, notes: 'Comentario' })], true);
+    setup([makeCleaningOpportunity({ source_booking_record_id: 1, comments: 'Comentario' })], true);
     component.currentDate.set(new Date(2026, 5, 3));
     fixture.detectChanges();
 
@@ -419,7 +347,10 @@ describe('CleaningOrganizationComponent', () => {
   });
 
   it('abre el modal de comentarios y lo cierra al pulsar fuera sin guardar', () => {
-    setup([makeBooking({ record_id: 1, notes: 'Comentario inicial' })], true);
+    setup(
+      [makeCleaningOpportunity({ source_booking_record_id: 1, comments: 'Comentario inicial' })],
+      true
+    );
 
     component.currentDate.set(new Date(2026, 5, 3));
     fixture.detectChanges();
@@ -440,7 +371,10 @@ describe('CleaningOrganizationComponent', () => {
   });
 
   it('guarda comentarios con PUT y muestra toast de éxito', () => {
-    setup([makeBooking({ record_id: 1, notes: 'Comentario inicial' })], true);
+    setup(
+      [makeCleaningOpportunity({ source_booking_record_id: 1, comments: 'Comentario inicial' })],
+      true
+    );
     bookingServiceSpy.updateBooking.mockReturnValue(
       of(makeBooking({ record_id: 1, notes: 'Nuevo comentario' }))
     );
@@ -469,7 +403,10 @@ describe('CleaningOrganizationComponent', () => {
   });
 
   it('borra comentarios enviando string vacío y vuelve a mostrar Sin comentarios', () => {
-    setup([makeBooking({ record_id: 1, notes: 'Comentario inicial' })], true);
+    setup(
+      [makeCleaningOpportunity({ source_booking_record_id: 1, comments: 'Comentario inicial' })],
+      true
+    );
     bookingServiceSpy.updateBooking.mockReturnValue(of(makeBooking({ record_id: 1, notes: '' })));
 
     component.currentDate.set(new Date(2026, 5, 3));
@@ -493,7 +430,10 @@ describe('CleaningOrganizationComponent', () => {
   });
 
   it('muestra toast de error si falla al guardar el comentario', () => {
-    setup([makeBooking({ record_id: 1, notes: 'Comentario inicial' })], true);
+    setup(
+      [makeCleaningOpportunity({ source_booking_record_id: 1, comments: 'Comentario inicial' })],
+      true
+    );
     bookingServiceSpy.updateBooking.mockReturnValue(throwError(() => new Error('API error')));
 
     component.currentDate.set(new Date(2026, 5, 3));

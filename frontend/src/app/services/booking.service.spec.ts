@@ -46,12 +46,11 @@ function makeCleaningOpportunity(
   overrides: Partial<CleaningOpportunity> = {}
 ): CleaningOpportunity {
   return {
-    record_id: 1,
+    source_booking_record_id: 1,
     apartment_id: 'R180',
-    check_in: '2025-06-01',
-    check_out: '2025-06-07',
-    status: 'Confirmed',
-    notes: null,
+    available_from: '2025-06-07',
+    available_until: null,
+    comments: '',
     ...overrides,
   };
 }
@@ -129,8 +128,8 @@ describe('BookingService', () => {
   describe('B2 — getCleaningOpportunities', () => {
     it('hace GET al endpoint de oportunidades de limpieza y devuelve la lista recibida', () => {
       const opportunities = [
-        makeCleaningOpportunity({ record_id: 1, apartment_id: 'R180' }),
-        makeCleaningOpportunity({ record_id: 2, apartment_id: 'R101' }),
+        makeCleaningOpportunity({ source_booking_record_id: 1, apartment_id: 'R180' }),
+        makeCleaningOpportunity({ source_booking_record_id: 2, apartment_id: 'R101' }),
       ];
 
       let result: CleaningOpportunity[] | undefined;
