@@ -107,6 +107,17 @@ def require_admin(
     return current_user
 
 
+def require_cleaning(
+    current_user: User = Depends(get_current_user),
+) -> User:
+    """Verifica que el usuario tenga acceso a la organización de limpiezas."""
+    if current_user.role not in (Role.ADMIN, Role.LIMPIADORA):
+        raise HTTPException(
+            status_code=403, detail="Permiso denegado. El usuario no tiene acceso a limpiezas."
+        )
+    return current_user
+
+
 def get_electric_ids() -> set[str]:
     """Parsea la variable de entorno ELECTRIC a un set de IDs de reservas."""
     return {b.strip() for b in settings.ELECTRIC.split(",") if b.strip()}

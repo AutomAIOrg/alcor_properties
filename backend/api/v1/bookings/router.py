@@ -6,7 +6,13 @@ from datetime import date
 
 from fastapi import APIRouter, Depends, Query, status
 
-from api.dependencies import BookingUseCases, get_booking_use_cases, get_current_user, require_admin
+from api.dependencies import (
+    BookingUseCases,
+    get_booking_use_cases,
+    get_current_user,
+    require_admin,
+    require_cleaning,
+)
 from api.v1.bookings.schemas import (
     BookingCreateRequest,
     BookingResponse,
@@ -78,6 +84,7 @@ async def get_calendar_events(
 @router.get("/cleaning-opportunities", response_model=list[CleaningOpportunityResponse])
 async def get_cleaning_opportunities(
     use_cases: BookingUseCases = Depends(get_booking_use_cases),
+    _: User = Depends(require_cleaning),
 ):
     return use_cases.get_cleaning_opportunities_query.execute()
 

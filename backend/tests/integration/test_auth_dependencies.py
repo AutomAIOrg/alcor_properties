@@ -74,3 +74,38 @@ class TestProtectedBookings:
 
         assert response.status_code == 401
         assert response.headers["WWW-Authenticate"] == "Bearer"
+
+
+class TestCleaningOpportunitiesAuth:
+    def test_cleaning_opportunities_without_token_returns_401(self, protected_api_client):
+        response = protected_api_client.get("/api/v1/bookings/cleaning-opportunities")
+
+        assert response.status_code == 401
+        assert response.headers["WWW-Authenticate"] == "Bearer"
+
+    def test_cleaning_opportunities_with_limpiadora_token_returns_200(self, protected_api_client):
+        response = protected_api_client.get(
+            "/api/v1/bookings/cleaning-opportunities",
+            headers={"Authorization": _bearer_token(Role.LIMPIADORA)},
+        )
+
+        assert response.status_code == 200
+
+    def test_cleaning_opportunities_with_admin_token_returns_200(self, protected_api_client):
+        from api.dependencies import get_user_repository
+        from main import app
+        from tests.helpers import make_user
+
+        mock_user_repository = MagicMock()
+        mock_user_repository.get_by_id.return_value = make_user(id=1, role=Role.ADMIN)
+        app.dependency_overrides[get_user_repository] = lambda: mock_user_repository
+
+        try:
+            response = protected_api_client.get(
+                "/api/v1/bookings/cleaning-opportunities",
+                headers={"Authorization": _bearer_token(Role.ADMIN)},
+            )
+        finally:
+            app.dependency_overrides.pop(get_user_repository, None)
+
+        assert response.status_code == 200
