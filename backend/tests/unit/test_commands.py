@@ -98,6 +98,51 @@ class TestUpdateBookingUseCase:
         assert result.phone == "+34 600 000 000"
         assert result.notes == "Llegada tarde"
 
+    def test_raises_booking_conflict_when_updated_booking_overlaps(self, mock_repo):
+        existing = make_booking(
+            record_id=1,
+            apartment_id="R180",
+            check_in=date(2026, 6, 1),
+            check_out=date(2026, 6, 5),
+        )
+        mock_repo.get_by_id.return_value = existing
+        mock_repo.find_overlapping_active.return_value = True
+
+        with pytest.raises(BookingConflict):
+            UpdateBookingUseCase(mock_repo, set()).execute(
+                1,
+                BookingUpdateData(
+                    check_in=date(2026, 6, 4),
+                    check_out=date(2026, 6, 8),
+                ),
+            )
+
+        mock_repo.find_overlapping_active.assert_called_once_with(
+            apartment_id="R180",
+            check_in=date(2026, 6, 4),
+            check_out=date(2026, 6, 8),
+            exclude_record_id=1,
+        )
+        mock_repo.update.assert_not_called()
+
+    def test_does_not_check_overlap_when_updated_booking_is_cancelled(self, mock_repo):
+        existing = make_booking(
+            record_id=1,
+            apartment_id="R180",
+            status="Confirmed",
+        )
+        cancelled = existing.model_copy(update={"status": "Cancelled"})
+        mock_repo.get_by_id.return_value = existing
+        mock_repo.update.return_value = cancelled
+
+        result = UpdateBookingUseCase(mock_repo, set()).execute(
+            1,
+            BookingUpdateData(status="Cancelled"),
+        )
+
+        assert result.status == "Cancelled"
+        mock_repo.find_overlapping_active.assert_not_called()
+
     def test_propagates_booking_not_found_from_repository(self, mock_repo):
         mock_repo.get_by_id.side_effect = BookingNotFound(99)
 

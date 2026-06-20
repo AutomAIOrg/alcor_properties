@@ -128,6 +128,7 @@ class TestGetBookingStatsQuery:
         assert result["start_date"] is None
         assert result["end_date"] is None
         assert result["occupancy_pct"] is None
+        assert result["no_booking_days_pct"] is None
 
     def test_start_date_only_forwards_filter_and_has_no_occupancy(self, mock_repo):
         mock_repo.list.return_value = []
@@ -146,6 +147,7 @@ class TestGetBookingStatsQuery:
         assert result["start_date"] == start
         assert result["end_date"] is None
         assert result["occupancy_pct"] is None
+        assert result["no_booking_days_pct"] is None
 
     def test_end_date_only_forwards_filter_and_has_no_occupancy(self, mock_repo):
         mock_repo.list.return_value = []
@@ -164,8 +166,9 @@ class TestGetBookingStatsQuery:
         assert result["start_date"] is None
         assert result["end_date"] == end
         assert result["occupancy_pct"] is None
+        assert result["no_booking_days_pct"] is None
 
-    def test_occupancy_pct_uses_only_nights_overlapping_requested_range(self, mock_repo):
+    def test_no_booking_days_pct_is_zero_when_every_day_has_bookings(self, mock_repo):
         booking = make_booking(
             check_in=date(2026, 6, 1),
             check_out=date(2026, 6, 20),
@@ -178,8 +181,9 @@ class TestGetBookingStatsQuery:
         )
 
         assert result["occupancy_pct"] == 100.0
+        assert result["no_booking_days_pct"] == 0.0
 
-    def test_occupancy_pct_ignores_cancelled_overlapping_bookings(self, mock_repo):
+    def test_no_booking_days_pct_ignores_cancelled_overlapping_bookings(self, mock_repo):
         booking = make_booking(
             status="Cancelled",
             check_in=date(2026, 6, 1),
@@ -193,6 +197,52 @@ class TestGetBookingStatsQuery:
         )
 
         assert result["occupancy_pct"] == 0.0
+        assert result["no_booking_days_pct"] == 100.0
+
+    def test_occupancy_pct_uses_unique_booked_days_in_requested_range(self, mock_repo):
+        first = make_booking(
+            record_id=1,
+            apartment_id="R101",
+            check_in=date(2026, 6, 1),
+            check_out=date(2026, 6, 4),
+        )
+        second = make_booking(
+            record_id=2,
+            apartment_id="R202",
+            check_in=date(2026, 6, 2),
+            check_out=date(2026, 6, 4),
+        )
+        mock_repo.list.return_value = [first, second]
+
+        result = GetBookingStatsQuery(mock_repo, set()).execute(
+            start_date=date(2026, 6, 1),
+            end_date=date(2026, 6, 6),
+        )
+
+        assert result["occupancy_pct"] == 60.0
+        assert result["no_booking_days_pct"] == 40.0
+
+    def test_no_booking_days_pct_counts_unique_booked_days_only(self, mock_repo):
+        first = make_booking(
+            record_id=1,
+            apartment_id="R101",
+            check_in=date(2026, 6, 1),
+            check_out=date(2026, 6, 4),
+        )
+        second = make_booking(
+            record_id=2,
+            apartment_id="R202",
+            check_in=date(2026, 6, 2),
+            check_out=date(2026, 6, 4),
+        )
+        mock_repo.list.return_value = [first, second]
+
+        result = GetBookingStatsQuery(mock_repo, set()).execute(
+            start_date=date(2026, 6, 1),
+            end_date=date(2026, 6, 6),
+        )
+
+        assert result["no_booking_days_pct"] == 40.0
 
     def test_stats_exclude_cancelled_bookings_from_financial_and_night_totals(self, mock_repo):
         active = make_booking(
@@ -254,6 +304,7 @@ class TestGetBookingStatsQuery:
         assert result["start_date"] == start
         assert result["end_date"] == start + timedelta(days=5)
         assert result["occupancy_pct"] == 100.0
+        assert result["no_booking_days_pct"] == 0.0
 
 
 # ---------------------------------------------------------------------------

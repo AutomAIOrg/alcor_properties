@@ -260,6 +260,49 @@ class TestFindOverlappingActive:
 
         assert result is False
 
+    def test_can_exclude_current_booking_from_overlap_search(self, sqlite_session):
+        orm = _insert_orm(
+            sqlite_session,
+            apartment_id="R180",
+            check_in=date(2026, 6, 1),
+            check_out=date(2026, 6, 5),
+            nights=4,
+        )
+
+        result = SQLAlchemyBookingRepository(sqlite_session).find_overlapping_active(
+            apartment_id="R180",
+            check_in=date(2026, 6, 1),
+            check_out=date(2026, 6, 5),
+            exclude_record_id=orm.record_id,
+        )
+
+        assert result is False
+
+    def test_exclude_current_booking_still_detects_other_overlaps(self, sqlite_session):
+        current = _insert_orm(
+            sqlite_session,
+            apartment_id="R180",
+            check_in=date(2026, 6, 1),
+            check_out=date(2026, 6, 5),
+            nights=4,
+        )
+        _insert_orm(
+            sqlite_session,
+            apartment_id="R180",
+            check_in=date(2026, 6, 4),
+            check_out=date(2026, 6, 8),
+            nights=4,
+        )
+
+        result = SQLAlchemyBookingRepository(sqlite_session).find_overlapping_active(
+            apartment_id="R180",
+            check_in=date(2026, 6, 3),
+            check_out=date(2026, 6, 6),
+            exclude_record_id=current.record_id,
+        )
+
+        assert result is True
+
 
 # ---------------------------------------------------------------------------
 # create
