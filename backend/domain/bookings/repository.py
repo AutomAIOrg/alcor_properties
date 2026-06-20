@@ -71,7 +71,13 @@ class IBookingRepository(ABC):
         pass
 
     @abstractmethod
-    def find_overlapping_active(self, apartment_id: str, check_in: date, check_out: date) -> bool:
+    def find_overlapping_active(
+        self,
+        apartment_id: str,
+        check_in: date,
+        check_out: date,
+        exclude_record_id: int | None = None,
+    ) -> bool:
         """
         Busca si hay alguna reserva activa que bloquea el apartamento en el rango de fechas proporcionado.
         """

@@ -51,6 +51,7 @@ class BookingStatsResponse(BaseModel):
     start_date: date | None = None
     end_date: date | None = None
     occupancy_pct: float | None = None
+    no_booking_days_pct: float | None = None
 
 
 class BookingCreateRequest(BaseModel):

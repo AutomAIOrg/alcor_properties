@@ -13,6 +13,10 @@ from domain.exceptions import BookingNotFound
 from infrastructure.models.booking import BookingORM
 
 
+def _escape_like(value: str) -> str:
+    return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+
 class SQLAlchemyBookingRepository(IBookingRepository):
     """
     Implementación del repositorio de reservas respaldado por una sesión de SQLAlchemy
@@ -61,16 +65,22 @@ class SQLAlchemyBookingRepository(IBookingRepository):
             query = query.filter(BookingORM.apartment_id == apartment_id)
 
         if status is not None:
-            query = query.filter(func.lower(BookingORM.status) == status.lower())
+            statuses = [s.strip().lower() for s in status.split(",") if s.strip()]
+            if len(statuses) == 1:
+                query = query.filter(func.lower(BookingORM.status) == statuses[0])
+            elif statuses:
+                query = query.filter(func.lower(BookingORM.status).in_(statuses))
 
         if guest_name is not None:
+            escaped = _escape_like(guest_name.strip().lower())
             query = query.filter(
-                func.lower(BookingORM.guest_name).like(f"%{guest_name.strip().lower()}%")
+                func.lower(BookingORM.guest_name).like(f"%{escaped}%", escape="\\")
             )
 
         if booking_number is not None:
+            escaped = _escape_like(booking_number.strip().lower())
             query = query.filter(
-                func.lower(BookingORM.booking_number).like(f"%{booking_number.strip().lower()}%")
+                func.lower(BookingORM.booking_number).like(f"%{escaped}%", escape="\\")
             )
 
         query = query.order_by(BookingORM.check_in)
@@ -120,8 +130,14 @@ class SQLAlchemyBookingRepository(IBookingRepository):
         self._db.delete(orm)
         self._db.commit()
 
-    def find_overlapping_active(self, apartment_id: str, check_in: date, check_out: date) -> bool:
-        return (
+    def find_overlapping_active(
+        self,
+        apartment_id: str,
+        check_in: date,
+        check_out: date,
+        exclude_record_id: int | None = None,
+    ) -> bool:
+        query = (
             self._db.query(BookingORM)
             .filter(
                 BookingORM.apartment_id == apartment_id,
@@ -132,9 +148,13 @@ class SQLAlchemyBookingRepository(IBookingRepository):
                     func.lower(BookingORM.status).notin_(NON_BLOCKING_STATUSES),
                 ),
             )
-            .first()
-            is not None
+            .with_for_update()
         )
+
+        if exclude_record_id is not None:
+            query = query.filter(BookingORM.record_id != exclude_record_id)
+
+        return query.first() is not None
 
     # ------------------------------------------------------------------ #
     # Helpers privados de conversión                                   #
