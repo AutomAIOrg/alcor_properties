@@ -5,7 +5,7 @@ Configuración de ajustes para la aplicación backend.
 import os
 from pathlib import Path
 
-from pydantic import Field, field_validator, model_validator
+from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -59,13 +59,6 @@ class Settings(BaseSettings):
     # Contraseña por defecto para nuevos usuarios
     DEFAULT_PASSWORD: str = Field(...)
 
-    @field_validator("JWT_SECRET_KEY")
-    @classmethod
-    def _validate_jwt_secret(cls, v: str) -> str:
-        if len(v) < 32:
-            raise ValueError("JWT_SECRET_KEY debe tener al menos 32 caracteres.")
-        return v
-
     @model_validator(mode="after")
     def _resolve_db_aliases(self) -> "Settings":
         """Utiliza variables MYSQL_* cuando las variables canónicas DB_* no están presentes."""
@@ -79,6 +72,10 @@ class Settings(BaseSettings):
             self.DB_NAME = self.MYSQL_DATABASE
         if self.MYSQL_PORT and self.DB_PORT == 3306:
             self.DB_PORT = int(self.MYSQL_PORT)
+
+        if not self.DEBUG and len(self.JWT_SECRET_KEY) < 32:
+            raise ValueError("JWT_SECRET_KEY debe tener al menos 32 caracteres.")
+
         return self
 
 
