@@ -10,6 +10,9 @@ from domain.bookings.repository import IBookingRepository
 
 _CLEANING_OPERATIONAL_WEEKS = 4
 _CLEANING_BOOKING_LOOKBACK_DAYS = 28
+# Margen hacia delante para detectar la siguiente reserva (y así calcular available_until)
+# aunque su check-in caiga después del rango operativo.
+_CLEANING_BOOKING_LOOKAHEAD_DAYS = 90
 
 
 def _cleaning_operational_range(reference_date: date | None = None) -> tuple[date, date]:
@@ -270,7 +273,7 @@ class GetCleaningOpportunitiesUseCase:
         range_start, range_end = _cleaning_operational_range(reference_date)
         bookings = self._repo.list(
             start_date=range_start - timedelta(days=_CLEANING_BOOKING_LOOKBACK_DAYS),
-            end_date=range_end,
+            end_date=range_end + timedelta(days=_CLEANING_BOOKING_LOOKAHEAD_DAYS),
         )
         opportunities = _build_cleaning_opportunities(bookings)
         return [

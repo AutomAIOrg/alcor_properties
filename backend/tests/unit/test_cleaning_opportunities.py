@@ -235,7 +235,7 @@ class TestGetCleaningOpportunitiesUseCase:
         assert use_case.execute(reference_date=reference_date) == []
         mock_repo.list.assert_called_once_with(
             start_date=date(2026, 5, 18),
-            end_date=date(2026, 7, 12),
+            end_date=date(2026, 10, 10),
         )
 
     def test_excludes_windows_outside_operational_range(self, mock_repo):
@@ -262,3 +262,39 @@ class TestGetCleaningOpportunitiesUseCase:
         use_case = GetCleaningOpportunitiesUseCase(mock_repo)
 
         assert use_case.execute(reference_date=date(2026, 6, 18)) == []
+
+    def test_sets_available_until_when_next_booking_is_beyond_operational_range(self):
+        """La ventana dentro del rango debe conocer su siguiente check-in aunque caiga
+        después de range_end (gracias al lookahead del fetch)."""
+
+        class _FilteringRepo:
+            """Repo falso con la misma semántica de solapamiento que el real."""
+
+            def __init__(self, bookings):
+                self._bookings = bookings
+
+            def list(self, start_date=None, end_date=None, **_):
+                return [
+                    b
+                    for b in self._bookings
+                    if b.check_in <= end_date and b.check_out >= start_date
+                ]
+
+        source = make_booking(
+            record_id=1,
+            apartment_id="R180",
+            check_in=date(2026, 7, 5),
+            check_out=date(2026, 7, 10),  # checkout dentro del rango operativo
+        )
+        next_booking = make_booking(
+            record_id=2,
+            apartment_id="R180",
+            check_in=date(2026, 7, 20),  # check-in pasado range_end (2026-07-12)
+            check_out=date(2026, 7, 25),
+        )
+        use_case = GetCleaningOpportunitiesUseCase(_FilteringRepo([source, next_booking]))
+
+        opportunities = use_case.execute(reference_date=date(2026, 6, 18))
+
+        window = next(o for o in opportunities if o.source_booking_record_id == 1)
+        assert window.available_until == date(2026, 7, 20)
