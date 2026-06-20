@@ -1,5 +1,114 @@
 @use '../search-common' as *;
 
+.filter-dropdown {
+  position: relative;
+  width: 100%;
+
+  .filter-trigger {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.4rem;
+    width: 100%;
+
+    /* 1. IGUALAR ALTURA Y RELLENO (PADDING) */
+    /* Si notas que sigue variando, cambia este padding o añade un height fijo (ej: height: 38px o 2.4rem) */
+    padding: 0.4rem 0.65rem;
+
+    /* 2. IGUALAR ESTILO DE BORDE */
+    /* Cambiado de #d0d5dd a uno más claro y fino para imitar a tus inputs nativos */
+    border: 1px solid #e2e8f0;
+    border-radius: 6px; /* Mantén el mismo radio que tus inputs */
+
+    background: #fff;
+    font-size: 0.82rem;
+    cursor: pointer;
+    color: #344054;
+    transition: border-color 0.15s;
+
+    /* 3. EVITAR QUE EL TEXTO DESPLACE LA ALTURA */
+    line-height: 1.5;
+    box-sizing: border-box; /* Asegura que el padding no sume tamaño extra */
+  }
+
+  .filter-trigger:hover {
+    border-color: #2563eb;
+  }
+
+  .filter-trigger .badge {
+    background: #2563eb;
+    color: #fff;
+    border-radius: 10px;
+    padding: 0 5px;
+    font-size: 0.7rem;
+    line-height: 1.4;
+  }
+
+  .arrow {
+    font-size: 0.7rem;
+    color: #667085;
+  }
+
+  &.open .filter-trigger {
+    border-color: #2563eb;
+  }
+
+  .filter-panel {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    z-index: 100;
+    background: #fff;
+    border: 1px solid #d0d5dd;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    padding: 0.4rem 0;
+    min-width: 160px;
+    max-width: 240px;
+    width: max-content;
+    box-sizing: border-box;
+    overflow-y: auto;
+    display: flex; /* Solución: Asegura comportamiento de columna rígido */
+    flex-direction: column;
+  }
+
+  .filter-option {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem; /* Aumentado ligeramente para mejor separación visual */
+    padding: 0.4rem 0.8rem;
+    font-size: 0.82rem;
+    font-weight: 400;
+    color: #344054;
+    cursor: pointer;
+    min-width: 0;
+    width: 100%; /* Ocupa todo el ancho disponible */
+    box-sizing: border-box;
+    text-transform: none;
+    letter-spacing: normal;
+    user-select: none; /* Evita que se seleccione el texto al hacer doble clic rápido */
+
+    /* Solución: Forzar el checkbox dentro de la opción a mantener sus dimensiones */
+    input[type='checkbox'] {
+      accent-color: #2563eb;
+      cursor: pointer;
+      margin: 0; /* Resetea los márgenes nativos del navegador que causan el desfase */
+      flex-shrink: 0; /* Evita que el checkbox se encoja si el texto es muy largo */
+      width: 14px; /* Tamaño consistente */
+      height: 14px;
+    }
+
+    /* Solución complementaria si usas la etiqueta span propuesta en el paso anterior */
+    .option-text {
+      line-height: 1; /* Alineación matemática perfecta respecto al checkbox */
+    }
+  }
+
+  .filter-option:hover {
+    background: #f9fafb;
+  }
+}
+
 .guest-name {
   font-weight: 600;
   color: #101828;

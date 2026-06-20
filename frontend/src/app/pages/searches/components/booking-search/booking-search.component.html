@@ -16,7 +16,7 @@
           list="apt-ids-list-bkg"
           placeholder="R180..."
           [value]="bkg.apartmentId()"
-          (input)="bkg.apartmentId.set(inputValue($event))"
+          (change)="onFilterChange('apartmentId', $event)"
         />
         <datalist id="apt-ids-list-bkg">
           @for (id of allApartmentIds; track id) {
@@ -26,11 +26,30 @@
       </div>
       <div class="field">
         <label>Estado</label>
-        <select [value]="bkg.status()" (change)="bkg.status.set(selectValue($event))">
-          @for (status of STATUS_OPTIONS; track status) {
-            <option [value]="status">{{ status || 'Todos' }}</option>
+        <div class="filter-dropdown" [class.open]="statusDropdownOpen()" #statusDropdown>
+          <button type="button" class="filter-trigger" (click)="toggleStatusDropdown()">
+            <span>{{ statusLabel() }}</span>
+            @if (bkg.statuses().length > 0 && bkg.statuses().length < STATUS_OPTIONS.length) {
+              <span class="badge">{{ bkg.statuses().length }}</span>
+            }
+            <span class="arrow">&#x25BC;</span>
+          </button>
+          @if (statusDropdownOpen()) {
+            <div class="filter-panel">
+              @for (status of STATUS_OPTIONS; track status) {
+                <label class="filter-option" (click)="$event.stopPropagation()">
+                  <input
+                    type="checkbox"
+                    [checked]="isStatusSelected(status)"
+                    (change)="toggleStatus(status)"
+                  />
+                  <!-- Solución: Envolver el texto en un span para su control en CSS -->
+                  <span class="option-text">{{ status }}</span>
+                </label>
+              }
+            </div>
           }
-        </select>
+        </div>
       </div>
       <div class="field">
         <label>Hu&eacute;sped</label>
@@ -38,7 +57,7 @@
           type="text"
           placeholder="Nombre del hu&eacute;sped..."
           [value]="bkg.guestName()"
-          (input)="bkg.guestName.set(inputValue($event))"
+          (change)="onFilterChange('guestName', $event)"
         />
       </div>
       <div class="field">
@@ -47,7 +66,7 @@
           type="text"
           placeholder="Referencia..."
           [value]="bkg.bookingNumber()"
-          (input)="bkg.bookingNumber.set(inputValue($event))"
+          (change)="onFilterChange('bookingNumber', $event)"
         />
       </div>
     </div>

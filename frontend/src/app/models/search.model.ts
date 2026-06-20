@@ -27,6 +27,7 @@ export interface BookingStatsResponse {
   start_date: string | null;
   end_date: string | null;
   occupancy_pct: number | null;
+  no_booking_days_pct: number | null;
 }
 
 export interface ApartmentStatsRange {

@@ -16,6 +16,7 @@ export type SearchStatsGridData = {
   total_charges: number | null;
   total_electric_allowance: number | null;
   occupancy_pct: number | null;
+  no_booking_days_pct?: number | null;
   status_breakdown: Record<string, number>;
 };
 
@@ -28,7 +29,7 @@ export type SearchStatsGridData = {
 })
 export class SearchStatsGridComponent {
   @Input({ required: true }) stats!: SearchStatsGridData;
-  @Input() nightsLabel = 'Noches totales';
+  @Input() nightsLabel = 'Noches reserva';
 
   pendingBookings(): number {
     return Object.entries(this.stats.status_breakdown).reduce((total, [status, count]) => {

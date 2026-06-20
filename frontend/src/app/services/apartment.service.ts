@@ -61,7 +61,7 @@ export class ApartmentService {
   }
 
   getApartmentStats(
-    bookingId: string,
+    apartmentId: string,
     startDate?: string,
     endDate?: string
   ): Observable<ApartmentStatsResponse> {
@@ -70,7 +70,7 @@ export class ApartmentService {
     if (endDate) params = params.set('end_date', endDate);
 
     return this.http.get<ApartmentStatsResponse>(
-      `${this.API}/stats/${encodeURIComponent(bookingId)}`,
+      `${this.API}/stats/${encodeURIComponent(apartmentId)}`,
       { params }
     );
   }

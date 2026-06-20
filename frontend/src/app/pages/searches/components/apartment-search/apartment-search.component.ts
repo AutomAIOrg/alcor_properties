@@ -87,7 +87,7 @@ export class ApartmentSearchComponent {
 
     const bookingFilters: BookingSearchFilters = { apartment_id: id };
     if (this.apt.from()) bookingFilters.start_date = this.apt.from();
-    if (this.apt.to()) bookingFilters.end_date = this.apt.to();
+    if (this.apt.to()) bookingFilters.end_date = this.addOneDay(this.apt.to());
 
     this.bookingService.searchBookings(bookingFilters).subscribe({
       next: bookings => {
@@ -104,26 +104,34 @@ export class ApartmentSearchComponent {
       },
     });
 
-    this.apartmentService
-      .getApartmentStats(id, this.apt.from() || undefined, this.apt.to() || undefined)
-      .subscribe({
-        next: stats => {
-          if (requestId !== this.apartmentSearchRequestId) return;
+    const statsEnd = this.apt.to() ? this.addOneDay(this.apt.to()) : undefined;
+    this.apartmentService.getApartmentStats(id, this.apt.from() || undefined, statsEnd).subscribe({
+      next: stats => {
+        if (requestId !== this.apartmentSearchRequestId) return;
 
-          this.apt.stats.set(this.sortStatsByNewestYear(stats));
-          finishRequest();
-        },
-        error: err => {
-          if (requestId !== this.apartmentSearchRequestId) return;
+        this.apt.stats.set(
+          this.sortStatsByNewestYear({
+            ...stats,
+            filtered_range: {
+              ...stats.filtered_range,
+              start_date: this.apt.from() || null,
+              end_date: this.apt.to() || null,
+            },
+          })
+        );
+        finishRequest();
+      },
+      error: err => {
+        if (requestId !== this.apartmentSearchRequestId) return;
 
-          const msg =
-            err?.status === 404
-              ? `El piso '${id}' no existe en la base de datos.`
-              : 'No se pudieron cargar las estadísticas del piso.';
-          this.apt.error.set(msg);
-          finishRequest();
-        },
-      });
+        const msg =
+          err?.status === 404
+            ? `El piso '${id}' no existe en la base de datos.`
+            : 'No se pudieron cargar las estadísticas del piso.';
+        this.apt.error.set(msg);
+        finishRequest();
+      },
+    });
   }
 
   clearApartmentDetail(): void {
@@ -217,6 +225,13 @@ export class ApartmentSearchComponent {
 
   private hasActiveSearch(): boolean {
     return !!this.apt.stats() || this.apt.bookings().length > 0;
+  }
+
+  private addOneDay(isoDate: string): string {
+    const [year, month, day] = isoDate.split('-').map(Number);
+    const date = new Date(Date.UTC(year, month - 1, day));
+    date.setUTCDate(date.getUTCDate() + 1);
+    return date.toISOString().slice(0, 10);
   }
 
   private sortBookingsByNewestCheckIn(bookings: Booking[]): Booking[] {

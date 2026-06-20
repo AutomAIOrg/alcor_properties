@@ -53,6 +53,7 @@ function makeStats(overrides: Partial<BookingStatsResponse> = {}): BookingStatsR
     start_date: '2025-07-01',
     end_date: '2025-07-05',
     occupancy_pct: null,
+    no_booking_days_pct: null,
     ...overrides,
   };
 }
@@ -89,7 +90,7 @@ describe('BookingSearchComponent', () => {
     component.bkg.from.set('2025-07-01');
     component.bkg.to.set('2025-07-05');
     component.bkg.apartmentId.set('R101');
-    component.bkg.status.set('Confirmed');
+    component.bkg.statuses.set(['Confirmed']);
     component.bkg.guestName.set('Laura');
     component.bkg.bookingNumber.set('BK-1');
 
@@ -97,7 +98,7 @@ describe('BookingSearchComponent', () => {
 
     const expectedFilters = {
       start_date: '2025-07-01',
-      end_date: '2025-07-05',
+      end_date: '2025-07-06',
       apartment_id: 'R101',
       status: 'Confirmed',
       guest_name: 'Laura',
@@ -117,11 +118,11 @@ describe('BookingSearchComponent', () => {
     expect(component.bkg.to()).toBe('2025-07-05');
     expect(bookingServiceSpy.searchBookings).toHaveBeenCalledWith({
       start_date: '2025-07-01',
-      end_date: '2025-07-05',
+      end_date: '2025-07-06',
     });
     expect(bookingServiceSpy.getBookingStats).toHaveBeenCalledWith({
       start_date: '2025-07-01',
-      end_date: '2025-07-05',
+      end_date: '2025-07-06',
     });
   });
 
@@ -134,26 +135,51 @@ describe('BookingSearchComponent', () => {
     expect(component.bkg.to()).toBe(`${year}-12-31`);
     expect(bookingServiceSpy.searchBookings).toHaveBeenCalledWith({
       start_date: `${year}-01-01`,
-      end_date: `${year}-12-31`,
+      end_date: `${year + 1}-01-01`,
     });
     expect(bookingServiceSpy.getBookingStats).toHaveBeenCalledWith({
       start_date: `${year}-01-01`,
-      end_date: `${year}-12-31`,
+      end_date: `${year + 1}-01-01`,
     });
   });
 
-  it('oculta resultados con check-in anterior a la fecha desde seleccionada', () => {
-    bookingServiceSpy.searchBookings.mockReturnValue(
-      of([
-        makeBooking({ record_id: 1, check_in: '2025-09-02', check_out: '2025-09-08' }),
-        makeBooking({ record_id: 2, check_in: '2026-09-02', check_out: '2026-09-08' }),
-      ])
-    );
+  it('relanza la búsqueda automáticamente cuando cambia el filtro de ID de piso tras una búsqueda previa', () => {
+    const bookings = [makeBooking({ record_id: 5, apartment_id: 'R101' })];
+    const stats = makeStats({ total_bookings: 1 });
+    component.bkg.results.set(bookings);
+    component.bkg.stats.set(stats);
+
+    component.onFilterChange('apartmentId', { target: { value: 'R202' } } as unknown as Event);
+
+    expect(component.bkg.apartmentId()).toBe('R202');
+    expect(bookingServiceSpy.searchBookings).toHaveBeenCalled();
+    expect(bookingServiceSpy.getBookingStats).toHaveBeenCalled();
+  });
+
+  it('relanza la búsqueda automáticamente cuando cambia cualquier filtro tras una búsqueda previa', () => {
+    const bookings = [makeBooking({ record_id: 6, apartment_id: 'R101' })];
+    const stats = makeStats({ total_bookings: 1 });
+    component.bkg.results.set(bookings);
+    component.bkg.stats.set(stats);
+
+    component.onFilterChange('guestName', { target: { value: 'Pedro' } } as unknown as Event);
+
+    expect(component.bkg.guestName()).toBe('Pedro');
+    expect(bookingServiceSpy.searchBookings).toHaveBeenCalled();
+    expect(bookingServiceSpy.getBookingStats).toHaveBeenCalled();
+  });
+
+  it('muestra las reservas solapadas devueltas por el backend aunque el check-in sea anterior', () => {
+    const bookings = [
+      makeBooking({ record_id: 1, check_in: '2026-05-28', check_out: '2026-06-03' }),
+      makeBooking({ record_id: 2, check_in: '2026-09-02', check_out: '2026-09-08' }),
+    ];
+    bookingServiceSpy.searchBookings.mockReturnValue(of(bookings));
     component.bkg.from.set('2026-06-01');
 
     component.searchBookings();
 
-    expect(component.bkg.results().map(booking => booking.record_id)).toEqual([2]);
+    expect(component.bkg.results()).toEqual(bookings);
   });
 
   it('muestra reservas aunque falle la carga de estadisticas', () => {
@@ -177,7 +203,7 @@ describe('BookingSearchComponent', () => {
     component.searchBookings();
 
     expect(component.bkg.results()).toEqual([]);
-    expect(component.bkg.stats()).toEqual(stats);
+    expect(component.bkg.stats()).toEqual({ ...stats, start_date: null, end_date: null });
     expect(component.bkg.error()).toBe('No se pudieron cargar las reservas.');
     expect(component.bkg.loading()).toBe(false);
   });
@@ -219,7 +245,7 @@ describe('BookingSearchComponent', () => {
     component.searchBookings();
 
     expect(component.bkg.results()).toEqual([]);
-    expect(component.bkg.stats()).toEqual(makeStats());
+    expect(component.bkg.stats()).toEqual(makeStats({ start_date: null, end_date: null }));
     expect(component.bkg.error()).toBe('No se pudieron cargar las reservas.');
     expect(component.bkg.loading()).toBe(false);
   });
@@ -228,7 +254,7 @@ describe('BookingSearchComponent', () => {
     component.bkg.from.set('2025-07-01');
     component.bkg.to.set('2025-07-05');
     component.bkg.apartmentId.set('R101');
-    component.bkg.status.set('Confirmed');
+    component.bkg.statuses.set(['Confirmed']);
     component.bkg.guestName.set('Laura');
     component.bkg.bookingNumber.set('BK-1');
     component.bkg.results.set([makeBooking()]);
@@ -240,7 +266,7 @@ describe('BookingSearchComponent', () => {
     expect(component.bkg.from()).toBe('');
     expect(component.bkg.to()).toBe('');
     expect(component.bkg.apartmentId()).toBe('');
-    expect(component.bkg.status()).toBe('');
+    expect(component.bkg.statuses()).toEqual([]);
     expect(component.bkg.guestName()).toBe('');
     expect(component.bkg.bookingNumber()).toBe('');
     expect(component.bkg.results()).toEqual([]);

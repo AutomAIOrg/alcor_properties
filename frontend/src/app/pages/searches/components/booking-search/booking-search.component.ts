@@ -1,5 +1,5 @@
 import { CurrencyPipe, DatePipe } from '@angular/common';
-import { Component, Input, inject, output, signal } from '@angular/core';
+import { Component, ElementRef, Input, inject, output, signal, viewChild } from '@angular/core';
 
 import { BASE_STATUSES, Booking } from '../../../../models/booking.model';
 import { BookingSearchFilters, BookingStatsResponse } from '../../../../models/search.model';
@@ -24,6 +24,9 @@ import { exportBookingStatsToExcel } from '../../../../shared/utils/stats-excel-
   ],
   templateUrl: './booking-search.component.html',
   styleUrl: './booking-search.component.scss',
+  host: {
+    '(document:click)': 'onDocumentClick($event)',
+  },
 })
 export class BookingSearchComponent {
   private bookingService = inject(BookingService);
@@ -33,13 +36,16 @@ export class BookingSearchComponent {
 
   bookingSelected = output<Booking>();
 
-  readonly STATUS_OPTIONS = ['', ...BASE_STATUSES] as const;
+  readonly STATUS_OPTIONS = [...BASE_STATUSES] as const;
+
+  statusDropdownOpen = signal(false);
+  private statusDropdownRef = viewChild<ElementRef>('statusDropdown');
 
   bkg = {
     from: signal(''),
     to: signal(''),
     apartmentId: signal(''),
-    status: signal(''),
+    statuses: signal<string[]>([]),
     guestName: signal(''),
     bookingNumber: signal(''),
     loading: signal(false),
@@ -65,9 +71,10 @@ export class BookingSearchComponent {
 
     const filters: BookingSearchFilters = {};
     if (this.bkg.from()) filters.start_date = this.bkg.from();
-    if (this.bkg.to()) filters.end_date = this.bkg.to();
+    if (this.bkg.to()) filters.end_date = this.addOneDay(this.bkg.to());
     if (this.bkg.apartmentId()) filters.apartment_id = this.bkg.apartmentId();
-    if (this.bkg.status()) filters.status = this.bkg.status();
+    const statuses = this.bkg.statuses();
+    if (statuses.length > 0) filters.status = statuses.join(',');
     if (this.bkg.guestName()) filters.guest_name = this.bkg.guestName();
     if (this.bkg.bookingNumber()) filters.booking_number = this.bkg.bookingNumber();
 
@@ -75,7 +82,7 @@ export class BookingSearchComponent {
       next: bookings => {
         if (requestId !== this.bookingSearchRequestId) return;
 
-        this.bkg.results.set(this.filterBookingsByCheckIn(bookings));
+        this.bkg.results.set(bookings);
         finishRequest();
       },
       error: () => {
@@ -90,7 +97,11 @@ export class BookingSearchComponent {
       next: stats => {
         if (requestId !== this.bookingSearchRequestId) return;
 
-        this.bkg.stats.set(stats);
+        this.bkg.stats.set({
+          ...stats,
+          start_date: this.bkg.from() || null,
+          end_date: this.bkg.to() || null,
+        });
         finishRequest();
       },
       error: () => {
@@ -107,7 +118,7 @@ export class BookingSearchComponent {
     this.bkg.from.set('');
     this.bkg.to.set('');
     this.bkg.apartmentId.set('');
-    this.bkg.status.set('');
+    this.bkg.statuses.set([]);
     this.bkg.guestName.set('');
     this.bkg.bookingNumber.set('');
     this.bkg.loading.set(false);
@@ -124,6 +135,73 @@ export class BookingSearchComponent {
   completeBookingRange(range: DateRangeValue): void {
     this.setBookingRange(range);
     this.searchBookings();
+  }
+
+  onFilterChange(field: 'apartmentId' | 'guestName' | 'bookingNumber', event: Event): void {
+    const value = this.inputValue(event);
+
+    switch (field) {
+      case 'apartmentId':
+        this.bkg.apartmentId.set(value);
+        break;
+      case 'guestName':
+        this.bkg.guestName.set(value);
+        break;
+      case 'bookingNumber':
+        this.bkg.bookingNumber.set(value);
+        break;
+    }
+
+    this.searchBookingsIfActive();
+  }
+
+  toggleStatusDropdown(): void {
+    this.statusDropdownOpen.update(open => !open);
+  }
+
+  isStatusSelected(status: string): boolean {
+    const selected = this.bkg.statuses();
+    return selected.length === 0 || selected.includes(status);
+  }
+
+  toggleStatus(status: string): void {
+    const current = this.bkg.statuses();
+
+    if (current.length === 0) {
+      this.bkg.statuses.set(this.STATUS_OPTIONS.filter(s => s !== status));
+    } else if (current.includes(status)) {
+      const next = current.filter(s => s !== status);
+      this.bkg.statuses.set(next.length === 0 ? [] : next);
+    } else {
+      const next = [...current, status];
+      this.bkg.statuses.set(next.length === this.STATUS_OPTIONS.length ? [] : next);
+    }
+
+    this.searchBookingsIfActive();
+  }
+
+  statusLabel(): string {
+    const selected = this.bkg.statuses();
+    if (selected.length === 0) return 'Todos';
+    if (selected.length === 1) return selected[0];
+    return `${selected.length} estados`;
+  }
+
+  onDocumentClick(event: Event): void {
+    const ref = this.statusDropdownRef();
+    if (this.statusDropdownOpen() && ref && !ref.nativeElement.contains(event.target)) {
+      this.statusDropdownOpen.set(false);
+    }
+  }
+
+  private searchBookingsIfActive(): void {
+    if (this.isSearchActive()) {
+      this.searchBookings();
+    }
+  }
+
+  private isSearchActive(): boolean {
+    return this.bkg.stats() !== null || this.bkg.results().length > 0;
   }
 
   searchCurrentYearBookings(): void {
@@ -168,14 +246,10 @@ export class BookingSearchComponent {
     return (event.target as HTMLSelectElement).value;
   }
 
-  private filterBookingsByCheckIn(bookings: Booking[]): Booking[] {
-    const from = this.bkg.from();
-    const to = this.bkg.to();
-
-    return bookings.filter(booking => {
-      if (from && booking.check_in < from) return false;
-      if (to && booking.check_in > to) return false;
-      return true;
-    });
+  private addOneDay(isoDate: string): string {
+    const [year, month, day] = isoDate.split('-').map(Number);
+    const date = new Date(Date.UTC(year, month - 1, day));
+    date.setUTCDate(date.getUTCDate() + 1);
+    return date.toISOString().slice(0, 10);
   }
 }
