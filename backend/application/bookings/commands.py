@@ -5,8 +5,10 @@ Casos de uso (comandos) para el dominio de Reservas.
 from dataclasses import dataclass
 from datetime import date
 
+from application.bookings.helpers import apply_electric_allowance
 from domain.bookings.entity import Booking
 from domain.bookings.repository import IBookingRepository
+from domain.exceptions import BookingConflict
 
 
 class _UnsetType:
@@ -38,15 +40,6 @@ class BookingUpdateData:
         return {k: v for k, v in vars(self).items() if v is not _UNSET}
 
 
-def _apply_electric_allowance(booking: Booking, electric_ids: set[str]) -> Booking:
-    """Establece electric_allowance en una reserva según los IDs configurados."""
-    if booking.apartment_id.strip() in electric_ids:
-        booking.electric_allowance = booking.nights * 4.0
-    else:
-        booking.electric_allowance = None
-    return booking
-
-
 class CreateBookingUseCase:
     """Persiste una nueva reserva y la devuelve con la bonificación eléctrica aplicada."""
 
@@ -66,15 +59,13 @@ class CreateBookingUseCase:
             check_out=booking.check_out,
         )
         if overlapping:
-            from domain.exceptions import BookingConflict
-
             raise BookingConflict(
                 check_in=str(booking.check_in),
                 check_out=str(booking.check_out),
             )
 
         created = self._repo.create(booking)
-        return _apply_electric_allowance(created, self._electric_ids)
+        return apply_electric_allowance(created, self._electric_ids)
 
 
 class UpdateBookingUseCase:
@@ -96,8 +87,21 @@ class UpdateBookingUseCase:
         # Revalida usando model_validate para que el validador de nights se aplique si cambian las fechas.
         updated = Booking.model_validate({**existing.model_dump(), **updates})
 
+        if not updated.is_cancelled():
+            overlapping = self._repo.find_overlapping_active(
+                apartment_id=updated.apartment_id,
+                check_in=updated.check_in,
+                check_out=updated.check_out,
+                exclude_record_id=updated.record_id,
+            )
+            if overlapping:
+                raise BookingConflict(
+                    check_in=str(updated.check_in),
+                    check_out=str(updated.check_out),
+                )
+
         saved = self._repo.update(updated)
-        return _apply_electric_allowance(saved, self._electric_ids)
+        return apply_electric_allowance(saved, self._electric_ids)
 
 
 class DeleteBookingUseCase:

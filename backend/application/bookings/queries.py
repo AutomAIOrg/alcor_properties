@@ -5,109 +5,14 @@ Casos de uso de lectura (consultas) para el dominio de Reservas.
 from datetime import date, timedelta
 from typing import Any
 
+from application.bookings.helpers import (
+    apply_all,
+    apply_electric_allowance,
+    compute_stats,
+    count_days_without_bookings,
+)
 from domain.bookings.entity import Booking
 from domain.bookings.repository import IBookingRepository
-
-
-def _apply_electric_allowance(booking: Booking, electric_ids: set[str]) -> Booking:
-    """Establece electric_allowance en una reserva según los IDs configurados."""
-    if booking.apartment_id.strip() in electric_ids:
-        booking.electric_allowance = booking.nights * 4.0
-    else:
-        booking.electric_allowance = None
-    return booking
-
-
-def _apply_all(bookings: list[Booking], electric_ids: set[str]) -> list[Booking]:
-    return [_apply_electric_allowance(b, electric_ids) for b in bookings]
-
-
-def _booking_overlap_nights(booking: Booking, start_date: date, end_date: date) -> int:
-    return max((min(booking.check_out, end_date) - max(booking.check_in, start_date)).days, 0)
-
-
-def _sum_occupied_nights(
-    bookings: list[Booking],
-    start_date: date,
-    end_date: date,
-) -> int:
-    """Suma solo las noches ocupadas dentro del rango semiabierto [start_date, end_date)."""
-    return sum(
-        _booking_overlap_nights(booking, start_date, end_date)
-        for booking in bookings
-        if not booking.is_cancelled()
-    )
-
-
-def _compute_stats(
-    bookings: list[Booking],
-    start_date: date | None = None,
-    end_date: date | None = None,
-    occupancy_pct: float | None = None,
-) -> dict:
-    """
-    Calcula estadísticas agregadas a partir de una lista de reservas.
-
-    Las métricas financieras y de noches excluyen reservas canceladas.
-    El parámetro occupancy_pct se calcula externamente y se inyecta aquí.
-    """
-    total = len(bookings)
-    cancelled = [b for b in bookings if b.status.lower() == "cancelled"]
-    active = [b for b in bookings if b.status.lower() != "cancelled"]
-
-    cancelled_count = len(cancelled)
-    active_count = len(active)
-    cancellation_rate = round(cancelled_count / total * 100, 2) if total > 0 else None
-
-    total_nights = sum(b.nights for b in active)
-    avg_nights = round(total_nights / active_count, 2) if active_count > 0 else None
-
-    total_persons = sum(b.persons for b in active)
-    avg_persons = round(total_persons / active_count, 2) if active_count > 0 else None
-
-    prices = [float(b.price) for b in active if b.price is not None]
-    total_revenue = round(sum(prices), 2) if prices else None
-    avg_rev_booking = (
-        round(total_revenue / active_count, 2)
-        if total_revenue is not None and active_count > 0
-        else None
-    )
-    avg_rev_night = (
-        round(total_revenue / total_nights, 2)
-        if total_revenue is not None and total_nights > 0
-        else None
-    )
-
-    charges = [float(b.charges) for b in active if b.charges is not None]
-    total_charges = round(sum(charges), 2) if charges else None
-
-    electric = [float(b.electric_allowance) for b in active if b.electric_allowance is not None]
-    total_electric = round(sum(electric), 2) if electric else None
-
-    status_breakdown: dict[str, int] = {}
-    for b in bookings:
-        key = b.status if b.status else "Unknown"
-        status_breakdown[key] = status_breakdown.get(key, 0) + 1
-
-    return {
-        "total_bookings": total,
-        "active_bookings": active_count,
-        "cancelled_bookings": cancelled_count,
-        "cancellation_rate": cancellation_rate,
-        "total_nights": total_nights,
-        "avg_nights_per_booking": avg_nights,
-        "total_persons": total_persons,
-        "avg_persons_per_booking": avg_persons,
-        "total_revenue": total_revenue,
-        "avg_revenue_per_booking": avg_rev_booking,
-        "avg_revenue_per_night": avg_rev_night,
-        "total_charges": total_charges,
-        "total_electric_allowance": total_electric,
-        "status_breakdown": status_breakdown,
-        "start_date": start_date,
-        "end_date": end_date,
-        "occupancy_pct": occupancy_pct,
-    }
 
 
 class ListBookingsQuery:
@@ -176,7 +81,7 @@ class ListBookingsQuery:
                 guest_name=guest_name,
                 booking_number=booking_number,
             )
-        return _apply_all(bookings, self._electric_ids)
+        return apply_all(bookings, self._electric_ids)
 
 
 class GetBookingStatsQuery:
@@ -246,17 +151,25 @@ class GetBookingStatsQuery:
                 booking_number=booking_number,
             )
 
-        bookings = _apply_all(bookings, self._electric_ids)
+        bookings = apply_all(bookings, self._electric_ids)
 
         occupancy_pct = None
+        no_booking_days_pct = None
         if range_start and range_end:
             range_days = (range_end - range_start).days
             if range_days > 0:
-                occupied_nights = _sum_occupied_nights(bookings, range_start, range_end)
-                occupancy_pct = round(occupied_nights / range_days * 100, 2)
+                days_without_bookings = count_days_without_bookings(
+                    bookings, range_start, range_end
+                )
+                no_booking_days_pct = round(days_without_bookings / range_days * 100, 2)
+                occupancy_pct = round((range_days - days_without_bookings) / range_days * 100, 2)
 
-        return _compute_stats(
-            bookings, start_date=range_start, end_date=range_end, occupancy_pct=occupancy_pct
+        return compute_stats(
+            bookings,
+            start_date=range_start,
+            end_date=range_end,
+            occupancy_pct=occupancy_pct,
+            no_booking_days_pct=no_booking_days_pct,
         )
 
 
@@ -273,7 +186,7 @@ class GetBookingByIdQuery:
 
     def execute(self, record_id: int) -> Booking:
         booking = self._repo.get_by_id(record_id)  # lanza BookingNotFound si no existe
-        return _apply_electric_allowance(booking, self._electric_ids)
+        return apply_electric_allowance(booking, self._electric_ids)
 
 
 class GetActiveBookingsQuery:
@@ -291,7 +204,7 @@ class GetActiveBookingsQuery:
         today = date.today()
         bookings = self._repo.list(start_date=today, end_date=today + timedelta(days=1))
         active = [b for b in bookings if b.is_active()]
-        return _apply_all(active, self._electric_ids)
+        return apply_all(active, self._electric_ids)
 
 
 class GetUpcomingCheckinsQuery:
@@ -311,7 +224,7 @@ class GetUpcomingCheckinsQuery:
         bookings = self._repo.list(start_date=today, end_date=end_date + timedelta(days=1))
         upcoming = [b for b in bookings if b.has_upcoming_checkin(days)]
         upcoming.sort(key=lambda b: b.check_in)
-        return _apply_all(upcoming, self._electric_ids)
+        return apply_all(upcoming, self._electric_ids)
 
 
 class GetUpcomingCheckoutsQuery:
@@ -334,7 +247,7 @@ class GetUpcomingCheckoutsQuery:
         )
         upcoming = [b for b in bookings if b.has_upcoming_checkout(days)]
         upcoming.sort(key=lambda b: b.check_out)
-        return _apply_all(upcoming, self._electric_ids)
+        return apply_all(upcoming, self._electric_ids)
 
 
 class GetCalendarEventsQuery:
@@ -360,7 +273,7 @@ class GetCalendarEventsQuery:
         resolved_start = start_date or date.today()
         end_date = resolved_start + timedelta(days=days)
         bookings = self._repo.list(start_date=resolved_start, end_date=end_date)
-        bookings = _apply_all(bookings, self._electric_ids)
+        bookings = apply_all(bookings, self._electric_ids)
 
         today = date.today()
         events = []

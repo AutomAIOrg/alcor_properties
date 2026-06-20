@@ -5,11 +5,11 @@ Caso de uso para buscar apartamentos disponibles según filtros.
 import calendar
 from datetime import date
 
-from application.bookings.queries import (
-    _apply_all,
-    _booking_overlap_nights,
-    _compute_stats,
-    _sum_occupied_nights,
+from application.bookings.helpers import (
+    apply_all,
+    booking_overlap_nights,
+    compute_stats,
+    count_days_without_bookings,
 )
 from domain.apartments.entity import Apartment
 from domain.apartments.filters import ApartmentSearchFilters
@@ -88,17 +88,17 @@ class GetApartmentStatsUseCase:
         else:
             range_bookings = self._bkg_repo.list(apartment_id=apartment_id)
 
-        range_bookings = _apply_all(range_bookings, self._electric_ids)
+        range_bookings = apply_all(range_bookings, self._electric_ids)
 
         # Calcular occupancy_pct del rango
         range_occupancy_pct = None
         if start_date and end_date:
             range_days = (end_date - start_date).days
             if range_days > 0:
-                occupied_nights = _sum_occupied_nights(range_bookings, start_date, end_date)
-                range_occupancy_pct = round(occupied_nights / range_days * 100, 2)
+                days_without = count_days_without_bookings(range_bookings, start_date, end_date)
+                range_occupancy_pct = round((range_days - days_without) / range_days * 100, 2)
 
-        filtered_range = _compute_stats(
+        filtered_range = compute_stats(
             range_bookings,
             start_date=start_date,
             end_date=end_date,
@@ -106,7 +106,7 @@ class GetApartmentStatsUseCase:
         )
 
         # Todas las reservas del apartamento (para el desglose anual)
-        all_bookings = _apply_all(
+        all_bookings = apply_all(
             self._bkg_repo.list(apartment_id=apartment_id),
             self._electric_ids,
         )
@@ -118,7 +118,7 @@ class GetApartmentStatsUseCase:
             for yr in _booking_years(booking):
                 year_start = date(yr, 1, 1)
                 year_end = date(yr + 1, 1, 1)
-                if _booking_overlap_nights(booking, year_start, year_end) > 0:
+                if booking_overlap_nights(booking, year_start, year_end) > 0:
                     by_year_map.setdefault(yr, []).append(booking)
 
         by_year = []
@@ -130,10 +130,11 @@ class GetApartmentStatsUseCase:
 
             active = [b for b in year_bookings if b.status.lower() != "cancelled"]
             active_year_nights = [
-                (b, _booking_overlap_nights(b, year_start, year_end)) for b in active
+                (b, booking_overlap_nights(b, year_start, year_end)) for b in active
             ]
             total_nights = sum(nights for _, nights in active_year_nights)
-            occupancy_pct = round(total_nights / total_days_in_year * 100, 2)
+            days_without = count_days_without_bookings(year_bookings, year_start, year_end)
+            occupancy_pct = round((total_days_in_year - days_without) / total_days_in_year * 100, 2)
 
             cancelled_count = len(year_bookings) - len(active)
             total = len(year_bookings)
@@ -148,8 +149,8 @@ class GetApartmentStatsUseCase:
             ]
             total_revenue = round(sum(prices), 2) if prices else None
             avg_rev_booking = (
-                round(total_revenue / len(active), 2)
-                if total_revenue is not None and active
+                round(total_revenue / len(prices), 2)
+                if total_revenue is not None and prices
                 else None
             )
 
