@@ -46,7 +46,9 @@ class Settings(BaseSettings):
 
     # API
     API_PREFIX: str = "/api/v1"
-    CORS_ORIGINS: list = ["*"]
+    # Orígenes permitidos para CORS. Por defecto, los del frontend en desarrollo.
+    # En producción, definir el/los origen(es) real(es) vía la variable CORS_ORIGINS.
+    CORS_ORIGINS: list[str] = ["http://localhost:4200"]
 
     # Autenticación / JWT
     JWT_SECRET_KEY: str = ""

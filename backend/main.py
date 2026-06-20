@@ -55,12 +55,16 @@ app = FastAPI(
 )
 
 # CORS
+# Nota: el navegador prohíbe combinar el comodín "*" con allow_credentials=True.
+# Si se configura "*", se desactivan las credenciales para mantener una respuesta válida;
+# en producción debe definirse el/los origen(es) concreto(s) en CORS_ORIGINS.
+_allow_all_origins = "*" in settings.CORS_ORIGINS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.CORS_ORIGINS,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_credentials=not _allow_all_origins,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type"],
 )
 
 # Excepción de dominio → Respuesta HTTP
