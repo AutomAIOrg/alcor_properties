@@ -37,6 +37,7 @@ function makeBookingStats(): BookingStatsResponse {
     start_date: '2026-01-01',
     end_date: '2026-12-31',
     occupancy_pct: null,
+    no_booking_days_pct: null,
   };
 }
 
