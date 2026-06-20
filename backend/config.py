@@ -5,7 +5,7 @@ Configuración de ajustes para la aplicación backend.
 import os
 from pathlib import Path
 
-from pydantic import Field, model_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -19,7 +19,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=_env_file(),
         case_sensitive=True,
-        extra="allow",
+        extra="ignore",
     )
 
     # Aplicación
@@ -58,6 +58,13 @@ class Settings(BaseSettings):
 
     # Contraseña por defecto para nuevos usuarios
     DEFAULT_PASSWORD: str = Field(...)
+
+    @field_validator("JWT_SECRET_KEY")
+    @classmethod
+    def _validate_jwt_secret(cls, v: str) -> str:
+        if len(v) < 32:
+            raise ValueError("JWT_SECRET_KEY debe tener al menos 32 caracteres.")
+        return v
 
     @model_validator(mode="after")
     def _resolve_db_aliases(self) -> "Settings":

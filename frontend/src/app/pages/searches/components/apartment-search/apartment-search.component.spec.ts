@@ -138,15 +138,22 @@ describe('ApartmentSearchComponent', () => {
     expect(bookingServiceSpy.searchBookings).toHaveBeenCalledWith({
       apartment_id: 'R202',
       start_date: '2025-07-01',
-      end_date: '2025-07-05',
+      end_date: '2025-07-06',
     });
     expect(apartmentServiceSpy.getApartmentStats).toHaveBeenCalledWith(
       'R202',
       '2025-07-01',
-      '2025-07-05'
+      '2025-07-06'
     );
     expect(component.apt.bookings()).toEqual(bookings);
-    expect(component.apt.stats()).toEqual(stats);
+    expect(component.apt.stats()).toEqual({
+      ...stats,
+      filtered_range: {
+        ...stats.filtered_range,
+        start_date: '2025-07-01',
+        end_date: '2025-07-05',
+      },
+    });
     expect(component.apt.loading()).toBe(false);
   });
 
@@ -202,7 +209,14 @@ describe('ApartmentSearchComponent', () => {
     component.searchApartmentDetail();
 
     expect(component.apt.bookings()).toEqual([]);
-    expect(component.apt.stats()).toEqual(stats);
+    expect(component.apt.stats()).toEqual({
+      ...stats,
+      filtered_range: {
+        ...stats.filtered_range,
+        start_date: null,
+        end_date: null,
+      },
+    });
     expect(component.apt.error()).toBe('No se pudieron cargar las reservas del piso.');
     expect(component.apt.loading()).toBe(false);
   });
@@ -290,12 +304,12 @@ describe('ApartmentSearchComponent', () => {
     expect(bookingServiceSpy.searchBookings).toHaveBeenCalledWith({
       apartment_id: 'R202',
       start_date: '2025-07-01',
-      end_date: '2025-07-05',
+      end_date: '2025-07-06',
     });
     expect(apartmentServiceSpy.getApartmentStats).toHaveBeenCalledWith(
       'R202',
       '2025-07-01',
-      '2025-07-05'
+      '2025-07-06'
     );
   });
 
