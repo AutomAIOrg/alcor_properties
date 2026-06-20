@@ -19,7 +19,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=_env_file(),
         case_sensitive=True,
-        extra="ignore",
+        extra="allow",
     )
 
     # Aplicación
@@ -46,9 +46,7 @@ class Settings(BaseSettings):
 
     # API
     API_PREFIX: str = "/api/v1"
-    # Orígenes permitidos para CORS. Por defecto, los del frontend en desarrollo.
-    # En producción, definir el/los origen(es) real(es) vía la variable CORS_ORIGINS.
-    CORS_ORIGINS: list[str] = ["http://localhost:4200"]
+    CORS_ORIGINS: list = ["*"]
 
     # Autenticación / JWT
     JWT_SECRET_KEY: str = ""
@@ -72,10 +70,6 @@ class Settings(BaseSettings):
             self.DB_NAME = self.MYSQL_DATABASE
         if self.MYSQL_PORT and self.DB_PORT == 3306:
             self.DB_PORT = int(self.MYSQL_PORT)
-
-        if not self.DEBUG and len(self.JWT_SECRET_KEY) < 32:
-            raise ValueError("JWT_SECRET_KEY debe tener al menos 32 caracteres.")
-
         return self
 
 
