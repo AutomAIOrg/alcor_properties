@@ -78,6 +78,12 @@ def get_apartment_stats(
             detail="start_date y end_date deben informarse juntas",
         )
 
+    if start_date is not None and end_date is not None and start_date >= end_date:
+        raise HTTPException(
+            status_code=422,
+            detail="start_date debe ser anterior a end_date",
+        )
+
     try:
         stats = query.execute(
             apartment_id,
