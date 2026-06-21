@@ -25,6 +25,7 @@ class JwtTokenManager(ITokenManager):
         algorithm: str | None = None,
         access_token_expire_minutes: int | None = None,
         refresh_token_expire_days: int | None = None,
+        reset_token_expire_minutes: int = 15,
     ) -> None:
         self._secret_key = secret_key or settings.JWT_SECRET_KEY
         self._algorithm = algorithm or settings.JWT_ALGORITHM
@@ -38,6 +39,7 @@ class JwtTokenManager(ITokenManager):
             if refresh_token_expire_days is not None
             else settings.JWT_REFRESH_TOKEN_EXPIRE_DAYS
         )
+        self._reset_token_expire_minutes = reset_token_expire_minutes
 
         if not self._secret_key:
             raise ValueError("JWT_SECRET_KEY debe estar configurado")
@@ -70,6 +72,18 @@ class JwtTokenManager(ITokenManager):
     def decode_refresh_token(self, token: str) -> TokenPayload:
         """Valida un token de refresh y devuelve sus claims normalizados."""
         return self._decode_token(token, expected_type="refresh")
+
+    def create_reset_token(self, subject: str) -> str:
+        """Crea un token de un solo uso para restablecer la contraseña."""
+        return self._create_token(
+            subject=subject,
+            token_type="reset",
+            expires_delta=timedelta(minutes=self._reset_token_expire_minutes),
+        )
+
+    def decode_reset_token(self, token: str) -> TokenPayload:
+        """Valida un token de restablecimiento de contraseña y devuelve sus claims."""
+        return self._decode_token(token, expected_type="reset")
 
     def _create_token(
         self,
