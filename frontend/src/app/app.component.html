@@ -18,9 +18,19 @@
       }
 
       <nav class="menu">
-        <a routerLink="/calendar" routerLinkActive="active-link">📅 Calendario</a>
+        @if (authService.hasPermission('calendar:access')) {
+          <a routerLink="/calendar" routerLinkActive="active-link">📅 Calendario</a>
+        }
         @if (authService.hasPermission('searches:access')) {
           <a routerLink="/searches" routerLinkActive="active-link">🔍 Búsquedas</a>
+        }
+        @if (authService.hasPermission('cleaning:access')) {
+          <a routerLink="/cleaning-organization" routerLinkActive="active-link">
+            🧹 Org. Limpiezas
+          </a>
+        }
+        @if (authService.hasPermission('bills:access')) {
+          <a routerLink="/bills" routerLinkActive="active-link">📄 Facturas</a>
         }
       </nav>
 
