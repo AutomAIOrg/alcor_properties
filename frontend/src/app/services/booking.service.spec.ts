@@ -3,7 +3,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { provideHttpClient } from '@angular/common/http';
 
 import { BookingService } from './booking.service';
-import { Booking } from '../models/booking.model';
+import { Booking, CleaningOpportunity } from '../models/booking.model';
 import { environment } from '../../environments/environment';
 
 // ─── Fixture helpers ──────────────────────────────────────────────────────────
@@ -40,6 +40,22 @@ function makeCreateBookingData(
   });
 
   return data;
+}
+
+function makeCleaningOpportunity(
+  overrides: Partial<CleaningOpportunity> = {}
+): CleaningOpportunity {
+  return {
+    source_booking_record_id: 1,
+    apartment_id: 'R180',
+    available_from: '2025-06-07',
+    available_until: null,
+    comments: '',
+    has_bill: false,
+    can_bill: false,
+    bill_state: null,
+    ...overrides,
+  };
 }
 
 // ─── Spec ─────────────────────────────────────────────────────────────────────
@@ -107,6 +123,32 @@ describe('BookingService', () => {
       req.flush([]);
 
       expect(result).toEqual([]);
+    });
+  });
+
+  // ── B2: getCleaningOpportunities ───────────────────────────────────────────
+
+  describe('B2 — getCleaningOpportunities', () => {
+    it('hace GET al endpoint de oportunidades de limpieza y devuelve la lista recibida', () => {
+      const opportunities = [
+        makeCleaningOpportunity({ source_booking_record_id: 1, apartment_id: 'R180' }),
+        makeCleaningOpportunity({ source_booking_record_id: 2, apartment_id: 'R101' }),
+      ];
+
+      let result: CleaningOpportunity[] | undefined;
+
+      service.getCleaningOpportunities().subscribe(response => {
+        result = response;
+      });
+
+      const req = httpMock.expectOne(`${API}/cleaning-opportunities`);
+
+      expect(req.request.method).toBe('GET');
+
+      req.flush(opportunities);
+
+      expect(result).toEqual(opportunities);
+      expect(result?.length).toBe(2);
     });
   });
 
