@@ -4,7 +4,7 @@
       <img src="logo.png" alt="Logo" />
     </div>
 
-    @if (!showRecovery) {
+    @if (recoveryStep === 'login') {
       <h1 class="login-title">Iniciar sesión</h1>
 
       <form class="login-form" (ngSubmit)="onSubmit()" #loginForm="ngForm">
@@ -40,14 +40,14 @@
 
         <button type="submit" class="btn-login" [disabled]="loginForm.invalid">Entrar</button>
 
-        <button type="button" class="btn-forgot" (click)="showRecovery = true">
+        <button type="button" class="btn-forgot" (click)="startRecovery()">
           ¿Olvidaste tu contraseña?
         </button>
       </form>
-    } @else {
+    } @else if (recoveryStep === 'email') {
       <h1 class="login-title">Recuperar contraseña</h1>
       <p class="recovery-hint">
-        Introduce tu email y te enviaremos un enlace para restablecer tu contraseña.
+        Introduce tu email. Si está registrado, podrás establecer una nueva contraseña.
       </p>
 
       <form class="login-form" (ngSubmit)="onRecovery()" #recoveryForm="ngForm">
@@ -65,21 +65,28 @@
           />
         </div>
 
-        @if (recoveryMsg) {
-          <p class="success-msg">{{ recoveryMsg }}</p>
-        }
         @if (errorMsg) {
           <p class="error-msg">{{ errorMsg }}</p>
         }
 
-        <button type="submit" class="btn-login" [disabled]="recoveryForm.invalid">
-          Enviar enlace
+        <button type="submit" class="btn-login" [disabled]="recoveryForm.invalid || loading()">
+          Continuar
         </button>
 
         <button type="button" class="btn-forgot" (click)="backToLogin()">
           ← Volver al inicio de sesión
         </button>
       </form>
+    } @else {
+      <h1 class="login-title">Revisa tu correo</h1>
+      <p class="recovery-hint">
+        Si el email está registrado, te hemos enviado un enlace para restablecer tu contraseña.
+        Revisa también la carpeta de spam. El enlace caduca en 15 minutos.
+      </p>
+
+      <button type="button" class="btn-forgot" (click)="backToLogin()">
+        ← Volver al inicio de sesión
+      </button>
     }
   </div>
 </div>

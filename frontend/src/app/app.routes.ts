@@ -8,16 +8,34 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/logging/logging.component').then(m => m.LoggingComponent),
   },
   {
+    path: 'reset-password',
+    loadComponent: () =>
+      import('./pages/reset-password/reset-password.component').then(m => m.ResetPasswordComponent),
+  },
+  {
     path: 'calendar',
     loadComponent: () =>
       import('./pages/calendar/calendar.component').then(m => m.CalendarComponent),
-    canActivate: [authGuard],
+    canActivate: [authGuard, permissionGuard('calendar:access')],
+  },
+  {
+    path: 'cleaning-organization',
+    loadComponent: () =>
+      import('./pages/cleaning-organization/cleaning-organization.component').then(
+        m => m.CleaningOrganizationComponent
+      ),
+    canActivate: [authGuard, permissionGuard('cleaning:access')],
   },
   {
     path: 'searches',
     loadComponent: () =>
       import('./pages/searches/searches.component').then(m => m.SearchesComponent),
     canActivate: [authGuard, permissionGuard('searches:access')],
+  },
+  {
+    path: 'bills',
+    loadComponent: () => import('./pages/bills/bills.component').then(m => m.BillsComponent),
+    canActivate: [authGuard, permissionGuard('bills:access')],
   },
   {
     path: 'admin',

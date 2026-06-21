@@ -18,9 +18,9 @@ export class LoggingComponent {
   errorMsg = '';
   loading = signal(false);
 
-  showRecovery = false;
+  // Pasos del flujo de recuperación: 'login' | 'email' | 'sent'
+  recoveryStep: 'login' | 'email' | 'sent' = 'login';
   recoveryEmail = '';
-  recoveryMsg = '';
 
   onSubmit() {
     if (this.loading()) return;
@@ -28,7 +28,7 @@ export class LoggingComponent {
     this.loading.set(true);
 
     this.authService.login({ username: this.username, password: this.password }).subscribe({
-      next: () => this.router.navigate(['/calendar']),
+      next: () => this.router.navigate([this.authService.getDefaultRoute()]),
       error: () => {
         this.errorMsg = 'Usuario o contraseña incorrectos.';
         this.loading.set(false);
@@ -36,16 +36,33 @@ export class LoggingComponent {
     });
   }
 
+  // Solicita el envío del enlace de restablecimiento al email indicado.
+  // La respuesta es siempre la misma (no revela si el email existe).
   onRecovery() {
-    // TODO: conectar con el endpoint de recuperación de contraseña
+    if (this.loading()) return;
     this.errorMsg = '';
-    this.recoveryMsg = `Se ha enviado un enlace de recuperación a ${this.recoveryEmail}.`;
-    this.recoveryEmail = '';
+    this.loading.set(true);
+
+    this.authService.forgotPassword(this.recoveryEmail).subscribe({
+      next: () => {
+        this.recoveryStep = 'sent';
+        this.loading.set(false);
+      },
+      error: () => {
+        this.errorMsg = 'No se ha podido procesar la solicitud. Inténtalo de nuevo.';
+        this.loading.set(false);
+      },
+    });
+  }
+
+  startRecovery() {
+    this.recoveryStep = 'email';
+    this.errorMsg = '';
   }
 
   backToLogin() {
-    this.showRecovery = false;
+    this.recoveryStep = 'login';
     this.errorMsg = '';
-    this.recoveryMsg = '';
+    this.recoveryEmail = '';
   }
 }

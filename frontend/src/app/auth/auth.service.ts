@@ -4,7 +4,12 @@ import { Router } from '@angular/router';
 import { Observable, tap } from 'rxjs';
 import { TokenService } from './token.service';
 import { SessionActivityService } from './session-activity.service';
-import { AccessTokenResponse, AuthRequest, AuthResponse } from '../models/auth.model';
+import {
+  AccessTokenResponse,
+  AuthRequest,
+  AuthResponse,
+  MessageResponse,
+} from '../models/auth.model';
 import { User, Role, Permission } from '../models/user.model';
 import { ROLE_PERMISSIONS } from '../config/permissions.config';
 
@@ -34,6 +39,22 @@ export class AuthService {
         this._currentUser.set(this.tokenService.decodeToken());
       })
     );
+  }
+
+  // ── Recuperación de contraseña ─────────────────────────────────────────────
+  // Si el email está registrado, el backend envía un enlace de restablecimiento.
+  // La respuesta es siempre la misma (no revela si el email existe).
+  forgotPassword(email: string): Observable<MessageResponse> {
+    return this.http.post<MessageResponse>(`${this.API}/forgot-password`, { email });
+  }
+
+  // Fija la nueva contraseña a partir del token recibido por email.
+  // No deja al usuario autenticado: tras el cambio debe iniciar sesión.
+  resetPassword(resetToken: string, newPassword: string): Observable<MessageResponse> {
+    return this.http.post<MessageResponse>(`${this.API}/reset-password`, {
+      reset_token: resetToken,
+      new_password: newPassword,
+    });
   }
 
   refreshToken(): Observable<AccessTokenResponse> {
@@ -70,6 +91,10 @@ export class AuthService {
     const role = this.currentRole();
     if (!role) return false;
     return ROLE_PERMISSIONS[role].includes(permission);
+  }
+
+  getDefaultRoute(): string {
+    return this.currentRole() === 'limpiadora' ? '/cleaning-organization' : '/calendar';
   }
 
   // ── Restaurar sesión desde localStorage ───────────────────────────────────

@@ -1,6 +1,8 @@
 export type Role = 'admin' | 'limpiadora';
 
 export type Permission =
+  | 'calendar:access'
+  | 'cleaning:access'
   | 'bookings:read'
   | 'bookings:create'
   | 'bookings:update'
@@ -8,7 +10,8 @@ export type Permission =
   | 'searches:access'
   | 'admin:access'
   | 'users:manage'
-  | 'properties:manage';
+  | 'properties:manage'
+  | 'bills:access';
 
 export interface User {
   sub: string;
