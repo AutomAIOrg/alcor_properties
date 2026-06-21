@@ -1,0 +1,310 @@
+<section class="bills-page">
+  <h1 class="page-title">Facturas</h1>
+
+  <div class="filter-card">
+    <div class="filter-grid">
+      <div class="field">
+        <label>Piso</label>
+        <select [value]="filters.apartmentId()" (change)="onSelectChange('apartmentId', $event)">
+          <option value="">Todos</option>
+          @for (id of allApartmentIds(); track id) {
+            <option [value]="id">{{ id }}</option>
+          }
+        </select>
+      </div>
+      <div class="field">
+        <label>Estado</label>
+        <select
+          [ngModel]="filters.state()"
+          (ngModelChange)="filters.state.set($event); hasSearched() && search()"
+        >
+          <option value="">Todos</option>
+          @for (state of STATE_OPTIONS; track state) {
+            <option [value]="state">{{ state }}</option>
+          }
+        </select>
+      </div>
+      <div class="field">
+        <label>Fecha desde</label>
+        <input
+          type="date"
+          [value]="filters.dateFrom()"
+          (change)="onFilterChange('dateFrom', $event)"
+        />
+      </div>
+      <div class="field">
+        <label>Fecha hasta</label>
+        <input type="date" [value]="filters.dateTo()" (change)="onFilterChange('dateTo', $event)" />
+      </div>
+      <div class="field">
+        <label>Coste m&iacute;n.</label>
+        <input
+          type="number"
+          min="0"
+          step="0.01"
+          placeholder="0.00"
+          [value]="filters.costMin()"
+          (change)="onFilterChange('costMin', $event)"
+        />
+      </div>
+      <div class="field">
+        <label>Coste m&aacute;x.</label>
+        <input
+          type="number"
+          min="0"
+          step="0.01"
+          placeholder="0.00"
+          [value]="filters.costMax()"
+          (change)="onFilterChange('costMax', $event)"
+        />
+      </div>
+    </div>
+
+    <div class="filter-actions">
+      <button class="btn-secondary" (click)="clear()">Limpiar</button>
+      <button class="btn-primary" [disabled]="loading()" (click)="search()">
+        @if (loading()) {
+          <span class="spinner"></span>
+        }
+        Buscar facturas
+      </button>
+    </div>
+  </div>
+
+  @if (error()) {
+    <div class="error-banner">{{ error() }}</div>
+  }
+
+  @if (results().length > 0) {
+    <div class="results-header">
+      <span class="results-count">
+        {{ results().length }} factura{{ results().length !== 1 ? 's' : '' }}
+      </span>
+      <div class="results-totals">
+        <span class="total-chip"> {{ totalHours() | number: '1.0-2' }}h totales </span>
+        <span class="total-chip total-chip--cost">
+          {{ totalCost() | currency: 'EUR' : 'symbol' : '1.2-2' }}
+        </span>
+      </div>
+    </div>
+    <div class="table-wrapper">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Piso</th>
+            <th>Fecha limpieza</th>
+            <th class="text-right">Horas</th>
+            <th class="text-right">€/hora</th>
+            <th class="text-right">Coste</th>
+            <th>Estado</th>
+            <th>Fecha pago</th>
+            <th>Reserva</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (bill of results(); track trackBill($index, bill)) {
+            <tr>
+              <td class="text-muted">{{ bill.bill_id ?? '--' }}</td>
+              <td>
+                <span class="apt-badge" [style.background]="bill.apartment_id | bookingColor">
+                  {{ bill.apartment_id }}
+                </span>
+              </td>
+              <td>{{ bill.cleaning_date ? (bill.cleaning_date | date: 'd MMM y') : '--' }}</td>
+              <td class="text-right">{{ bill.clean_hours | number: '1.0-2' }}</td>
+              <td class="text-right">
+                {{
+                  bill.hourly_rate != null
+                    ? (bill.hourly_rate | currency: 'EUR' : 'symbol' : '1.2-2')
+                    : '--'
+                }}
+              </td>
+              <td class="text-right">
+                {{ bill.cost != null ? (bill.cost | currency: 'EUR' : 'symbol' : '1.2-2') : '--' }}
+              </td>
+              <td>
+                <span class="status-pill" [attr.data-status]="bill.state.toLowerCase()">
+                  {{ bill.state }}
+                </span>
+              </td>
+              <td>{{ bill.paid_at ? (bill.paid_at | date: 'd MMM y') : '--' }}</td>
+              <td class="text-muted">{{ bill.record_id ?? '--' }}</td>
+              <td>
+                @if (bill.bill_id == null) {
+                  @if (bill.state === 'Pendiente') {
+                    <div class="row-actions">
+                      @if (bill.previously_cancelled) {
+                        <span class="invoice-cancelled">Factura cancelada</span>
+                      }
+                      <button
+                        class="action-btn action-btn--pay"
+                        [disabled]="generating()"
+                        (click)="openInvoiceModal(bill)"
+                      >
+                        Generar factura
+                      </button>
+                    </div>
+                  } @else {
+                    <span class="text-muted">--</span>
+                  }
+                } @else if (!isAdmin()) {
+                  <span class="text-muted">--</span>
+                } @else {
+                  <div class="row-actions">
+                    @if (bill.state === 'Creada') {
+                      <button
+                        class="action-btn action-btn--pay"
+                        [disabled]="actionBillId() !== null"
+                        (click)="openPayModal(bill)"
+                      >
+                        Marcar pagada
+                      </button>
+                      <button
+                        class="action-btn action-btn--cancel"
+                        [disabled]="actionBillId() !== null"
+                        (click)="cancelBill(bill)"
+                      >
+                        Cancelar
+                      </button>
+                    } @else if (bill.state === 'Pagada') {
+                      <button
+                        class="action-btn"
+                        [disabled]="actionBillId() !== null"
+                        (click)="markUnpaid(bill)"
+                      >
+                        Marcar como no pagada
+                      </button>
+                    } @else if (bill.state === 'Cancelada') {
+                      <button
+                        class="action-btn"
+                        [disabled]="actionBillId() !== null"
+                        (click)="reactivate(bill)"
+                      >
+                        Reactivar
+                      </button>
+                    }
+                  </div>
+                }
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+
+  @if (!loading() && !error() && hasSearched() && results().length === 0) {
+    <div class="empty-state">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <circle cx="11" cy="11" r="8" />
+        <path d="m21 21-4.35-4.35" />
+      </svg>
+      <p>Sin facturas para los filtros aplicados.</p>
+    </div>
+  }
+
+  @if (payModalBill(); as bill) {
+    <div class="modal-backdrop" (click)="closePayModal()">
+      <div class="modal" role="dialog" aria-modal="true" (click)="$event.stopPropagation()">
+        <h2>Marcar factura como pagada</h2>
+        <p class="modal-subtitle">
+          Piso {{ bill.apartment_id }} &middot;
+          {{ bill.cost != null ? (bill.cost | currency: 'EUR' : 'symbol' : '1.2-2') : '--' }}
+        </p>
+        <div class="field">
+          <label>Fecha de pago</label>
+          <input type="date" [value]="payDate()" (change)="updatePayDate($event)" />
+        </div>
+        <div class="modal-actions">
+          <button
+            class="btn-secondary"
+            [disabled]="actionBillId() !== null"
+            (click)="closePayModal()"
+          >
+            Cancelar
+          </button>
+          <button class="btn-primary" [disabled]="actionBillId() !== null" (click)="confirmPay()">
+            @if (actionBillId() !== null) {
+              <span class="spinner"></span>
+            }
+            Confirmar pago
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  @if (invoiceBill(); as bill) {
+    <div class="modal-backdrop" (click)="closeInvoiceModal()">
+      <div class="modal" role="dialog" aria-modal="true" (click)="$event.stopPropagation()">
+        <h2>Generar factura</h2>
+        <p class="modal-subtitle">
+          Piso {{ bill.apartment_id }} &middot; Reserva {{ bill.record_id ?? '--' }}
+        </p>
+        <div class="field">
+          <label>Fecha de limpieza</label>
+          <input type="date" [value]="invoiceDate()" (change)="updateInvoiceDate($event)" />
+        </div>
+        <div class="field">
+          <label>Hora de inicio</label>
+          <input type="time" [value]="invoiceStart()" (change)="updateInvoiceStart($event)" />
+        </div>
+        <div class="field">
+          <label>Hora de fin</label>
+          <input type="time" [value]="invoiceEnd()" (change)="updateInvoiceEnd($event)" />
+        </div>
+        @if (isAdmin()) {
+          <div class="field">
+            <label>&euro;/hora (opcional)</label>
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              placeholder="Tarifa del sistema"
+              [value]="invoiceHourlyRate()"
+              (change)="updateInvoiceHourlyRate($event)"
+            />
+          </div>
+        }
+        <div class="modal-actions">
+          <button class="btn-secondary" [disabled]="generating()" (click)="closeInvoiceModal()">
+            Cancelar
+          </button>
+          <button class="btn-primary" [disabled]="generating()" (click)="confirmGenerateBill()">
+            @if (generating()) {
+              <span class="spinner"></span>
+            }
+            Generar
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  @if (confirmModal(); as confirm) {
+    <div class="modal-backdrop" (click)="closeConfirm()">
+      <div class="modal" role="dialog" aria-modal="true" (click)="$event.stopPropagation()">
+        <h2>Confirmar cambio</h2>
+        <p class="modal-subtitle">{{ confirm.message }}</p>
+        <div class="modal-actions">
+          <button
+            class="btn-secondary"
+            [disabled]="actionBillId() !== null"
+            (click)="closeConfirm()"
+          >
+            Cancelar
+          </button>
+          <button class="btn-primary" [disabled]="actionBillId() !== null" (click)="runConfirm()">
+            Confirmar
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  @if (toast(); as t) {
+    <div class="toast" [attr.data-type]="t.type">{{ t.text }}</div>
+  }
+</section>

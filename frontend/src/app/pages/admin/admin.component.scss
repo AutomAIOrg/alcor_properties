@@ -595,3 +595,35 @@ table td .status-chip {
     overflow-wrap: anywhere;
   }
 }
+
+.billing-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-width: 420px;
+
+  label {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #475467;
+  }
+}
+
+.billing-input-row {
+  display: flex;
+  gap: 0.5rem;
+
+  input {
+    flex: 1;
+    padding: 0.55rem 0.7rem;
+    border: 1px solid #d0d5dd;
+    border-radius: 8px;
+    font-size: 0.9rem;
+  }
+}
+
+.billing-hint {
+  margin: 0;
+  font-size: 0.78rem;
+  color: #667085;
+}

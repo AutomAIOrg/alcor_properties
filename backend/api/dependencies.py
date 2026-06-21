@@ -4,6 +4,7 @@ Contenedor de inyección de dependencias para FastAPI.
 
 import logging
 from dataclasses import dataclass
+from decimal import Decimal
 
 from fastapi import Depends, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -14,9 +15,13 @@ from application.apartments.use_cases import (
     GetApartmentStatsUseCase,
     SearchApartmentsUseCase,
 )
+from application.auth.forgot_password_use_case import ForgotPasswordUseCase
 from application.auth.login_use_case import LoginUseCase
 from application.auth.refresh_token_use_case import RefreshTokenUseCase
+from application.auth.reset_password_use_case import ResetPasswordUseCase
 from application.auth.token_manager_interface import ITokenManager
+from application.bills.commands import CreateBillUseCase, UpdateBillStateUseCase
+from application.bills.queries import ListBillsQuery, ListPendingBillsQuery
 from application.bookings.commands import (
     CreateBookingUseCase,
     DeleteBookingUseCase,
@@ -27,10 +32,16 @@ from application.bookings.queries import (
     GetBookingByIdQuery,
     GetBookingStatsQuery,
     GetCalendarEventsQuery,
+    GetCleaningOpportunitiesUseCase,
     GetUpcomingCheckinsQuery,
     GetUpcomingCheckoutsQuery,
     ListBookingsQuery,
 )
+from application.settings.use_cases import (
+    GetCleaningHourlyRateUseCase,
+    UpdateCleaningHourlyRateUseCase,
+)
+from application.shared.email_sender_interface import IEmailSender
 from application.shared.password_manager_interface import IPasswordManager
 from application.shared.user_repository_interface import IUserRepository
 from application.users.create_user_use_case import CreateUserUseCase
@@ -40,14 +51,23 @@ from application.users.update_user_use_case import UpdateUserUseCase
 from config import settings
 from domain.apartments.repository import IApartmentRepository
 from domain.auth.user_entity import Role, User
+from domain.bills.repository import IBillRepository
 from domain.bookings.repository import IBookingRepository
 from domain.exceptions import InvalidToken
+from domain.settings.repository import ISettingsRepository
 from infrastructure.database.session import get_db
+from infrastructure.email.smtp_email_sender import ConsoleEmailSender, SMTPEmailSender
 from infrastructure.repositories.sqlalchemy_apartment_repository import (
     SQLAlchemyApartmentRepository,
 )
+from infrastructure.repositories.sqlalchemy_bill_repository import (
+    SQLAlchemyBillRepository,
+)
 from infrastructure.repositories.sqlalchemy_booking_repository import (
     SQLAlchemyBookingRepository,
+)
+from infrastructure.repositories.sqlalchemy_settings_repository import (
+    SQLAlchemySettingsRepository,
 )
 from infrastructure.repositories.sqlalchemy_user_repository import SQLAlchemyUserRepository
 from infrastructure.security.jwt_token_manager import JwtTokenManager
@@ -75,6 +95,20 @@ def get_token_manager() -> ITokenManager:
 def get_password_manager() -> IPasswordManager:
     """Verificador de contraseñas."""
     return PasslibPasswordManager()
+
+
+def get_email_sender() -> IEmailSender:
+    """Emisor de emails. Usa SMTP si está configurado; si no, cae a consola (solo dev)."""
+    if settings.SMTP_HOST:
+        return SMTPEmailSender(
+            host=settings.SMTP_HOST,
+            port=settings.SMTP_PORT,
+            username=settings.SMTP_USER,
+            password=settings.SMTP_PASSWORD,
+            sender=settings.SMTP_FROM or settings.SMTP_USER,
+            use_tls=settings.SMTP_USE_TLS,
+        )
+    return ConsoleEmailSender()
 
 
 def get_current_user(
@@ -111,6 +145,17 @@ def require_admin(
     return current_user
 
 
+def require_cleaning(
+    current_user: User = Depends(get_current_user),
+) -> User:
+    """Verifica que el usuario tenga acceso a la organización de limpiezas."""
+    if current_user.role not in (Role.ADMIN, Role.LIMPIADORA):
+        raise HTTPException(
+            status_code=403, detail="Permiso denegado. El usuario no tiene acceso a limpiezas."
+        )
+    return current_user
+
+
 def get_electric_ids() -> set[str]:
     """Parsea la variable de entorno ELECTRIC a un set de IDs de reservas."""
     return {b.strip() for b in settings.ELECTRIC.split(",") if b.strip()}
@@ -124,6 +169,37 @@ def get_booking_repository(db: Session = Depends(get_db)) -> IBookingRepository:
 def get_apartment_repository(db: Session = Depends(get_db)) -> IApartmentRepository:
     """Repositorio de apartamentos."""
     return SQLAlchemyApartmentRepository(db)
+
+
+def get_bill_repository(db: Session = Depends(get_db)) -> IBillRepository:
+    """Repositorio de facturas."""
+    return SQLAlchemyBillRepository(db)
+
+
+def get_settings_repository(db: Session = Depends(get_db)) -> ISettingsRepository:
+    """Repositorio de configuración (clave-valor)."""
+    return SQLAlchemySettingsRepository(db)
+
+
+def get_cleaning_rate_query(
+    settings_repo: ISettingsRepository = Depends(get_settings_repository),
+) -> GetCleaningHourlyRateUseCase:
+    """Caso de uso de lectura del precio por hora de limpieza (con valor por defecto del entorno)."""
+    return GetCleaningHourlyRateUseCase(settings_repo, settings.CLEANING_HOURLY_RATE)
+
+
+def get_update_cleaning_rate_use_case(
+    settings_repo: ISettingsRepository = Depends(get_settings_repository),
+) -> UpdateCleaningHourlyRateUseCase:
+    """Caso de uso para actualizar el precio por hora de limpieza."""
+    return UpdateCleaningHourlyRateUseCase(settings_repo)
+
+
+def get_cleaning_hourly_rate(
+    rate_query: GetCleaningHourlyRateUseCase = Depends(get_cleaning_rate_query),
+) -> Decimal:
+    """Tarifa por hora de limpieza vigente (persistida en BD), usada al calcular el coste."""
+    return rate_query.execute()
 
 
 # ---------------------------------------------------------------------------
@@ -146,6 +222,26 @@ def get_refresh_token_use_case(
 ) -> RefreshTokenUseCase:
     """Inyección de dependencias para renovar access tokens."""
     return RefreshTokenUseCase(user_repository, token_manager)
+
+
+def get_forgot_password_use_case(
+    user_repository: IUserRepository = Depends(get_user_repository),
+    token_manager: ITokenManager = Depends(get_token_manager),
+    email_sender: IEmailSender = Depends(get_email_sender),
+) -> ForgotPasswordUseCase:
+    """Inyección de dependencias para iniciar el restablecimiento de contraseña."""
+    return ForgotPasswordUseCase(
+        user_repository, token_manager, email_sender, settings.FRONTEND_URL
+    )
+
+
+def get_reset_password_use_case(
+    user_repository: IUserRepository = Depends(get_user_repository),
+    token_manager: ITokenManager = Depends(get_token_manager),
+    password_manager: IPasswordManager = Depends(get_password_manager),
+) -> ResetPasswordUseCase:
+    """Inyección de dependencias para restablecer la contraseña."""
+    return ResetPasswordUseCase(user_repository, token_manager, password_manager)
 
 
 def get_create_user_use_case(
@@ -187,6 +283,7 @@ class BookingUseCases:
     upcoming_checkins_query: GetUpcomingCheckinsQuery
     upcoming_checkouts_query: GetUpcomingCheckoutsQuery
     calendar_events_query: GetCalendarEventsQuery
+    get_cleaning_opportunities_query: GetCleaningOpportunitiesUseCase
     stats_query: GetBookingStatsQuery
     create_command: CreateBookingUseCase
     update_command: UpdateBookingUseCase
@@ -195,6 +292,7 @@ class BookingUseCases:
 
 def get_booking_use_cases(
     repo: IBookingRepository = Depends(get_booking_repository),
+    bill_repo: IBillRepository = Depends(get_bill_repository),
     electric_ids: set[str] = Depends(get_electric_ids),
 ) -> BookingUseCases:
     """Inyección de dependencias para los casos de uso de reservas."""
@@ -205,10 +303,35 @@ def get_booking_use_cases(
         upcoming_checkins_query=GetUpcomingCheckinsQuery(repo, electric_ids),
         upcoming_checkouts_query=GetUpcomingCheckoutsQuery(repo, electric_ids),
         calendar_events_query=GetCalendarEventsQuery(repo, electric_ids),
+        get_cleaning_opportunities_query=GetCleaningOpportunitiesUseCase(repo, bill_repo),
         stats_query=GetBookingStatsQuery(repo, electric_ids),
         create_command=CreateBookingUseCase(repo, electric_ids),
         update_command=UpdateBookingUseCase(repo, electric_ids),
         delete_command=DeleteBookingUseCase(repo),
+    )
+
+
+@dataclass
+class BillUseCases:
+    """Casos de uso de facturas."""
+
+    create_command: CreateBillUseCase
+    list_query: ListBillsQuery
+    list_pending_query: ListPendingBillsQuery
+    update_state_command: UpdateBillStateUseCase
+
+
+def get_bill_use_cases(
+    bill_repo: IBillRepository = Depends(get_bill_repository),
+    booking_repo: IBookingRepository = Depends(get_booking_repository),
+    hourly_rate: Decimal = Depends(get_cleaning_hourly_rate),
+) -> BillUseCases:
+    """Inyección de dependencias para los casos de uso de facturas."""
+    return BillUseCases(
+        create_command=CreateBillUseCase(bill_repo, booking_repo, hourly_rate),
+        list_query=ListBillsQuery(bill_repo),
+        list_pending_query=ListPendingBillsQuery(booking_repo, bill_repo),
+        update_state_command=UpdateBillStateUseCase(bill_repo),
     )
 
 

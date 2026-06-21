@@ -1,0 +1,165 @@
+@use '../../pages/searches/components/search-common' as *;
+
+.bills-page {
+  padding: 1.5rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.page-title {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: #101828;
+  margin: 0 0 1.25rem;
+}
+
+.results-totals {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.total-chip {
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  background: #f2f4f7;
+  color: #344054;
+
+  &--cost {
+    background: #ecfdf3;
+    color: #027a48;
+  }
+}
+
+.status-pill[data-status='pendiente'] {
+  background: #fffbeb;
+  color: #b45309;
+}
+
+.status-pill[data-status='creada'] {
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.status-pill[data-status='pagada'] {
+  background: #ecfdf3;
+  color: #027a48;
+}
+
+.status-pill[data-status='cancelada'] {
+  background: #fef3f2;
+  color: #b42318;
+}
+
+.row-actions {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.invoice-cancelled {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #b42318;
+}
+
+.action-btn {
+  padding: 0.3rem 0.6rem;
+  border: 1px solid #d0d5dd;
+  border-radius: 6px;
+  background: #fff;
+  color: #344054;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+
+  &:hover:not(:disabled) {
+    background: #f9fafb;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  &--pay {
+    border-color: #027a48;
+    background: #027a48;
+    color: #fff;
+
+    &:hover:not(:disabled) {
+      background: #026a3e;
+    }
+  }
+
+  &--cancel {
+    border-color: #fecdca;
+    color: #b42318;
+
+    &:hover:not(:disabled) {
+      background: #fef3f2;
+    }
+  }
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(16, 24, 40, 0.5);
+}
+
+.modal {
+  background: #fff;
+  border-radius: 12px;
+  padding: 1.5rem;
+  width: min(90vw, 360px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+
+  h2 {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #101828;
+    margin: 0 0 0.25rem;
+  }
+}
+
+.modal-subtitle {
+  font-size: 0.82rem;
+  color: #667085;
+  margin: 0 0 1rem;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 1.25rem;
+}
+
+.toast {
+  position: fixed;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  z-index: 1100;
+  padding: 0.75rem 1.1rem;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+
+  &[data-type='success'] {
+    background: #12b76a;
+  }
+
+  &[data-type='error'] {
+    background: #f04438;
+  }
+}

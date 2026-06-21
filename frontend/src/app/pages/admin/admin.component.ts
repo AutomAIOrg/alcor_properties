@@ -7,6 +7,7 @@ import {
   AdminUserSaveRequest,
   AdminUserService,
 } from '../../services/admin-user.service';
+import { BillingSettingsService } from '../../services/billing-settings.service';
 
 type ToastType = 'success' | 'error';
 
@@ -55,6 +56,7 @@ interface AdminPropertyDraft {
 })
 export class AdminComponent implements OnInit, OnDestroy {
   private adminUserService = inject(AdminUserService);
+  private billingSettingsService = inject(BillingSettingsService);
   private toastTimeout: ReturnType<typeof setTimeout> | null = null;
 
   readonly roleOptions: Role[] = ['admin', 'limpiadora'];
@@ -97,6 +99,14 @@ export class AdminComponent implements OnInit, OnDestroy {
 
   isUsersSectionOpen = signal(false);
   isPropertiesSectionOpen = signal(false);
+  isBillingSectionOpen = signal(false);
+
+  // Gestión de facturas — precio por hora de limpieza
+  private isBillingLoaded = false;
+  cleaningRateDraft = signal<string>('');
+  isLoadingRate = signal(false);
+  isSavingRate = signal(false);
+  billingError = signal<string | null>(null);
 
   newUser = signal<AdminUserDraft>({
     username: '',
@@ -139,6 +149,58 @@ export class AdminComponent implements OnInit, OnDestroy {
 
   togglePropertiesSection(): void {
     this.isPropertiesSectionOpen.update(isOpen => !isOpen);
+  }
+
+  toggleBillingSection(): void {
+    const willOpen = !this.isBillingSectionOpen();
+    this.isBillingSectionOpen.set(willOpen);
+    if (willOpen && !this.isBillingLoaded) {
+      this.loadCleaningRate();
+    }
+  }
+
+  loadCleaningRate(): void {
+    this.isLoadingRate.set(true);
+    this.billingError.set(null);
+
+    this.billingSettingsService.getCleaningRate().subscribe({
+      next: response => {
+        this.cleaningRateDraft.set(String(response.cleaning_hourly_rate));
+        this.isBillingLoaded = true;
+        this.isLoadingRate.set(false);
+      },
+      error: () => {
+        this.billingError.set('No se ha podido cargar el precio por hora de limpieza.');
+        this.isLoadingRate.set(false);
+      },
+    });
+  }
+
+  saveCleaningRate(): void {
+    const rate = Number(this.cleaningRateDraft());
+    if (!Number.isFinite(rate) || rate < 0) {
+      this.showToast('error', 'Introduce un precio por hora válido (mayor o igual que 0).');
+      return;
+    }
+
+    this.isSavingRate.set(true);
+    this.billingError.set(null);
+
+    this.billingSettingsService.updateCleaningRate(rate).subscribe({
+      next: response => {
+        this.cleaningRateDraft.set(String(response.cleaning_hourly_rate));
+        this.isSavingRate.set(false);
+        this.showToast('success', 'Precio por hora de limpieza actualizado.');
+      },
+      error: (error: HttpErrorResponse) => {
+        this.showToast(
+          'error',
+          'No se ha podido actualizar el precio por hora.',
+          this.getApiErrorMessage(error)
+        );
+        this.isSavingRate.set(false);
+      },
+    });
   }
 
   updateNewUserUsername(username: string): void {

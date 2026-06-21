@@ -4,6 +4,7 @@ import { of, throwError } from 'rxjs';
 import { AdminComponent } from './admin.component';
 import { Role } from '../../models/user.model';
 import { AdminUserResponse, AdminUserService } from '../../services/admin-user.service';
+import { BillingSettingsService } from '../../services/billing-settings.service';
 
 function makeUser(overrides: Partial<AdminUserResponse> = {}): AdminUserResponse {
   return {
@@ -21,6 +22,7 @@ describe('AdminComponent', () => {
   let fixture: ComponentFixture<AdminComponent>;
   let component: AdminComponent;
   let adminUserServiceSpy: jest.Mocked<AdminUserService>;
+  let billingSettingsServiceSpy: jest.Mocked<BillingSettingsService>;
 
   async function setup(users: AdminUserResponse[] = [makeUser()]): Promise<void> {
     jest.useFakeTimers();
@@ -32,9 +34,17 @@ describe('AdminComponent', () => {
       deleteUser: jest.fn().mockReturnValue(of({ message: 'Usuario eliminado correctamente' })),
     } as unknown as jest.Mocked<AdminUserService>;
 
+    billingSettingsServiceSpy = {
+      getCleaningRate: jest.fn().mockReturnValue(of({ cleaning_hourly_rate: 15 })),
+      updateCleaningRate: jest.fn().mockReturnValue(of({ cleaning_hourly_rate: 15 })),
+    } as unknown as jest.Mocked<BillingSettingsService>;
+
     await TestBed.configureTestingModule({
       imports: [AdminComponent],
-      providers: [{ provide: AdminUserService, useValue: adminUserServiceSpy }],
+      providers: [
+        { provide: AdminUserService, useValue: adminUserServiceSpy },
+        { provide: BillingSettingsService, useValue: billingSettingsServiceSpy },
+      ],
     }).compileComponents();
 
     fixture = TestBed.createComponent(AdminComponent);
