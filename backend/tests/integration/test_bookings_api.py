@@ -10,8 +10,11 @@ from datetime import date
 import pytest
 from sqlalchemy.exc import SQLAlchemyError
 
+from api.dependencies import get_current_user
+from domain.auth.user_entity import Role
 from domain.exceptions import BookingConflict, BookingNotFound, DomainValidationError
-from tests.helpers import make_booking
+from main import app
+from tests.helpers import make_booking, make_user
 
 pytestmark = pytest.mark.integration
 
@@ -223,6 +226,59 @@ class TestSpecialCollectionEndpoints:
         mock_use_cases.calendar_events_query.execute.return_value = []
 
         assert api_client.get("/api/v1/bookings/calendar-events").status_code == 200
+
+    def test_cleaning_opportunities_returns_cleaning_window_schema(
+        self, api_client, mock_use_cases
+    ):
+        from domain.bookings.entity import CleaningOpportunity
+
+        mock_use_cases.get_cleaning_opportunities_query.execute.return_value = [
+            CleaningOpportunity(
+                source_booking_record_id=7,
+                apartment_id="R180",
+                available_from=date(2026, 6, 5),
+                available_until=date(2026, 6, 10),
+                comments="",
+            )
+        ]
+
+        response = api_client.get("/api/v1/bookings/cleaning-opportunities")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data == [
+            {
+                "source_booking_record_id": 7,
+                "apartment_id": "R180",
+                "available_from": "2026-06-05",
+                "available_until": "2026-06-10",
+                "comments": "",
+                "has_bill": False,
+                "can_bill": False,
+                "bill_state": None,
+            }
+        ]
+        mock_use_cases.get_cleaning_opportunities_query.execute.assert_called_once_with()
+        mock_use_cases.get_by_id_query.execute.assert_not_called()
+
+    def test_cleaning_opportunities_allows_limpiadora_role(self, api_client, mock_use_cases):
+        mock_use_cases.get_cleaning_opportunities_query.execute.return_value = []
+        cleaner_user = make_user(
+            id=2,
+            username="limpiadora",
+            name="Limpiadora",
+            role=Role.LIMPIADORA,
+        )
+        app.dependency_overrides[get_current_user] = lambda: cleaner_user
+
+        try:
+            response = api_client.get("/api/v1/bookings/cleaning-opportunities")
+        finally:
+            app.dependency_overrides.pop(get_current_user, None)
+
+        assert response.status_code == 200
+        assert response.json() == []
+        mock_use_cases.get_cleaning_opportunities_query.execute.assert_called_once_with()
 
 
 # ---------------------------------------------------------------------------

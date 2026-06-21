@@ -32,6 +32,22 @@ class BookingConflict(DomainException):
         super().__init__(detail)
 
 
+class BillNotFound(DomainException):
+    """Se lanza cuando no se puede encontrar una factura por su identificador."""
+
+    def __init__(self, bill_id: int) -> None:
+        self.bill_id = bill_id
+        super().__init__(f"Factura con ID {bill_id} no encontrada")
+
+
+class BillAlreadyExists(DomainException):
+    """Se lanza cuando ya existe una factura para la reserva (limpieza) indicada."""
+
+    def __init__(self, record_id: int) -> None:
+        self.record_id = record_id
+        super().__init__(f"Ya existe una factura para la reserva {record_id}")
+
+
 class DomainValidationError(DomainException):
     """Se lanza cuando se viola una regla de negocio (por ejemplo, check-out antes que check-in)."""
 

@@ -6,17 +6,25 @@ from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
-from api.dependencies import BookingUseCases, get_booking_use_cases, require_admin
+from api.dependencies import (
+    BookingUseCases,
+    get_booking_use_cases,
+    get_current_user,
+    require_admin,
+    require_cleaning,
+)
 from api.v1.bookings.schemas import (
     BookingCreateRequest,
     BookingResponse,
     BookingStatsResponse,
     BookingUpdateRequest,
+    CleaningOpportunityResponse,
 )
 from application.bookings.commands import BookingUpdateData
+from domain.auth.user_entity import User
 from domain.bookings.entity import Booking
 
-router = APIRouter(prefix="/bookings", tags=["bookings"], dependencies=[Depends(require_admin)])
+router = APIRouter(prefix="/bookings", tags=["bookings"], dependencies=[Depends(get_current_user)])
 
 
 def _validate_date_range(start_date: date | None, end_date: date | None) -> None:
@@ -40,6 +48,7 @@ async def get_bookings(
     guest_name: str | None = Query(None, description="Filtrar por nombre de huesped (parcial)"),
     booking_number: str | None = Query(None, description="Filtrar por numero de reserva (parcial)"),
     use_cases: BookingUseCases = Depends(get_booking_use_cases),
+    _: User = Depends(require_admin),
 ):
     _validate_date_range(start_date, end_date)
     return use_cases.list_query.execute(
@@ -64,6 +73,7 @@ async def get_booking_stats(
     guest_name: str | None = Query(None, description="Filtrar por nombre de huesped"),
     booking_number: str | None = Query(None, description="Filtrar por numero de reserva"),
     use_cases: BookingUseCases = Depends(get_booking_use_cases),
+    _: User = Depends(require_admin),
 ):
     _validate_date_range(start_date, end_date)
     return use_cases.stats_query.execute(
@@ -80,6 +90,7 @@ async def get_booking_stats(
 @router.get("/active", response_model=list[BookingResponse])
 async def get_active_bookings(
     use_cases: BookingUseCases = Depends(get_booking_use_cases),
+    _: User = Depends(require_admin),
 ):
     return use_cases.get_active_query.execute()
 
@@ -88,6 +99,7 @@ async def get_active_bookings(
 async def get_upcoming_checkins(
     days: int = Query(7, ge=1, description="Cantidad de dias a futuro"),
     use_cases: BookingUseCases = Depends(get_booking_use_cases),
+    _: User = Depends(require_admin),
 ):
     return use_cases.upcoming_checkins_query.execute(days=days)
 
@@ -96,6 +108,7 @@ async def get_upcoming_checkins(
 async def get_upcoming_checkouts(
     days: int = Query(7, ge=1, description="Cantidad de dias a futuro"),
     use_cases: BookingUseCases = Depends(get_booking_use_cases),
+    _: User = Depends(require_admin),
 ):
     return use_cases.upcoming_checkouts_query.execute(days=days)
 
@@ -105,14 +118,24 @@ async def get_calendar_events(
     start_date: date | None = Query(None, description="Fecha de inicio (por defecto hoy)"),
     days: int = Query(90, ge=1, description="Cantidad de dias a incluir"),
     use_cases: BookingUseCases = Depends(get_booking_use_cases),
+    _: User = Depends(require_admin),
 ):
     return use_cases.calendar_events_query.execute(start_date=start_date, days=days)
+
+
+@router.get("/cleaning-opportunities", response_model=list[CleaningOpportunityResponse])
+async def get_cleaning_opportunities(
+    use_cases: BookingUseCases = Depends(get_booking_use_cases),
+    _: User = Depends(require_cleaning),
+):
+    return use_cases.get_cleaning_opportunities_query.execute()
 
 
 @router.get("/{record_id}", response_model=BookingResponse)
 async def get_booking(
     record_id: int,
     use_cases: BookingUseCases = Depends(get_booking_use_cases),
+    _: User = Depends(require_admin),
 ):
     return use_cases.get_by_id_query.execute(record_id)
 
@@ -121,6 +144,7 @@ async def get_booking(
 async def create_booking(
     payload: BookingCreateRequest,
     use_cases: BookingUseCases = Depends(get_booking_use_cases),
+    _: User = Depends(require_admin),
 ):
     booking = Booking(**payload.model_dump())
     return use_cases.create_command.execute(booking)
@@ -131,6 +155,7 @@ async def update_booking(
     record_id: int,
     payload: BookingUpdateRequest,
     use_cases: BookingUseCases = Depends(get_booking_use_cases),
+    _: User = Depends(require_admin),
 ):
     update_data = BookingUpdateData(**payload.model_dump(exclude_unset=True))
     return use_cases.update_command.execute(record_id, update_data)
@@ -140,5 +165,6 @@ async def update_booking(
 async def delete_booking(
     record_id: int,
     use_cases: BookingUseCases = Depends(get_booking_use_cases),
+    _: User = Depends(require_admin),
 ):
     use_cases.delete_command.execute(record_id)

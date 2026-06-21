@@ -2,7 +2,7 @@
 Casos de uso de lectura (consultas) para el dominio de Reservas.
 """
 
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from typing import Any
 
 from application.bookings.helpers import (
@@ -11,8 +11,35 @@ from application.bookings.helpers import (
     compute_stats,
     count_days_without_bookings,
 )
-from domain.bookings.entity import Booking
+from domain.bills.repository import IBillRepository
+from domain.bookings.entity import Booking, CleaningOpportunity
 from domain.bookings.repository import IBookingRepository
+
+_CLEANING_OPERATIONAL_WEEKS = 4
+_CLEANING_BOOKING_LOOKBACK_DAYS = 28
+# Margen hacia delante para detectar la siguiente reserva (y así calcular available_until)
+# aunque su check-in caiga después del rango operativo.
+_CLEANING_BOOKING_LOOKAHEAD_DAYS = 90
+
+
+def _cleaning_operational_range(reference_date: date | None = None) -> tuple[date, date]:
+    """Devuelve el lunes de la semana de referencia y el domingo de las 3 semanas siguientes."""
+    today = reference_date or date.today()
+    range_start = today - timedelta(days=today.weekday())
+    range_end = range_start + timedelta(days=_CLEANING_OPERATIONAL_WEEKS * 7 - 1)
+    return range_start, range_end
+
+
+def _cleaning_window_overlaps_range(
+    available_from: date,
+    available_until: date | None,
+    range_start: date,
+    range_end: date,
+) -> bool:
+    """True si la ventana es relevante dentro del rango operativo de limpiezas."""
+    if available_until is None:
+        return range_start <= available_from <= range_end
+    return available_from <= range_end and available_until >= range_start
 
 
 class ListBookingsQuery:
@@ -310,3 +337,102 @@ class GetCalendarEventsQuery:
                 }
             )
         return events
+
+
+def _build_cleaning_opportunities(
+    bookings: list[Booking],
+    billed_booking_ids: set[int] | None = None,
+    reference_datetime: datetime | None = None,
+    bill_states_by_booking: dict[int, str] | None = None,
+) -> list[CleaningOpportunity]:
+    """Calcula ventanas de limpieza a partir de reservas activas agrupadas por apartamento."""
+    billed = billed_booking_ids or set()
+    bill_states = bill_states_by_booking or {}
+    now = reference_datetime or datetime.now()
+    active_bookings = [
+        booking
+        for booking in bookings
+        if not booking.is_cancelled() and booking.record_id is not None
+    ]
+
+    by_apartment: dict[str, list[Booking]] = {}
+    for booking in active_bookings:
+        by_apartment.setdefault(booking.apartment_id, []).append(booking)
+
+    opportunities: list[CleaningOpportunity] = []
+    for apartment_bookings in by_apartment.values():
+        apartment_bookings.sort(key=lambda b: (b.check_in, b.check_out, b.record_id))
+        for index, booking in enumerate(apartment_bookings):
+            if booking.record_id is None:
+                continue
+
+            next_booking = (
+                apartment_bookings[index + 1] if index + 1 < len(apartment_bookings) else None
+            )
+            bill_st = bill_states.get(booking.record_id)
+            opportunities.append(
+                CleaningOpportunity(
+                    source_booking_record_id=booking.record_id,
+                    apartment_id=booking.apartment_id,
+                    available_from=booking.check_out,
+                    available_until=next_booking.check_in if next_booking else None,
+                    comments=(booking.notes or "").strip(),
+                    has_bill=booking.record_id in billed,
+                    can_bill=booking.is_cleanable(now),
+                    bill_state=bill_st,
+                )
+            )
+
+    opportunities.sort(
+        key=lambda opportunity: (
+            opportunity.available_until is None,
+            opportunity.available_until or date.min,
+            opportunity.available_from,
+            opportunity.apartment_id,
+        )
+    )
+    return opportunities
+
+
+class GetCleaningOpportunitiesUseCase:
+    """Obtiene ventanas de limpieza del rango operativo (semana actual + 3 siguientes)."""
+
+    def __init__(
+        self,
+        repository: IBookingRepository,
+        bill_repository: IBillRepository | None = None,
+    ) -> None:
+        self._repo = repository
+        self._bills = bill_repository
+
+    def execute(self, reference_date: date | None = None) -> list[CleaningOpportunity]:
+        reference_datetime = (
+            datetime.combine(reference_date, datetime.min.time()) if reference_date else None
+        )
+        return self.execute_at(reference_datetime)
+
+    def execute_at(
+        self, reference_datetime: datetime | None = None
+    ) -> list[CleaningOpportunity]:
+        """Igual que :meth:`execute` pero con un instante exacto (para calcular ``can_bill``)."""
+        now = reference_datetime or datetime.now()
+        range_start, range_end = _cleaning_operational_range(now.date())
+        bookings = self._repo.list(
+            start_date=range_start - timedelta(days=_CLEANING_BOOKING_LOOKBACK_DAYS),
+            end_date=range_end + timedelta(days=_CLEANING_BOOKING_LOOKAHEAD_DAYS),
+        )
+        billed_ids = self._bills.list_billed_booking_ids() if self._bills else set()
+        bill_states = self._bills.get_bill_states_by_booking() if self._bills else {}
+        opportunities = _build_cleaning_opportunities(
+            bookings, billed_ids, reference_datetime=now, bill_states_by_booking=bill_states
+        )
+        return [
+            opportunity
+            for opportunity in opportunities
+            if _cleaning_window_overlaps_range(
+                opportunity.available_from,
+                opportunity.available_until,
+                range_start,
+                range_end,
+            )
+        ]

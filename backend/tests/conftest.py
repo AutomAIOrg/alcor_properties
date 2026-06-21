@@ -19,6 +19,8 @@ from sqlalchemy.pool import StaticPool
 from starlette.testclient import TestClient
 
 import infrastructure.models.apartment  # noqa: F401 — registra ApartmentORM en Base.metadata
+import infrastructure.models.app_setting  # noqa: F401 — registra AppSettingORM en Base.metadata
+import infrastructure.models.bill  # noqa: F401 — registra BillORM en Base.metadata
 import infrastructure.models.booking  # noqa: F401 — registra BookingORM en Base.metadata
 import infrastructure.models.user  # noqa: F401 — registra UserORM en Base.metadata
 from domain.apartments.repository import IApartmentRepository
@@ -137,6 +139,43 @@ def api_client(mock_use_cases: MagicMock) -> Iterator[TestClient]:
 
 
 @pytest.fixture
+def mock_bill_use_cases() -> MagicMock:
+    """BillUseCases completamente mockeado para tests de API."""
+    return MagicMock()
+
+
+@pytest.fixture
+def bill_api_client(mock_bill_use_cases: MagicMock) -> Iterator[TestClient]:
+    """
+    TestClient de FastAPI con BillUseCases inyectados como mock.
+
+    Autentica como usuario con rol LIMPIADORA (el mínimo requerido por require_cleaning).
+    """
+    from api.dependencies import get_bill_use_cases, get_current_user
+    from main import app
+
+    cleaning_user = User(
+        id=2,
+        username="limpiadora",
+        password="limpiadora-password",
+        name="Limpiadora",
+        lastname="Test",
+        email="limpiadora@example.com",
+        role=Role.LIMPIADORA,
+    )
+
+    app.dependency_overrides[get_bill_use_cases] = lambda: mock_bill_use_cases
+    app.dependency_overrides[get_current_user] = lambda: cleaning_user
+
+    try:
+        with TestClient(app, raise_server_exceptions=True) as client:
+            yield client
+    finally:
+        app.dependency_overrides.pop(get_bill_use_cases, None)
+        app.dependency_overrides.pop(get_current_user, None)
+
+
+@pytest.fixture
 def mock_search_apartments_use_case() -> MagicMock:
     """ApartmentUseCases completamente mockeado para tests de API."""
     return MagicMock()
@@ -244,6 +283,30 @@ def admin_auth_headers(sqlite_session, e2e_client) -> dict[str, str]:
     response = e2e_client.post(
         "/api/v1/auth/login",
         json={"username": "admin", "password": "admin-password"},
+    )
+    assert response.status_code == 200
+    token = response.json()["access_token"]
+    return {"Authorization": f"Bearer {token}"}
+
+
+@pytest.fixture
+def cleaner_auth_headers(sqlite_session, e2e_client) -> dict[str, str]:
+    """Crea una limpiadora real en SQLite y devuelve headers Bearer obtenidos por login."""
+    pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+    user = UserORM(
+        username="limpiadora",
+        password=pwd_context.hash("cleaner-password"),
+        name="Limpiadora",
+        lastname="Test",
+        email="limpiadora@example.com",
+        role=Role.LIMPIADORA.value,
+    )
+    sqlite_session.add(user)
+    sqlite_session.commit()
+
+    response = e2e_client.post(
+        "/api/v1/auth/login",
+        json={"username": "limpiadora", "password": "cleaner-password"},
     )
     assert response.status_code == 200
     token = response.json()["access_token"]

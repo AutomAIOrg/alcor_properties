@@ -18,6 +18,16 @@ async def apartment_not_found_handler(request: Request, exc: Exception) -> JSONR
     return JSONResponse(status_code=404, content={"detail": str(exc)})
 
 
+async def bill_not_found_handler(request: Request, exc: Exception) -> JSONResponse:
+    """Devuelve un error 404 cuando no se encuentra la factura."""
+    return JSONResponse(status_code=404, content={"detail": str(exc)})
+
+
+async def bill_already_exists_handler(request: Request, exc: Exception) -> JSONResponse:
+    """Devuelve un error 409 cuando ya existe una factura para la reserva."""
+    return JSONResponse(status_code=409, content={"detail": str(exc)})
+
+
 async def booking_conflict_handler(request: Request, exc: Exception) -> JSONResponse:
     """Devuelve un error 409 ante un conflicto de reserva."""
     return JSONResponse(status_code=409, content={"detail": str(exc)})
