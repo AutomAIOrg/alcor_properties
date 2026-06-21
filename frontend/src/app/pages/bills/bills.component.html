@@ -255,19 +255,21 @@
           <label>Hora de fin</label>
           <input type="time" [value]="invoiceEnd()" (change)="updateInvoiceEnd($event)" />
         </div>
-        @if (isAdmin()) {
-          <div class="field">
-            <label>&euro;/hora (opcional)</label>
-            <input
-              type="number"
-              min="0"
-              step="0.01"
-              placeholder="Tarifa del sistema"
-              [value]="invoiceHourlyRate()"
-              (change)="updateInvoiceHourlyRate($event)"
-            />
-          </div>
-        }
+        <div class="field">
+          <label>&euro;/hora</label>
+          <input
+            type="number"
+            min="0"
+            step="0.01"
+            placeholder="Tarifa del sistema"
+            [value]="invoiceHourlyRate()"
+            (change)="updateInvoiceHourlyRate($event)"
+            [disabled]="!isAdmin()"
+          />
+          @if (!isAdmin()) {
+            <span class="rate-hint">Tarifa fijada por el administrador.</span>
+          }
+        </div>
         <div class="modal-actions">
           <button class="btn-secondary" [disabled]="generating()" (click)="closeInvoiceModal()">
             Cancelar

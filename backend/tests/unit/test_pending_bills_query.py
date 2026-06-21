@@ -132,8 +132,12 @@ def test_pending_with_cancelled_bill_is_flagged():
 
 def test_date_to_filters_out_later_checkouts():
     bookings = [
-        make_booking(record_id=1, check_in=date(2026, 6, 20), check_out=date(2026, 6, 22)),
-        make_booking(record_id=2, check_in=date(2026, 6, 21), check_out=date(2026, 6, 23)),
+        make_booking(
+            record_id=1, apartment_id="A1", check_in=date(2026, 6, 20), check_out=date(2026, 6, 22)
+        ),
+        make_booking(
+            record_id=2, apartment_id="A2", check_in=date(2026, 6, 21), check_out=date(2026, 6, 23)
+        ),
     ]
 
     result = _query(bookings).execute(reference_datetime=_NOW, date_to=date(2026, 6, 22))
@@ -143,9 +147,15 @@ def test_date_to_filters_out_later_checkouts():
 
 def test_results_sorted_by_checkout_descending():
     bookings = [
-        make_booking(record_id=1, check_in=date(2026, 6, 20), check_out=date(2026, 6, 22)),
-        make_booking(record_id=2, check_in=date(2026, 6, 21), check_out=date(2026, 6, 24)),
-        make_booking(record_id=3, check_in=date(2026, 6, 20), check_out=date(2026, 6, 23)),
+        make_booking(
+            record_id=1, apartment_id="A1", check_in=date(2026, 6, 20), check_out=date(2026, 6, 22)
+        ),
+        make_booking(
+            record_id=2, apartment_id="A2", check_in=date(2026, 6, 21), check_out=date(2026, 6, 24)
+        ),
+        make_booking(
+            record_id=3, apartment_id="A3", check_in=date(2026, 6, 20), check_out=date(2026, 6, 23)
+        ),
     ]
 
     result = _query(bookings).execute(reference_datetime=_NOW)
@@ -153,9 +163,22 @@ def test_results_sorted_by_checkout_descending():
     assert [bill.record_id for bill in result] == [2, 3, 1]
 
 
-def test_apartment_filter_forwarded_to_repository():
-    query = _query([])
-    query.execute(apartment_id="R180", reference_datetime=_NOW)
+def test_apartment_filter_keeps_only_matching_apartment():
+    bookings = [
+        make_booking(
+            record_id=1,
+            apartment_id="R180",
+            check_in=date(2026, 6, 20),
+            check_out=date(2026, 6, 22),
+        ),
+        make_booking(
+            record_id=2,
+            apartment_id="R200",
+            check_in=date(2026, 6, 20),
+            check_out=date(2026, 6, 23),
+        ),
+    ]
 
-    _, kwargs = query._bookings.list.call_args
-    assert kwargs["apartment_id"] == "R180"
+    result = _query(bookings).execute(apartment_id="R180", reference_datetime=_NOW)
+
+    assert [bill.record_id for bill in result] == [1]

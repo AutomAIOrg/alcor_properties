@@ -37,11 +37,14 @@ class ListBillsQuery:
 
 class ListPendingBillsQuery:
     """
-    Devuelve facturas virtuales 'Pendiente' para reservas cuya limpieza ya puede facturarse.
+    Devuelve facturas virtuales 'Pendiente': exactamente las limpiezas que en la pestaña
+    "Organización de limpiezas" mostrarían el botón "Generar factura".
 
-    Una limpieza es facturable cuando el check-out ya ha ocurrido (considerando la hora de
-    salida por defecto). La lista nunca retrocede más allá del lunes de la semana en curso:
-    los check-outs anteriores a esa semana dejan de mostrarse como pendientes.
+    Para garantizar la paridad entre ambas vistas, se reutiliza el mismo cálculo de
+    oportunidades de limpieza y se filtran las que aún no tienen factura activa
+    (``has_bill == False``) y ya son facturables (``can_bill == True``, es decir, el
+    check-out ya ha ocurrido). Una oportunidad con una factura cancelada vuelve a contar
+    como pendiente y se marca con ``previously_cancelled``.
     """
 
     def __init__(
@@ -49,8 +52,7 @@ class ListPendingBillsQuery:
         booking_repository: IBookingRepository,
         bill_repository: IBillRepository,
     ) -> None:
-        self._bookings = booking_repository
-        self._bills = bill_repository
+        self._opportunities = GetCleaningOpportunitiesUseCase(booking_repository, bill_repository)
 
     def execute(
         self,
@@ -59,40 +61,27 @@ class ListPendingBillsQuery:
         date_to: date | None = None,
         reference_datetime: datetime | None = None,
     ) -> list[Bill]:
-        now = reference_datetime or datetime.now()
-        today = now.date()
-        week_start = today - timedelta(days=today.weekday())
-        lower_bound = max(week_start, date_from) if date_from else week_start
-
-        bookings = self._bookings.list(
-            start_date=week_start - timedelta(days=1),
-            end_date=today + timedelta(days=1),
-            apartment_id=apartment_id,
-        )
-
-        billed_ids = self._bills.list_billed_booking_ids()
-        bill_states = self._bills.get_bill_states_by_booking()
+        opportunities = self._opportunities.execute_at(reference_datetime)
 
         pending: list[Bill] = []
-        for booking in bookings:
-            if booking.record_id is None or booking.record_id in billed_ids:
+        for opportunity in opportunities:
+            # Solo las que en Org. Limpiezas mostrarían el botón "Generar factura".
+            if opportunity.has_bill or not opportunity.can_bill:
                 continue
-            if booking.is_cancelled():
+            checkout = opportunity.available_from
+            if apartment_id is not None and opportunity.apartment_id != apartment_id:
                 continue
-            if not booking.is_cleanable(now):
+            if date_from is not None and checkout < date_from:
                 continue
-            checkout = booking.check_out
-            if checkout < lower_bound:
-                continue
-            if date_to and checkout > date_to:
+            if date_to is not None and checkout > date_to:
                 continue
             pending.append(
                 Bill(
-                    record_id=booking.record_id,
-                    apartment_id=booking.apartment_id,
+                    record_id=opportunity.source_booking_record_id,
+                    apartment_id=opportunity.apartment_id,
                     cleaning_date=checkout,
                     state="Pendiente",
-                    previously_cancelled=bill_states.get(booking.record_id) == BILL_STATE_CANCELLED,
+                    previously_cancelled=opportunity.bill_state == BILL_STATE_CANCELLED,
                 )
             )
 

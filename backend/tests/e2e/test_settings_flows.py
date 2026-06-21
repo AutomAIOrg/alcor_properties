@@ -66,10 +66,13 @@ class TestCleaningRateSettings:
         )
         assert r.status_code == 422
 
-    def test_cleaner_cannot_read_or_update_rate(self, e2e_client, cleaner_auth_headers):
+    def test_cleaner_can_read_but_not_update_rate(self, e2e_client, cleaner_auth_headers):
+        # La limpiadora puede leer la tarifa (la necesita al generar factura)...
         r = e2e_client.get("/api/v1/settings/cleaning-rate", headers=cleaner_auth_headers)
-        assert r.status_code == 403
+        assert r.status_code == 200
+        assert "cleaning_hourly_rate" in r.json()
 
+        # ...pero no puede modificarla.
         r = e2e_client.put(
             "/api/v1/settings/cleaning-rate",
             json={"cleaning_hourly_rate": 10},

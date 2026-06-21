@@ -411,9 +411,7 @@ class GetCleaningOpportunitiesUseCase:
         )
         return self.execute_at(reference_datetime)
 
-    def execute_at(
-        self, reference_datetime: datetime | None = None
-    ) -> list[CleaningOpportunity]:
+    def execute_at(self, reference_datetime: datetime | None = None) -> list[CleaningOpportunity]:
         """Igual que :meth:`execute` pero con un instante exacto (para calcular ``can_bill``)."""
         now = reference_datetime or datetime.now()
         range_start, range_end = _cleaning_operational_range(now.date())

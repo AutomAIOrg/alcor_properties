@@ -153,14 +153,12 @@ export class BillsComponent implements OnInit {
     this.invoiceEnd.set('12:00');
     this.invoiceHourlyRate.set('');
 
-    // La tarifa solo la puede leer un admin (endpoint protegido). Para la limpiadora
-    // se omite y el backend aplica la tarifa configurada del sistema.
-    if (this.isAdmin()) {
-      this.billingSettings.getCleaningRate().subscribe({
-        next: response => this.invoiceHourlyRate.set(String(response.cleaning_hourly_rate)),
-        error: () => this.invoiceHourlyRate.set(''),
-      });
-    }
+    // Se carga la tarifa vigente para todos los roles. El admin puede editarla;
+    // la limpiadora la ve como solo lectura (el precio por hora que se le pagará).
+    this.billingSettings.getCleaningRate().subscribe({
+      next: response => this.invoiceHourlyRate.set(String(response.cleaning_hourly_rate)),
+      error: () => this.invoiceHourlyRate.set(''),
+    });
   }
 
   closeInvoiceModal(): void {

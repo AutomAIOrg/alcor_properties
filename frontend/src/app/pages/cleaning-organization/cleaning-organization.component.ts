@@ -298,7 +298,7 @@ export class CleaningOrganizationComponent implements OnInit, OnDestroy {
 
     this.billingSettings.getCleaningRate().subscribe({
       next: response => this.invoiceHourlyRate.set(String(response.cleaning_hourly_rate)),
-      error: () => this.invoiceHourlyRate.set('0'),
+      error: () => this.invoiceHourlyRate.set(''),
     });
   }
 
