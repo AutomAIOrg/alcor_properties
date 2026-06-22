@@ -45,3 +45,4 @@ class BookingORM(Base):
 
     # Notas
     notes: Mapped[str | None] = mapped_column("Notes", Text, nullable=True)
+    notes_cleaning: Mapped[str | None] = mapped_column("Notes_Cleaning", Text, nullable=True)

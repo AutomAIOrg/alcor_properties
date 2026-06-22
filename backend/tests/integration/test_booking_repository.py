@@ -150,6 +150,19 @@ class TestUpdate:
 
         assert result.guest_name == "Carlos López"
 
+    def test_persists_notes_cleaning_separately_from_notes(self, sqlite_session):
+        repo = SQLAlchemyBookingRepository(sqlite_session)
+        orm = _insert_orm(
+            sqlite_session, notes="Nota reserva", notes_cleaning="Instrucciones limpieza"
+        )
+        existing = repo.get_by_id(orm.record_id)
+        updated = existing.model_copy(update={"notes_cleaning": "Llaves en conserjería"})
+
+        result = repo.update(updated)
+
+        assert result.notes == "Nota reserva"
+        assert result.notes_cleaning == "Llaves en conserjería"
+
     def test_raises_booking_not_found_for_missing_record(self, sqlite_session):
         booking = make_booking(record_id=9999)
         with pytest.raises(BookingNotFound):

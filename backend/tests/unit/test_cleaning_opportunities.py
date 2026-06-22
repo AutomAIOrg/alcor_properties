@@ -161,14 +161,15 @@ class TestBuildCleaningOpportunities:
         assert opportunities[1].available_until is None
         assert opportunities[2].available_until is None
 
-    def test_trims_comments_from_notes(self):
+    def test_trims_comments_from_notes_cleaning(self):
         bookings = [
             make_booking(
                 record_id=1,
                 apartment_id="R180",
                 check_in=date(2026, 6, 1),
                 check_out=date(2026, 6, 5),
-                notes="  dejar llaves en conserjería  ",
+                notes="nota de reserva",
+                notes_cleaning="  dejar llaves en conserjería  ",
             )
         ]
 
@@ -176,14 +177,31 @@ class TestBuildCleaningOpportunities:
 
         assert opportunities[0].comments == "dejar llaves en conserjería"
 
-    def test_empty_comments_when_notes_are_none(self):
+    def test_empty_comments_when_notes_cleaning_are_none(self):
         bookings = [
             make_booking(
                 record_id=1,
                 apartment_id="R180",
                 check_in=date(2026, 6, 1),
                 check_out=date(2026, 6, 5),
-                notes=None,
+                notes="nota de reserva",
+                notes_cleaning=None,
+            )
+        ]
+
+        opportunities = _build_cleaning_opportunities(bookings)
+
+        assert opportunities[0].comments == ""
+
+    def test_ignores_booking_notes_for_cleaning_comments(self):
+        bookings = [
+            make_booking(
+                record_id=1,
+                apartment_id="R180",
+                check_in=date(2026, 6, 1),
+                check_out=date(2026, 6, 5),
+                notes="solo notas de reserva",
+                notes_cleaning=None,
             )
         ]
 

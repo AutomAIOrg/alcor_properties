@@ -28,6 +28,7 @@ class BookingResponse(BaseModel):
     phone: str | None = None
     booking_number: str | None = None
     notes: str | None = None
+    notes_cleaning: str | None = None
     electric_allowance: float | None = None
 
 
@@ -49,6 +50,7 @@ class BookingCreateRequest(BaseModel):
     phone: str | None = None
     booking_number: str | None = None
     notes: str | None = None
+    notes_cleaning: str | None = None
 
 
 class BookingUpdateRequest(BaseModel):
@@ -68,6 +70,7 @@ class BookingUpdateRequest(BaseModel):
     phone: str | None = None
     booking_number: str | None = None
     notes: str | None = None
+    notes_cleaning: str | None = None
 
 
 class CleaningOpportunityResponse(BaseModel):

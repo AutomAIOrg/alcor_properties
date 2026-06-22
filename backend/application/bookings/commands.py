@@ -25,6 +25,7 @@ class BookingUpdateData:
     phone: str | None = None
     booking_number: str | None = None
     notes: str | None = None
+    notes_cleaning: str | None = None
 
 
 def _apply_electric_allowance(booking: Booking, electric_ids: set[str]) -> Booking:

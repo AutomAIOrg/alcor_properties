@@ -56,6 +56,7 @@ class Booking(BaseModel):
         default=None, description="Referencia de reserva de la plataforma"
     )
     notes: str | None = Field(default=None, description="Notas en texto libre")
+    notes_cleaning: str | None = Field(default=None, description="Notas de limpieza")
 
     # Campo calculado — establecido por la capa de aplicación, no persistido en la BD
     electric_allowance: float | None = Field(

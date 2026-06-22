@@ -248,7 +248,7 @@ def _build_cleaning_opportunities(bookings: list[Booking]) -> list[CleaningOppor
                     apartment_id=booking.apartment_id,
                     available_from=booking.check_out,
                     available_until=next_booking.check_in if next_booking else None,
-                    comments=(booking.notes or "").strip(),
+                    comments=(booking.notes_cleaning or "").strip(),
                 )
             )
 
