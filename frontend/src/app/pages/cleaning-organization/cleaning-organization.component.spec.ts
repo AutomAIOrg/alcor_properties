@@ -39,6 +39,7 @@ function makeBooking(overrides: Partial<Booking> = {}): Booking {
     phone: null,
     booking_number: null,
     notes: null,
+    notes_cleaning: null,
     ...overrides,
   };
 }
@@ -377,7 +378,7 @@ describe('CleaningOrganizationComponent', () => {
       true
     );
     bookingServiceSpy.updateBooking.mockReturnValue(
-      of(makeBooking({ record_id: 1, notes: 'Nuevo comentario' }))
+      of(makeBooking({ record_id: 1, notes_cleaning: 'Nuevo comentario' }))
     );
 
     component.currentDate.set(new Date(2026, 5, 3));
@@ -396,7 +397,7 @@ describe('CleaningOrganizationComponent', () => {
     fixture.detectChanges();
 
     expect(bookingServiceSpy.updateBooking).toHaveBeenCalledWith(1, {
-      notes: 'Nuevo comentario',
+      notes_cleaning: 'Nuevo comentario',
     });
     expect(component.cleaningOpportunities()[0].comments).toBe('Nuevo comentario');
     expect(fixture.nativeElement.textContent).toContain('Comentario guardado con éxito');
@@ -408,7 +409,9 @@ describe('CleaningOrganizationComponent', () => {
       [makeCleaningOpportunity({ source_booking_record_id: 1, comments: 'Comentario inicial' })],
       true
     );
-    bookingServiceSpy.updateBooking.mockReturnValue(of(makeBooking({ record_id: 1, notes: '' })));
+    bookingServiceSpy.updateBooking.mockReturnValue(
+      of(makeBooking({ record_id: 1, notes_cleaning: '' }))
+    );
 
     component.currentDate.set(new Date(2026, 5, 3));
     fixture.detectChanges();
@@ -425,7 +428,7 @@ describe('CleaningOrganizationComponent', () => {
     acceptButton.click();
     fixture.detectChanges();
 
-    expect(bookingServiceSpy.updateBooking).toHaveBeenCalledWith(1, { notes: '' });
+    expect(bookingServiceSpy.updateBooking).toHaveBeenCalledWith(1, { notes_cleaning: '' });
     expect(component.cleaningOpportunities()[0].comments).toBe('');
     expect(fixture.nativeElement.textContent).toContain('Sin comentarios');
   });

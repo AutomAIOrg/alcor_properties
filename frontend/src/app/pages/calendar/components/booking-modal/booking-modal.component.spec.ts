@@ -26,6 +26,7 @@ function makeBooking(overrides: Partial<Booking> = {}): Booking {
     phone: '+34600000000',
     booking_number: 'BK001',
     notes: null,
+    notes_cleaning: null,
     ...overrides,
   };
 }

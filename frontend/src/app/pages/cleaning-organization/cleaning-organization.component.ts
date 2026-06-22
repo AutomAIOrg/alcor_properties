@@ -245,29 +245,31 @@ export class CleaningOrganizationComponent implements OnInit, OnDestroy {
     const opportunity = this.selectedCommentOpportunity();
     if (!opportunity || this.isSavingComment()) return;
 
-    const notes = this.commentDraft().trim();
+    const notesCleaning = this.commentDraft().trim();
 
     this.isSavingComment.set(true);
 
-    this.bookingService.updateBooking(opportunity.sourceBookingRecordId, { notes }).subscribe({
-      next: updatedBooking => {
-        this.apiCleaningOpportunities.update(opportunities =>
-          opportunities.map(item =>
-            item.source_booking_record_id === updatedBooking.record_id
-              ? { ...item, comments: (updatedBooking.notes ?? '').trim() }
-              : item
-          )
-        );
-        this.isSavingComment.set(false);
-        this.selectedCommentOpportunity.set(null);
-        this.commentDraft.set('');
-        this.showToast('success', 'Comentario guardado con éxito');
-      },
-      error: () => {
-        this.isSavingComment.set(false);
-        this.showToast('error', 'Ha fallado al guardar el comentario');
-      },
-    });
+    this.bookingService
+      .updateBooking(opportunity.sourceBookingRecordId, { notes_cleaning: notesCleaning })
+      .subscribe({
+        next: updatedBooking => {
+          this.apiCleaningOpportunities.update(opportunities =>
+            opportunities.map(item =>
+              item.source_booking_record_id === updatedBooking.record_id
+                ? { ...item, comments: (updatedBooking.notes_cleaning ?? '').trim() }
+                : item
+            )
+          );
+          this.isSavingComment.set(false);
+          this.selectedCommentOpportunity.set(null);
+          this.commentDraft.set('');
+          this.showToast('success', 'Comentario guardado con éxito');
+        },
+        error: () => {
+          this.isSavingComment.set(false);
+          this.showToast('error', 'Ha fallado al guardar el comentario');
+        },
+      });
   }
 
   private getWeekStart(date: Date): Date {
