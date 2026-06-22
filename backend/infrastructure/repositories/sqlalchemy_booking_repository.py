@@ -83,6 +83,7 @@ class SQLAlchemyBookingRepository(IBookingRepository):
         orm.phone = booking.phone
         orm.booking_number = booking.booking_number
         orm.notes = booking.notes
+        orm.notes_cleaning = booking.notes_cleaning
 
         self._db.commit()
         self._db.refresh(orm)
@@ -121,6 +122,7 @@ class SQLAlchemyBookingRepository(IBookingRepository):
             phone=orm.phone,
             booking_number=orm.booking_number,
             notes=orm.notes,
+            notes_cleaning=orm.notes_cleaning,
         )
 
     @staticmethod
@@ -142,4 +144,5 @@ class SQLAlchemyBookingRepository(IBookingRepository):
             phone=booking.phone,
             booking_number=booking.booking_number,
             notes=booking.notes,
+            notes_cleaning=booking.notes_cleaning,
         )

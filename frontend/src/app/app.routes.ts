@@ -11,7 +11,15 @@ export const routes: Routes = [
     path: 'calendar',
     loadComponent: () =>
       import('./pages/calendar/calendar.component').then(m => m.CalendarComponent),
-    canActivate: [authGuard],
+    canActivate: [authGuard, permissionGuard('calendar:access')],
+  },
+  {
+    path: 'cleaning-organization',
+    loadComponent: () =>
+      import('./pages/cleaning-organization/cleaning-organization.component').then(
+        m => m.CleaningOrganizationComponent
+      ),
+    canActivate: [authGuard, permissionGuard('cleaning:access')],
   },
   {
     path: 'searches',

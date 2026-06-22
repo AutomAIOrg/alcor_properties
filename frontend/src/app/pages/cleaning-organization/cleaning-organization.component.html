@@ -1,0 +1,221 @@
+<section class="cleaning-organization">
+  <header class="cleaning-header">
+    <div>
+      <span class="eyebrow">Organización Limpiezas</span>
+      <h1>Organización Limpiezas</h1>
+      <p>Planificación semanal de pisos disponibles para limpiar.</p>
+    </div>
+
+    <div class="week-navigation" aria-label="Navegación semanal">
+      <button
+        type="button"
+        [disabled]="!canGoPrevWeek()"
+        (click)="prevWeek()"
+        aria-label="Semana anterior"
+      >
+        &#8592;
+      </button>
+      <button class="today-btn" type="button" (click)="goToToday()">Hoy</button>
+      <button
+        type="button"
+        [disabled]="!canGoNextWeek()"
+        (click)="nextWeek()"
+        aria-label="Semana siguiente"
+      >
+        &#8594;
+      </button>
+    </div>
+  </header>
+
+  <section class="week-card" aria-labelledby="cleaning-week-title">
+    <div class="section-title-row">
+      <div>
+        <h2 id="cleaning-week-title">Semana del {{ weekLabel() }}</h2>
+        <p>{{ cleaningOpportunities().length }} limpiezas disponibles</p>
+      </div>
+    </div>
+
+    <div class="calendar-grid-wrapper">
+      <div class="weekday-header-row">
+        @for (day of weekDays(); track day.iso) {
+          <div class="weekday-header">{{ day.label }}</div>
+        }
+      </div>
+
+      <div class="cleaning-week-row" [style.height.px]="weekGridHeight()">
+        <div class="cleaning-days-grid">
+          @for (day of weekDays(); track day.iso) {
+            <article class="day-cell" [class.today]="day.isToday">
+              <span class="day-number">{{ day.date.getDate() }}</span>
+            </article>
+          }
+        </div>
+
+        <div class="cleaning-bars-overlay">
+          @for (bar of cleaningBars(); track bar.opportunity.sourceBookingRecordId) {
+            <div
+              class="cleaning-bar"
+              [class.bar-round-left]="bar.isStartInWeek"
+              [class.bar-round-right]="bar.isEndInWeek"
+              [style.left.%]="bar.leftPct"
+              [style.width.%]="bar.widthPct"
+              [style.top.px]="bar.top"
+              [style.height.px]="barHeight"
+              [style.background]="bar.color"
+              [attr.title]="
+                bar.opportunity.apartmentId +
+                ' — ' +
+                formatDate(bar.opportunity.availableFromDate) +
+                ' a ' +
+                formatDate(bar.opportunity.availableUntilDate)
+              "
+            >
+              <span class="bar-label">
+                {{ bar.opportunity.apartmentId }} ·
+                {{ formatDate(bar.opportunity.availableFromDate) }} -
+                {{ formatDate(bar.opportunity.availableUntilDate) }}
+              </span>
+            </div>
+          }
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="detail-card" aria-labelledby="cleaning-detail-title">
+    <div class="section-title-row">
+      <div>
+        <h2 id="cleaning-detail-title">Detalle de limpiezas</h2>
+        <p>Información desglosada para organizar la semana.</p>
+      </div>
+
+      @if (loadError()) {
+        <button class="secondary-btn" type="button" (click)="loadBookings()">Reintentar</button>
+      }
+    </div>
+
+    @if (loadError()) {
+      <div class="notice error-notice">{{ loadError() }}</div>
+    }
+
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr>
+            <th>Piso</th>
+            <th>Fecha salida</th>
+            <th>Hora</th>
+            <th>Fecha entrada</th>
+            <th>Hora</th>
+            <th>Comentarios</th>
+            <th>Generar factura</th>
+          </tr>
+        </thead>
+        <tbody>
+          @if (isLoading()) {
+            <tr>
+              <td colspan="7" class="state-cell">Cargando limpiezas...</td>
+            </tr>
+          } @else if (!cleaningOpportunities().length) {
+            <tr>
+              <td colspan="7" class="state-cell">
+                No hay pisos disponibles para limpiar en esta semana.
+              </td>
+            </tr>
+          } @else {
+            @for (opportunity of cleaningOpportunities(); track opportunity.sourceBookingRecordId) {
+              <tr>
+                <td>
+                  <span
+                    class="reference-chip"
+                    [style.background]="getApartmentColor(opportunity.apartmentId)"
+                  >
+                    {{ opportunity.apartmentId }}
+                  </span>
+                </td>
+                <td>{{ formatDate(opportunity.availableFromDate) }}</td>
+                <td>{{ opportunity.availableFromTime }}</td>
+                <td>{{ formatDate(opportunity.availableUntilDate) }}</td>
+                <td>{{ opportunity.availableUntilTime }}</td>
+                <td>
+                  <div class="comments-cell">
+                    <span class="comments-text">
+                      {{ opportunity.comments || 'Sin comentarios' }}
+                    </span>
+                    @if (isAdmin()) {
+                      <button
+                        class="icon-btn edit-btn"
+                        type="button"
+                        title="Editar comentario"
+                        aria-label="Editar comentario"
+                        (click)="openCommentModal(opportunity)"
+                      >
+                        ✎
+                      </button>
+                    }
+                  </div>
+                </td>
+                <td>
+                  <button class="invoice-btn" type="button" disabled>Generar factura</button>
+                </td>
+              </tr>
+            }
+          }
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  @if (selectedCommentOpportunity()) {
+    <div class="modal-backdrop" role="presentation" (click)="closeCommentModal()">
+      <section
+        class="comment-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="comment-dialog-title"
+        (click)="$event.stopPropagation()"
+      >
+        <h2 id="comment-dialog-title">Editar comentario</h2>
+        <p>
+          Piso
+          <strong>{{ selectedCommentOpportunity()!.apartmentId }}</strong>
+        </p>
+
+        <label class="comment-field">
+          Comentarios
+          <textarea
+            [value]="commentDraft()"
+            (input)="updateCommentDraft($event)"
+            rows="5"
+            placeholder="Añade indicaciones para la limpieza"
+          ></textarea>
+        </label>
+
+        <div class="dialog-actions">
+          <button
+            class="primary-btn"
+            type="button"
+            [disabled]="isSavingComment()"
+            (click)="saveComment()"
+          >
+            {{ isSavingComment() ? 'Guardando...' : 'Aceptar' }}
+          </button>
+          <button
+            class="secondary-btn"
+            type="button"
+            [disabled]="isSavingComment()"
+            (click)="closeCommentModal()"
+          >
+            Cancelar
+          </button>
+        </div>
+      </section>
+    </div>
+  }
+
+  @if (toast()) {
+    <div class="toast" [class.error]="toast()!.type === 'error'" role="status">
+      {{ toast()!.text }}
+    </div>
+  }
+</section>

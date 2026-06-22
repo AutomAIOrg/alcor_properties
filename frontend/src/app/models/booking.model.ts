@@ -16,7 +16,16 @@ export interface Booking {
   phone: string | null;
   booking_number: string | null;
   notes: string | null;
+  notes_cleaning: string | null;
 }
 
 export const BASE_STATUSES = ['Confirmed', 'Pending', 'Cancelled', 'ok'] as const;
 export type BookingStatus = (typeof BASE_STATUSES)[number];
+
+export interface CleaningOpportunity {
+  source_booking_record_id: number;
+  apartment_id: string;
+  available_from: string;
+  available_until: string | null;
+  comments: string;
+}

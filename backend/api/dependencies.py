@@ -22,6 +22,7 @@ from application.bookings.queries import (
     GetActiveBookingsQuery,
     GetBookingByIdQuery,
     GetCalendarEventsQuery,
+    GetCleaningOpportunitiesUseCase,
     GetUpcomingCheckinsQuery,
     GetUpcomingCheckoutsQuery,
     ListBookingsQuery,
@@ -106,6 +107,17 @@ def require_admin(
     return current_user
 
 
+def require_cleaning(
+    current_user: User = Depends(get_current_user),
+) -> User:
+    """Verifica que el usuario tenga acceso a la organización de limpiezas."""
+    if current_user.role not in (Role.ADMIN, Role.LIMPIADORA):
+        raise HTTPException(
+            status_code=403, detail="Permiso denegado. El usuario no tiene acceso a limpiezas."
+        )
+    return current_user
+
+
 def get_electric_ids() -> set[str]:
     """Parsea la variable de entorno ELECTRIC a un set de IDs de reservas."""
     return {b.strip() for b in settings.ELECTRIC.split(",") if b.strip()}
@@ -182,6 +194,7 @@ class BookingUseCases:
     upcoming_checkins_query: GetUpcomingCheckinsQuery
     upcoming_checkouts_query: GetUpcomingCheckoutsQuery
     calendar_events_query: GetCalendarEventsQuery
+    get_cleaning_opportunities_query: GetCleaningOpportunitiesUseCase
     create_command: CreateBookingUseCase
     update_command: UpdateBookingUseCase
     delete_command: DeleteBookingUseCase
@@ -199,6 +212,7 @@ def get_booking_use_cases(
         upcoming_checkins_query=GetUpcomingCheckinsQuery(repo, electric_ids),
         upcoming_checkouts_query=GetUpcomingCheckoutsQuery(repo, electric_ids),
         calendar_events_query=GetCalendarEventsQuery(repo, electric_ids),
+        get_cleaning_opportunities_query=GetCleaningOpportunitiesUseCase(repo),
         create_command=CreateBookingUseCase(repo, electric_ids),
         update_command=UpdateBookingUseCase(repo, electric_ids),
         delete_command=DeleteBookingUseCase(repo),

@@ -28,6 +28,7 @@ class BookingResponse(BaseModel):
     phone: str | None = None
     booking_number: str | None = None
     notes: str | None = None
+    notes_cleaning: str | None = None
     electric_allowance: float | None = None
 
 
@@ -49,6 +50,7 @@ class BookingCreateRequest(BaseModel):
     phone: str | None = None
     booking_number: str | None = None
     notes: str | None = None
+    notes_cleaning: str | None = None
 
 
 class BookingUpdateRequest(BaseModel):
@@ -68,3 +70,16 @@ class BookingUpdateRequest(BaseModel):
     phone: str | None = None
     booking_number: str | None = None
     notes: str | None = None
+    notes_cleaning: str | None = None
+
+
+class CleaningOpportunityResponse(BaseModel):
+    """DTO de salida para las oportunidades de limpieza."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    source_booking_record_id: int
+    apartment_id: str
+    available_from: date
+    available_until: date | None = None
+    comments: str = ""

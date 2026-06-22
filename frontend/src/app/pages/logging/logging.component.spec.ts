@@ -27,6 +27,7 @@ describe('LoggingComponent', () => {
   beforeEach(async () => {
     authServiceSpy = {
       login: jest.fn(),
+      getDefaultRoute: jest.fn().mockReturnValue('/calendar'),
     } as unknown as jest.Mocked<AuthService>;
 
     routerSpy = {
@@ -110,8 +111,9 @@ describe('LoggingComponent', () => {
   // ── B: onSubmit success ─────────────────────────────────────────────────────
 
   describe('B — onSubmit success', () => {
-    it('envía credenciales, limpia errores, activa loading y navega a /calendar', () => {
+    it('envía credenciales, limpia errores, activa loading y navega a la ruta por defecto', () => {
       authServiceSpy.login.mockReturnValue(of(makeAuthResponse()));
+      authServiceSpy.getDefaultRoute.mockReturnValue('/cleaning-organization');
 
       component.errorMsg = 'Error anterior';
       component.username = 'admin@test.com';
@@ -126,8 +128,9 @@ describe('LoggingComponent', () => {
       });
       expect(component.errorMsg).toBe('');
       expect(component.loading()).toBe(true);
+      expect(authServiceSpy.getDefaultRoute).toHaveBeenCalledTimes(1);
       expect(routerSpy.navigate).toHaveBeenCalledTimes(1);
-      expect(routerSpy.navigate).toHaveBeenCalledWith(['/calendar']);
+      expect(routerSpy.navigate).toHaveBeenCalledWith(['/cleaning-organization']);
     });
   });
 
@@ -294,6 +297,7 @@ describe('LoggingComponent', () => {
         password: '123456',
       });
 
+      expect(authServiceSpy.getDefaultRoute).toHaveBeenCalledTimes(1);
       expect(routerSpy.navigate).toHaveBeenCalledWith(['/calendar']);
     });
 

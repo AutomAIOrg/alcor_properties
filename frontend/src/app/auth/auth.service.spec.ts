@@ -405,6 +405,55 @@ describe('AuthService', () => {
       expect(ROLE_PERMISSIONS[limitedRole]).not.toContain(deniedPermission);
       expect(service.hasPermission(deniedPermission)).toBe(false);
     });
+
+    it('permite a admin acceder al calendario y a organización de limpiezas', () => {
+      setup({
+        tokenValid: true,
+        decodedUser: makeUser({ role: 'admin' }),
+      });
+
+      expect(service.hasPermission('calendar:access')).toBe(true);
+      expect(service.hasPermission('cleaning:access')).toBe(true);
+    });
+
+    it('permite a limpiadora acceder a organización de limpiezas pero no al calendario', () => {
+      setup({
+        tokenValid: true,
+        decodedUser: makeUser({ role: 'limpiadora' }),
+      });
+
+      expect(service.hasPermission('cleaning:access')).toBe(true);
+      expect(service.hasPermission('calendar:access')).toBe(false);
+      expect(service.hasPermission('admin:access')).toBe(false);
+    });
+  });
+
+  // ── E2: Ruta por defecto ───────────────────────────────────────────────────
+
+  describe('E2 — getDefaultRoute', () => {
+    it('devuelve /calendar para admin', () => {
+      setup({
+        tokenValid: true,
+        decodedUser: makeUser({ role: 'admin' }),
+      });
+
+      expect(service.getDefaultRoute()).toBe('/calendar');
+    });
+
+    it('devuelve /cleaning-organization para limpiadora', () => {
+      setup({
+        tokenValid: true,
+        decodedUser: makeUser({ role: 'limpiadora' }),
+      });
+
+      expect(service.getDefaultRoute()).toBe('/cleaning-organization');
+    });
+
+    it('devuelve /calendar si no hay usuario autenticado', () => {
+      setup();
+
+      expect(service.getDefaultRoute()).toBe('/calendar');
+    });
   });
 
   // ── F: Estado reactivo ──────────────────────────────────────────────────────

@@ -1,11 +1,11 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { Booking } from '../models/booking.model';
+import { Booking, CleaningOpportunity } from '../models/booking.model';
 import { environment } from '../../environments/environment';
 
 // Re-export so existing imports of BookingService still get Booking from here
-export type { Booking } from '../models/booking.model';
+export type { Booking, CleaningOpportunity } from '../models/booking.model';
 
 @Injectable({ providedIn: 'root' })
 export class BookingService {
@@ -15,6 +15,10 @@ export class BookingService {
 
   getBookings(): Observable<Booking[]> {
     return this.http.get<Booking[]>(`${this.API}/`);
+  }
+
+  getCleaningOpportunities(): Observable<CleaningOpportunity[]> {
+    return this.http.get<CleaningOpportunity[]>(`${this.API}/cleaning-opportunities`);
   }
 
   updateBooking(recordId: number, data: Partial<Booking>): Observable<Booking> {
