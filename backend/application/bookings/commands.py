@@ -20,21 +20,21 @@ _UNSET = _UnsetType()
 
 @dataclass
 class BookingUpdateData:
-    apartment_id: str | None = None
-    guest_name: str | None = None
-    check_in: date | None = None
-    check_out: date | None = None
-    status: str | None = None
-    persons: int | None = None
-    adults: int | None = None
-    children: int | None = None
-    price: float | None = None
-    charges: float | None = None
-    email: str | None = None
-    phone: str | None = None
-    booking_number: str | None = None
-    notes: str | None = None
-    notes_cleaning: str | None = None
+    apartment_id: str | None | _UnsetType = _UNSET
+    guest_name: str | None | _UnsetType = _UNSET
+    check_in: date | None | _UnsetType = _UNSET
+    check_out: date | None | _UnsetType = _UNSET
+    status: str | None | _UnsetType = _UNSET
+    persons: int | None | _UnsetType = _UNSET
+    adults: int | None | _UnsetType = _UNSET
+    children: int | None | _UnsetType = _UNSET
+    price: float | None | _UnsetType = _UNSET
+    charges: float | None | _UnsetType = _UNSET
+    email: str | None | _UnsetType = _UNSET
+    phone: str | None | _UnsetType = _UNSET
+    booking_number: str | None | _UnsetType = _UNSET
+    notes: str | None | _UnsetType = _UNSET
+    notes_cleaning: str | None | _UnsetType = _UNSET
 
     def as_update_dict(self) -> dict[str, object]:
         """Devuelve solo los campos enviados; conserva None como limpieza explícita."""
