@@ -176,18 +176,18 @@ export class CalendarLayoutService {
     const color = this.colorPipe.transform(bookingId);
 
     // Indicador de tamaño fijo: 10% de 1/3 de celda, expresado como % de la barra
-    const indicatorPct = 1000 / 21 / widthPct;
+    const indicatorPct = 1000 / 10 / widthPct;
     const g = indicatorPct.toFixed(3);
     const r = (100 - indicatorPct).toFixed(3);
 
     if (isCheckin && isCheckout) {
-      return `linear-gradient(to right, #4ade80 0%, #4ade80 ${g}%, ${color} ${g}%, ${color} ${r}%, #f87171 ${r}%, #f87171 100%)`;
+      return `linear-gradient(to right, #54de4a 0%, #54de4a ${g}%, ${color} ${g}%, ${color} ${r}%, #fd0202 ${r}%, #fd0202 100%)`;
     }
     if (isCheckin) {
-      return `linear-gradient(to right, #4ade80 0%, #4ade80 ${g}%, ${color} ${g}%)`;
+      return `linear-gradient(to right, #54de4a 0%, #54de4a ${g}%, ${color} ${g}%)`;
     }
     if (isCheckout) {
-      return `linear-gradient(to right, ${color} 0%, ${color} ${r}%, #f87171 ${r}%, #f87171 100%)`;
+      return `linear-gradient(to right, ${color} 0%, ${color} ${r}%, #fd0202 ${r}%, #fd0202 100%)`;
     }
     return color;
   }

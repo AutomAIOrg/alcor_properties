@@ -196,29 +196,6 @@ class TestSearchNumericFilters:
         assert len(results) == 1
         assert results[0].apartment_id == "LARGE"
 
-    def test_max_rooms_excludes_apartments_above_threshold(self, sqlite_session):
-        _insert_apartment(sqlite_session, apartment_id="SMALL", rooms=1)
-        _insert_apartment(sqlite_session, apartment_id="LARGE", rooms=4)
-
-        results = SQLAlchemyApartmentRepository(sqlite_session).search_apartments(
-            ApartmentSearchFilters(max_rooms=2)
-        )
-
-        assert len(results) == 1
-        assert results[0].apartment_id == "SMALL"
-
-    def test_min_max_rooms_combined(self, sqlite_session):
-        _insert_apartment(sqlite_session, apartment_id="ONE", rooms=1)
-        _insert_apartment(sqlite_session, apartment_id="TWO", rooms=2)
-        _insert_apartment(sqlite_session, apartment_id="FOUR", rooms=4)
-
-        results = SQLAlchemyApartmentRepository(sqlite_session).search_apartments(
-            ApartmentSearchFilters(min_rooms=2, max_rooms=3)
-        )
-
-        assert len(results) == 1
-        assert results[0].apartment_id == "TWO"
-
     def test_min_max_occupants_combined(self, sqlite_session):
         _insert_apartment(sqlite_session, apartment_id="SMALL", total_occupants=2)
         _insert_apartment(sqlite_session, apartment_id="MEDIUM", total_occupants=6)

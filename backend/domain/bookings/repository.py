@@ -27,12 +27,17 @@ class IBookingRepository(ABC):
         start_date: date | None = None,
         end_date: date | None = None,
         limit: int | None = None,
+        apartment_id: str | None = None,
+        status: str | None = None,
+        guest_name: str | None = None,
+        booking_number: str | None = None,
     ) -> list[Booking]:
         """
         Devuelve las reservas, opcionalmente filtradas por rango de fechas y limitadas en cantidad.
 
         Cuando se proporcionan *start_date* / *end_date*, solo se retornan reservas cuya
-        estancia se superpone con ese rango.
+        estancia se superpone con ese rango semiabierto [start_date, end_date). El resto de
+        parámetros aplican filtros adicionales.
         """
         pass
 
@@ -62,5 +67,18 @@ class IBookingRepository(ABC):
 
         Excepciones:
             BookingNotFound: si no existe una reserva con ese ID.
+        """
+        pass
+
+    @abstractmethod
+    def find_overlapping_active(
+        self,
+        apartment_id: str,
+        check_in: date,
+        check_out: date,
+        exclude_record_id: int | None = None,
+    ) -> bool:
+        """
+        Busca si hay alguna reserva activa que bloquea el apartamento en el rango de fechas proporcionado.
         """
         pass

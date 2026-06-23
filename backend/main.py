@@ -10,6 +10,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.exc import SQLAlchemyError
 
 from api.error_handlers import (
+    apartment_not_found_handler,
     booking_conflict_handler,
     booking_not_found_handler,
     domain_validation_error_handler,
@@ -24,6 +25,7 @@ from api.error_handlers import (
 from api.v1.router import router as v1_router
 from config import settings
 from domain.exceptions import (
+    ApartmentNotFound,
     BookingConflict,
     BookingNotFound,
     DomainValidationError,
@@ -48,20 +50,25 @@ app = FastAPI(
     title=settings.APP_NAME,
     version=settings.APP_VERSION,
     description="REST API for Property Management System",
-    docs_url="/docs",
-    redoc_url="/redoc",
+    docs_url="/docs" if settings.DEBUG else None,
+    redoc_url="/redoc" if settings.DEBUG else None,
 )
 
 # CORS
+# Nota: el navegador prohíbe combinar el comodín "*" con allow_credentials=True.
+# Si se configura "*", se desactivan las credenciales para mantener una respuesta válida;
+# en producción debe definirse el/los origen(es) concreto(s) en CORS_ORIGINS.
+_allow_all_origins = "*" in settings.CORS_ORIGINS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.CORS_ORIGINS,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_credentials=not _allow_all_origins,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type"],
 )
 
 # Excepción de dominio → Respuesta HTTP
+app.add_exception_handler(ApartmentNotFound, apartment_not_found_handler)
 app.add_exception_handler(BookingNotFound, booking_not_found_handler)
 app.add_exception_handler(BookingConflict, booking_conflict_handler)
 app.add_exception_handler(DomainValidationError, domain_validation_error_handler)

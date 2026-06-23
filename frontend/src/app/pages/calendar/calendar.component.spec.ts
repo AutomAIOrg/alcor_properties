@@ -4,14 +4,15 @@ import { of } from 'rxjs';
 
 import { CalendarComponent } from './calendar.component';
 import { BookingService } from '../../services/booking.service';
+import { ApartmentService } from '../../services/apartment.service';
 import { CalendarLayoutService } from '../../services/calendar-layout.service';
 import { AuthService } from '../../auth/auth.service';
 import { Booking } from '../../models/booking.model';
 import { CalendarWeek } from '../../models/calendar.model';
 import { CalendarHeaderComponent } from './components/calendar-header/calendar-header.component';
 import { WeekRowComponent } from './components/week-row/week-row.component';
-import { BookingModalComponent } from './components/booking-modal/booking-modal.component';
-import { BookingCreateModalComponent } from './components/booking-create-modal/booking-create-modal.component';
+import { BookingModalComponent } from '../../shared/components/booking-modal/booking-modal.component';
+import { BookingCreateModalComponent } from '../../shared/components/booking-create-modal/booking-create-modal.component';
 import { BookingColorPipe } from '../../pipes/booking-color.pipe';
 
 // ─── Stubs de componentes hijo ─────────────────────────────────────────────────
@@ -45,23 +46,13 @@ class StubWeekRowComponent {
 }
 
 @Component({
-  selector: 'app-booking-modal',
-  standalone: true,
-  template: '',
-})
-class StubBookingModalComponent {
-  @Input() booking!: Booking;
-  @Output() close = new EventEmitter<void>();
-  @Output() saved = new EventEmitter<Booking>();
-}
-
-@Component({
   selector: 'app-booking-create-modal',
   standalone: true,
   template: '',
 })
 class StubBookingCreateModalComponent {
   @Input() apartments!: string[];
+  @Input() bookings!: Booking[];
   @Output() close = new EventEmitter<void>();
   @Output() created = new EventEmitter<Booking>();
 }
@@ -98,19 +89,24 @@ describe('CalendarComponent', () => {
   let fixture: ComponentFixture<CalendarComponent>;
   let component: CalendarComponent;
   let bookingServiceSpy: jest.Mocked<BookingService>;
+  let apartmentServiceSpy: jest.Mocked<ApartmentService>;
   let layout: CalendarLayoutService;
 
   beforeEach(async () => {
     bookingServiceSpy = {
-      getBookings: jest.fn().mockReturnValue(of([])),
+      getCalendarBookings: jest.fn().mockReturnValue(of([])),
       updateBooking: jest.fn(),
       createBooking: jest.fn(),
     } as unknown as jest.Mocked<BookingService>;
+    apartmentServiceSpy = {
+      getAllApartmentIds: jest.fn().mockReturnValue(of([])),
+    } as unknown as jest.Mocked<ApartmentService>;
 
     await TestBed.configureTestingModule({
       imports: [CalendarComponent],
       providers: [
         { provide: BookingService, useValue: bookingServiceSpy },
+        { provide: ApartmentService, useValue: apartmentServiceSpy },
         {
           provide: AuthService,
           useValue: {
@@ -126,7 +122,6 @@ describe('CalendarComponent', () => {
           imports: [
             CalendarHeaderComponent,
             WeekRowComponent,
-            BookingModalComponent,
             BookingCreateModalComponent,
             BookingColorPipe,
           ],
@@ -135,7 +130,6 @@ describe('CalendarComponent', () => {
           imports: [
             StubCalendarHeaderComponent,
             StubWeekRowComponent,
-            StubBookingModalComponent,
             StubBookingCreateModalComponent,
           ],
         },
@@ -152,12 +146,12 @@ describe('CalendarComponent', () => {
 
   describe('A — ngOnInit', () => {
     it('carga las reservas desde el servicio al iniciar', () => {
-      expect(bookingServiceSpy.getBookings).toHaveBeenCalledTimes(1);
+      expect(bookingServiceSpy.getCalendarBookings).toHaveBeenCalledTimes(1);
     });
 
     it('almacena las reservas recibidas en el signal bookings', () => {
       const bookings = [makeBooking({ record_id: 1 }), makeBooking({ record_id: 2 })];
-      bookingServiceSpy.getBookings.mockReturnValue(of(bookings));
+      bookingServiceSpy.getCalendarBookings.mockReturnValue(of(bookings));
 
       fixture = TestBed.createComponent(CalendarComponent);
       component = fixture.componentInstance;
@@ -402,24 +396,25 @@ describe('CalendarComponent', () => {
     it('onBookingCreated añade la reserva y cierra el modal de creación', () => {
       component.showCreateModal.set(true);
       component.bookings.set([makeBooking({ record_id: 1 })]);
+      bookingServiceSpy.getCalendarBookings.mockClear();
       component.onBookingCreated(makeBooking({ record_id: 2 }));
-      expect(component.bookings().length).toBe(2);
       expect(component.showCreateModal()).toBe(false);
+      expect(bookingServiceSpy.getCalendarBookings).toHaveBeenCalledTimes(1);
     });
 
-    it('el output close del stub booking-modal cierra selectedBooking', () => {
+    it('el output close de booking-modal cierra selectedBooking', () => {
       component.openBooking(makeBooking());
       fixture.detectChanges();
 
       const modalEl = fixture.debugElement.query(
         el => el.nativeElement.tagName === 'APP-BOOKING-MODAL'
       );
-      (modalEl?.componentInstance as StubBookingModalComponent).close.emit();
+      (modalEl?.componentInstance as BookingModalComponent).close.emit();
 
       expect(component.selectedBooking()).toBeNull();
     });
 
-    it('el output saved del stub booking-modal llama a onBookingSaved', () => {
+    it('el output saved de booking-modal llama a onBookingSaved', () => {
       const b = makeBooking({ record_id: 1, guest_name: 'Original' });
       component.bookings.set([b]);
       component.openBooking(b);
@@ -428,7 +423,7 @@ describe('CalendarComponent', () => {
       const modalEl = fixture.debugElement.query(
         el => el.nativeElement.tagName === 'APP-BOOKING-MODAL'
       );
-      (modalEl?.componentInstance as StubBookingModalComponent).saved.emit(
+      (modalEl?.componentInstance as BookingModalComponent).saved.emit(
         makeBooking({ record_id: 1, guest_name: 'Actualizado por output' })
       );
 

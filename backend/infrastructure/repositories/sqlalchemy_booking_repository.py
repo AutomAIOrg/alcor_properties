@@ -4,13 +4,17 @@ Implementación de IBookingRepository usando SQLAlchemy.
 
 from datetime import date
 
-from sqlalchemy import and_
+from sqlalchemy import and_, func, or_
 from sqlalchemy.orm import Session
 
-from domain.bookings.entity import Booking
+from domain.bookings.entity import NON_BLOCKING_STATUSES, Booking
 from domain.bookings.repository import IBookingRepository
 from domain.exceptions import BookingNotFound
 from infrastructure.models.booking import BookingORM
+
+
+def _escape_like(value: str) -> str:
+    return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
 
 
 class SQLAlchemyBookingRepository(IBookingRepository):
@@ -37,18 +41,49 @@ class SQLAlchemyBookingRepository(IBookingRepository):
         start_date: date | None = None,
         end_date: date | None = None,
         limit: int | None = None,
+        apartment_id: str | None = None,
+        status: str | None = None,
+        guest_name: str | None = None,
+        booking_number: str | None = None,
     ) -> list[Booking]:
         query = self._db.query(BookingORM)
 
         if start_date is not None and end_date is not None:
-            # Reservas cuya estancia se solapa con el rango dado:
-            # check_in <= end_date  Y  check_out >= start_date
+            # Solape de intervalos semiabiertos: [check_in, check_out)
             query = query.filter(
                 and_(
-                    BookingORM.check_in <= end_date,
-                    BookingORM.check_out >= start_date,
+                    BookingORM.check_in < end_date,
+                    BookingORM.check_out > start_date,
                 )
-            ).order_by(BookingORM.check_in)
+            )
+        elif start_date is not None:
+            query = query.filter(BookingORM.check_in >= start_date)
+        elif end_date is not None:
+            query = query.filter(BookingORM.check_in <= end_date)
+
+        if apartment_id is not None:
+            query = query.filter(BookingORM.apartment_id == apartment_id)
+
+        if status is not None:
+            statuses = [s.strip().lower() for s in status.split(",") if s.strip()]
+            if len(statuses) == 1:
+                query = query.filter(func.lower(BookingORM.status) == statuses[0])
+            elif statuses:
+                query = query.filter(func.lower(BookingORM.status).in_(statuses))
+
+        if guest_name is not None:
+            escaped = _escape_like(guest_name.strip().lower())
+            query = query.filter(
+                func.lower(BookingORM.guest_name).like(f"%{escaped}%", escape="\\")
+            )
+
+        if booking_number is not None:
+            escaped = _escape_like(booking_number.strip().lower())
+            query = query.filter(
+                func.lower(BookingORM.booking_number).like(f"%{escaped}%", escape="\\")
+            )
+
+        query = query.order_by(BookingORM.check_in)
 
         if limit is not None:
             query = query.limit(limit)
@@ -95,6 +130,32 @@ class SQLAlchemyBookingRepository(IBookingRepository):
             raise BookingNotFound(record_id)
         self._db.delete(orm)
         self._db.commit()
+
+    def find_overlapping_active(
+        self,
+        apartment_id: str,
+        check_in: date,
+        check_out: date,
+        exclude_record_id: int | None = None,
+    ) -> bool:
+        query = (
+            self._db.query(BookingORM)
+            .filter(
+                BookingORM.apartment_id == apartment_id,
+                BookingORM.check_in < check_out,
+                BookingORM.check_out > check_in,
+                or_(
+                    BookingORM.status.is_(None),
+                    func.lower(BookingORM.status).notin_(NON_BLOCKING_STATUSES),
+                ),
+            )
+            .with_for_update()
+        )
+
+        if exclude_record_id is not None:
+            query = query.filter(BookingORM.record_id != exclude_record_id)
+
+        return query.first() is not None
 
     # ------------------------------------------------------------------ #
     # Helpers privados de conversión                                   #

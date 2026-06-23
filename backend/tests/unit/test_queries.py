@@ -9,7 +9,9 @@ from datetime import date, timedelta
 import pytest
 
 from application.bookings.queries import (
+    GetActiveBookingsQuery,
     GetBookingByIdQuery,
+    GetBookingStatsQuery,
     GetCalendarEventsQuery,
     GetUpcomingCheckinsQuery,
     GetUpcomingCheckoutsQuery,
@@ -33,7 +35,44 @@ class TestListBookingsQuery:
 
         ListBookingsQuery(mock_repo, set()).execute(start_date=start, end_date=end)
 
-        mock_repo.list.assert_called_once_with(start_date=start, end_date=end)
+        mock_repo.list.assert_called_once_with(
+            start_date=start,
+            end_date=end,
+            apartment_id=None,
+            status=None,
+            guest_name=None,
+            booking_number=None,
+        )
+
+    def test_with_start_date_only_delegates_open_range_to_repo(self, mock_repo):
+        mock_repo.list.return_value = []
+        start = date(2026, 6, 1)
+
+        ListBookingsQuery(mock_repo, set()).execute(start_date=start)
+
+        mock_repo.list.assert_called_once_with(
+            start_date=start,
+            end_date=None,
+            apartment_id=None,
+            status=None,
+            guest_name=None,
+            booking_number=None,
+        )
+
+    def test_with_end_date_only_delegates_open_range_to_repo(self, mock_repo):
+        mock_repo.list.return_value = []
+        end = date(2026, 6, 30)
+
+        ListBookingsQuery(mock_repo, set()).execute(end_date=end)
+
+        mock_repo.list.assert_called_once_with(
+            start_date=None,
+            end_date=end,
+            apartment_id=None,
+            status=None,
+            guest_name=None,
+            booking_number=None,
+        )
 
     def test_with_days_calculates_end_date_from_start(self, mock_repo):
         mock_repo.list.return_value = []
@@ -42,7 +81,12 @@ class TestListBookingsQuery:
         ListBookingsQuery(mock_repo, set()).execute(start_date=start, days=10)
 
         mock_repo.list.assert_called_once_with(
-            start_date=start, end_date=start + timedelta(days=10)
+            start_date=start,
+            end_date=start + timedelta(days=10),
+            apartment_id=None,
+            status=None,
+            guest_name=None,
+            booking_number=None,
         )
 
     def test_without_filters_passes_limit_to_repo(self, mock_repo):
@@ -50,7 +94,217 @@ class TestListBookingsQuery:
 
         ListBookingsQuery(mock_repo, set()).execute(limit=5)
 
-        mock_repo.list.assert_called_once_with(limit=5)
+        mock_repo.list.assert_called_once_with(
+            limit=5,
+            apartment_id=None,
+            status=None,
+            guest_name=None,
+            booking_number=None,
+        )
+
+
+# ---------------------------------------------------------------------------
+# GetBookingStatsQuery
+# ---------------------------------------------------------------------------
+
+
+class TestGetBookingStatsQuery:
+    def test_without_range_forwards_text_filters_and_has_no_occupancy(self, mock_repo):
+        mock_repo.list.return_value = []
+
+        result = GetBookingStatsQuery(mock_repo, set()).execute(
+            apartment_id="R180",
+            status="Confirmed",
+            guest_name="Ana",
+            booking_number="BK-1",
+        )
+
+        mock_repo.list.assert_called_once_with(
+            apartment_id="R180",
+            status="Confirmed",
+            guest_name="Ana",
+            booking_number="BK-1",
+        )
+        assert result["start_date"] is None
+        assert result["end_date"] is None
+        assert result["occupancy_pct"] is None
+        assert result["no_booking_days_pct"] is None
+
+    def test_start_date_only_forwards_filter_and_has_no_occupancy(self, mock_repo):
+        mock_repo.list.return_value = []
+        start = date(2026, 6, 1)
+
+        result = GetBookingStatsQuery(mock_repo, set()).execute(start_date=start)
+
+        mock_repo.list.assert_called_once_with(
+            start_date=start,
+            end_date=None,
+            apartment_id=None,
+            status=None,
+            guest_name=None,
+            booking_number=None,
+        )
+        assert result["start_date"] == start
+        assert result["end_date"] is None
+        assert result["occupancy_pct"] is None
+        assert result["no_booking_days_pct"] is None
+
+    def test_end_date_only_forwards_filter_and_has_no_occupancy(self, mock_repo):
+        mock_repo.list.return_value = []
+        end = date(2026, 6, 30)
+
+        result = GetBookingStatsQuery(mock_repo, set()).execute(end_date=end)
+
+        mock_repo.list.assert_called_once_with(
+            start_date=None,
+            end_date=end,
+            apartment_id=None,
+            status=None,
+            guest_name=None,
+            booking_number=None,
+        )
+        assert result["start_date"] is None
+        assert result["end_date"] == end
+        assert result["occupancy_pct"] is None
+        assert result["no_booking_days_pct"] is None
+
+    def test_no_booking_days_pct_is_zero_when_every_day_has_bookings(self, mock_repo):
+        booking = make_booking(
+            check_in=date(2026, 6, 1),
+            check_out=date(2026, 6, 20),
+        )
+        mock_repo.list.return_value = [booking]
+
+        result = GetBookingStatsQuery(mock_repo, set()).execute(
+            start_date=date(2026, 6, 10),
+            end_date=date(2026, 6, 15),
+        )
+
+        assert result["occupancy_pct"] == 100.0
+        assert result["no_booking_days_pct"] == 0.0
+
+    def test_no_booking_days_pct_ignores_cancelled_overlapping_bookings(self, mock_repo):
+        booking = make_booking(
+            status="Cancelled",
+            check_in=date(2026, 6, 1),
+            check_out=date(2026, 6, 20),
+        )
+        mock_repo.list.return_value = [booking]
+
+        result = GetBookingStatsQuery(mock_repo, set()).execute(
+            start_date=date(2026, 6, 10),
+            end_date=date(2026, 6, 15),
+        )
+
+        assert result["occupancy_pct"] == 0.0
+        assert result["no_booking_days_pct"] == 100.0
+
+    def test_occupancy_pct_uses_unique_booked_days_in_requested_range(self, mock_repo):
+        first = make_booking(
+            record_id=1,
+            apartment_id="R101",
+            check_in=date(2026, 6, 1),
+            check_out=date(2026, 6, 4),
+        )
+        second = make_booking(
+            record_id=2,
+            apartment_id="R202",
+            check_in=date(2026, 6, 2),
+            check_out=date(2026, 6, 4),
+        )
+        mock_repo.list.return_value = [first, second]
+
+        result = GetBookingStatsQuery(mock_repo, set()).execute(
+            start_date=date(2026, 6, 1),
+            end_date=date(2026, 6, 6),
+        )
+
+        assert result["occupancy_pct"] == 60.0
+        assert result["no_booking_days_pct"] == 40.0
+
+    def test_no_booking_days_pct_counts_unique_booked_days_only(self, mock_repo):
+        first = make_booking(
+            record_id=1,
+            apartment_id="R101",
+            check_in=date(2026, 6, 1),
+            check_out=date(2026, 6, 4),
+        )
+        second = make_booking(
+            record_id=2,
+            apartment_id="R202",
+            check_in=date(2026, 6, 2),
+            check_out=date(2026, 6, 4),
+        )
+        mock_repo.list.return_value = [first, second]
+
+        result = GetBookingStatsQuery(mock_repo, set()).execute(
+            start_date=date(2026, 6, 1),
+            end_date=date(2026, 6, 6),
+        )
+
+        assert result["no_booking_days_pct"] == 40.0
+
+    def test_stats_exclude_cancelled_bookings_from_financial_and_night_totals(self, mock_repo):
+        active = make_booking(
+            record_id=1,
+            status="Confirmed",
+            check_in=date(2026, 6, 1),
+            check_out=date(2026, 6, 5),
+            nights=4,
+            persons=2,
+            price=400,
+            charges=40,
+        )
+        cancelled = make_booking(
+            record_id=2,
+            status="Cancelled",
+            check_in=date(2026, 6, 10),
+            check_out=date(2026, 6, 15),
+            nights=5,
+            persons=6,
+            price=900,
+            charges=90,
+        )
+        mock_repo.list.return_value = [active, cancelled]
+
+        result = GetBookingStatsQuery(mock_repo, {"TEST-001"}).execute(
+            start_date=date(2026, 6, 1),
+            end_date=date(2026, 6, 20),
+        )
+
+        assert result["total_bookings"] == 2
+        assert result["active_bookings"] == 1
+        assert result["cancelled_bookings"] == 1
+        assert result["cancellation_rate"] == 50.0
+        assert result["total_nights"] == 4
+        assert result["total_persons"] == 2
+        assert result["total_revenue"] == 400.0
+        assert result["total_charges"] == 40.0
+        assert result["total_electric_allowance"] == 16.0
+        assert result["status_breakdown"] == {"Confirmed": 1, "Cancelled": 1}
+
+    def test_days_range_is_used_for_occupancy_and_response_dates(self, mock_repo):
+        start = date(2026, 6, 10)
+        booking = make_booking(
+            check_in=date(2026, 6, 1),
+            check_out=date(2026, 6, 20),
+        )
+        mock_repo.list.return_value = [booking]
+
+        result = GetBookingStatsQuery(mock_repo, set()).execute(start_date=start, days=5)
+
+        mock_repo.list.assert_called_once_with(
+            start_date=start,
+            end_date=start + timedelta(days=5),
+            apartment_id=None,
+            status=None,
+            guest_name=None,
+            booking_number=None,
+        )
+        assert result["start_date"] == start
+        assert result["end_date"] == start + timedelta(days=5)
+        assert result["occupancy_pct"] == 100.0
+        assert result["no_booking_days_pct"] == 0.0
 
 
 # ---------------------------------------------------------------------------
@@ -73,6 +327,24 @@ class TestGetBookingByIdQuery:
 
         with pytest.raises(BookingNotFound):
             GetBookingByIdQuery(mock_repo, set()).execute(99)
+
+
+# ---------------------------------------------------------------------------
+# GetActiveBookingsQuery
+# ---------------------------------------------------------------------------
+
+
+class TestGetActiveBookingsQuery:
+    def test_prefilters_current_day_as_half_open_range(self, mock_repo):
+        mock_repo.list.return_value = []
+        today = date.today()
+
+        GetActiveBookingsQuery(mock_repo, set()).execute()
+
+        mock_repo.list.assert_called_once_with(
+            start_date=today,
+            end_date=today + timedelta(days=1),
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -119,6 +391,17 @@ class TestGetUpcomingCheckinsQuery:
         assert results[0].record_id == 2  # check_in más temprano primero
         assert results[1].record_id == 1
 
+    def test_prefilter_includes_upper_boundary_day(self, mock_repo):
+        mock_repo.list.return_value = []
+        today = date.today()
+
+        GetUpcomingCheckinsQuery(mock_repo, set()).execute(days=7)
+
+        mock_repo.list.assert_called_once_with(
+            start_date=today,
+            end_date=today + timedelta(days=8),
+        )
+
 
 # ---------------------------------------------------------------------------
 # GetUpcomingCheckoutsQuery
@@ -144,6 +427,17 @@ class TestGetUpcomingCheckoutsQuery:
 
         assert len(results) == 1
         assert results[0].record_id == 1
+
+    def test_prefilter_includes_checkout_today(self, mock_repo):
+        mock_repo.list.return_value = []
+        today = date.today()
+
+        GetUpcomingCheckoutsQuery(mock_repo, set()).execute(days=7)
+
+        mock_repo.list.assert_called_once_with(
+            start_date=today - timedelta(days=1),
+            end_date=today + timedelta(days=8),
+        )
 
 
 # ---------------------------------------------------------------------------

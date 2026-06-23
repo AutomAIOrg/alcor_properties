@@ -4,11 +4,17 @@ Unit tests — casos de uso SearchApartmentsUseCase y GetApartmentByIdUseCase.
 El repositorio se sustituye por un MagicMock en todos los tests.
 """
 
+from datetime import date
+
 import pytest
 
-from application.apartments.use_cases import GetApartmentByIdUseCase, SearchApartmentsUseCase
+from application.apartments.use_cases import (
+    GetApartmentByIdUseCase,
+    GetApartmentStatsUseCase,
+    SearchApartmentsUseCase,
+)
 from domain.apartments.filters import ApartmentSearchFilters
-from tests.helpers import make_apartment
+from tests.helpers import make_apartment, make_booking
 
 pytestmark = pytest.mark.unit
 
@@ -80,3 +86,172 @@ class TestGetApartmentByIdUseCase:
         GetApartmentByIdUseCase(mock_apartment_repo).execute("  R180  ")
 
         mock_apartment_repo.get_by_apartment_id.assert_called_once_with("R180")
+
+
+# ---------------------------------------------------------------------------
+# GetApartmentStatsUseCase
+# ---------------------------------------------------------------------------
+
+
+class TestGetApartmentStatsUseCase:
+    def test_filtered_range_delegates_half_open_overlap_range_to_booking_repository(
+        self,
+        mock_apartment_repo,
+        mock_repo,
+    ):
+        apartment = make_apartment(apartment_id="R180")
+        booking = make_booking(
+            apartment_id="R180",
+            check_in=date(2026, 6, 1),
+            check_out=date(2026, 6, 20),
+        )
+        mock_apartment_repo.get_by_apartment_id.return_value = apartment
+        mock_repo.list.side_effect = [[booking], [booking]]
+
+        GetApartmentStatsUseCase(mock_apartment_repo, mock_repo, set()).execute(
+            apartment_id="R180",
+            start_date=date(2026, 6, 10),
+            end_date=date(2026, 6, 15),
+        )
+
+        assert mock_repo.list.call_args_list[0].kwargs == {
+            "start_date": date(2026, 6, 10),
+            "end_date": date(2026, 6, 15),
+            "apartment_id": "R180",
+        }
+
+    def test_filtered_range_occupancy_uses_only_overlapping_nights(
+        self,
+        mock_apartment_repo,
+        mock_repo,
+    ):
+        apartment = make_apartment(apartment_id="R180")
+        booking = make_booking(
+            apartment_id="R180",
+            check_in=date(2026, 6, 1),
+            check_out=date(2026, 6, 20),
+        )
+        mock_apartment_repo.get_by_apartment_id.return_value = apartment
+        mock_repo.list.side_effect = [[booking], [booking]]
+
+        result = GetApartmentStatsUseCase(mock_apartment_repo, mock_repo, set()).execute(
+            apartment_id="R180",
+            start_date=date(2026, 6, 10),
+            end_date=date(2026, 6, 15),
+        )
+
+        assert result["filtered_range"]["occupancy_pct"] == 100.0
+
+    def test_filtered_range_occupancy_ignores_cancelled_bookings(
+        self,
+        mock_apartment_repo,
+        mock_repo,
+    ):
+        apartment = make_apartment(apartment_id="R180")
+        booking = make_booking(
+            apartment_id="R180",
+            status="Cancelled",
+            check_in=date(2026, 6, 1),
+            check_out=date(2026, 6, 20),
+        )
+        mock_apartment_repo.get_by_apartment_id.return_value = apartment
+        mock_repo.list.side_effect = [[booking], [booking]]
+
+        result = GetApartmentStatsUseCase(mock_apartment_repo, mock_repo, set()).execute(
+            apartment_id="R180",
+            start_date=date(2026, 6, 10),
+            end_date=date(2026, 6, 15),
+        )
+
+        assert result["filtered_range"]["occupancy_pct"] == 0.0
+
+    def test_without_range_returns_all_time_stats_without_filtered_occupancy(
+        self,
+        mock_apartment_repo,
+        mock_repo,
+    ):
+        apartment = make_apartment(apartment_id="R180")
+        booking = make_booking(
+            apartment_id="R180",
+            check_in=date(2026, 6, 1),
+            check_out=date(2026, 6, 5),
+            price=400,
+        )
+        mock_apartment_repo.get_by_apartment_id.return_value = apartment
+        mock_repo.list.side_effect = [[booking], [booking]]
+
+        result = GetApartmentStatsUseCase(mock_apartment_repo, mock_repo, set()).execute(
+            apartment_id="R180"
+        )
+
+        assert mock_repo.list.call_args_list[0].kwargs == {"apartment_id": "R180"}
+        assert result["filtered_range"]["start_date"] is None
+        assert result["filtered_range"]["end_date"] is None
+        assert result["filtered_range"]["occupancy_pct"] is None
+        assert result["filtered_range"]["total_bookings"] == 1
+        assert result["by_year"][0]["year"] == 2026
+        assert result["by_year"][0]["occupancy_pct"] == round(4 / 365 * 100, 2)
+
+    def test_by_year_splits_cross_year_booking_nights_and_amounts(
+        self,
+        mock_apartment_repo,
+        mock_repo,
+    ):
+        apartment = make_apartment(apartment_id="R180")
+        booking = make_booking(
+            apartment_id="R180",
+            check_in=date(2026, 12, 30),
+            check_out=date(2027, 1, 3),
+            price=400,
+            charges=40,
+        )
+        mock_apartment_repo.get_by_apartment_id.return_value = apartment
+        mock_repo.list.side_effect = [[booking], [booking]]
+
+        result = GetApartmentStatsUseCase(mock_apartment_repo, mock_repo, {"R180"}).execute(
+            apartment_id="R180",
+            start_date=date(2026, 12, 1),
+            end_date=date(2027, 2, 1),
+        )
+
+        by_year = {item["year"]: item for item in result["by_year"]}
+        assert by_year[2026]["total_nights"] == 2
+        assert by_year[2026]["total_revenue"] == 200.0
+        assert by_year[2026]["total_charges"] == 20.0
+        assert by_year[2026]["total_electric_allowance"] == 8.0
+        assert by_year[2027]["total_nights"] == 2
+        assert by_year[2027]["total_revenue"] == 200.0
+        assert by_year[2027]["total_charges"] == 20.0
+        assert by_year[2027]["total_electric_allowance"] == 8.0
+
+    def test_by_year_counts_cancelled_cross_year_booking_without_occupancy(
+        self,
+        mock_apartment_repo,
+        mock_repo,
+    ):
+        apartment = make_apartment(apartment_id="R180")
+        booking = make_booking(
+            apartment_id="R180",
+            status="Cancelled",
+            check_in=date(2026, 12, 30),
+            check_out=date(2027, 1, 3),
+            price=400,
+        )
+        mock_apartment_repo.get_by_apartment_id.return_value = apartment
+        mock_repo.list.side_effect = [[booking], [booking]]
+
+        result = GetApartmentStatsUseCase(mock_apartment_repo, mock_repo, set()).execute(
+            apartment_id="R180",
+            start_date=date(2026, 12, 1),
+            end_date=date(2027, 2, 1),
+        )
+
+        by_year = {item["year"]: item for item in result["by_year"]}
+        assert by_year[2026]["total_bookings"] == 1
+        assert by_year[2026]["cancelled_bookings"] == 1
+        assert by_year[2026]["total_nights"] == 0
+        assert by_year[2026]["total_revenue"] is None
+        assert by_year[2027]["total_bookings"] == 1
+        assert by_year[2027]["cancelled_bookings"] == 1
+        assert by_year[2027]["total_nights"] == 0
+        assert by_year[2027]["total_revenue"] is None

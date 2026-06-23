@@ -1,0 +1,194 @@
+<section class="tab-content">
+  <div class="filter-card">
+    <div class="filter-grid">
+      <app-date-range-picker
+        #bookingDateRange
+        [from]="bkg.from()"
+        [to]="bkg.to()"
+        [allowPartialRange]="true"
+        (rangeChange)="setBookingRange($event)"
+        (rangeComplete)="completeBookingRange($event)"
+      />
+      <div class="field">
+        <label>ID del piso</label>
+        <input
+          type="text"
+          list="apt-ids-list-bkg"
+          placeholder="R180..."
+          [value]="bkg.apartmentId()"
+          (change)="onFilterChange('apartmentId', $event)"
+        />
+        <datalist id="apt-ids-list-bkg">
+          @for (id of allApartmentIds; track id) {
+            <option [value]="id"></option>
+          }
+        </datalist>
+      </div>
+      <div class="field">
+        <label>Estado</label>
+        <div class="filter-dropdown" [class.open]="statusDropdownOpen()" #statusDropdown>
+          <button type="button" class="filter-trigger" (click)="toggleStatusDropdown()">
+            <span>{{ statusLabel() }}</span>
+            @if (bkg.statuses().length > 0 && bkg.statuses().length < STATUS_OPTIONS.length) {
+              <span class="badge">{{ bkg.statuses().length }}</span>
+            }
+            <span class="arrow">&#x25BC;</span>
+          </button>
+          @if (statusDropdownOpen()) {
+            <div class="filter-panel">
+              @for (status of STATUS_OPTIONS; track status) {
+                <label class="filter-option" (click)="$event.stopPropagation()">
+                  <input
+                    type="checkbox"
+                    [checked]="isStatusSelected(status)"
+                    (change)="toggleStatus(status)"
+                  />
+                  <!-- Solución: Envolver el texto en un span para su control en CSS -->
+                  <span class="option-text">{{ status }}</span>
+                </label>
+              }
+            </div>
+          }
+        </div>
+      </div>
+      <div class="field">
+        <label>Hu&eacute;sped</label>
+        <input
+          type="text"
+          placeholder="Nombre del hu&eacute;sped..."
+          [value]="bkg.guestName()"
+          (change)="onFilterChange('guestName', $event)"
+        />
+      </div>
+      <div class="field">
+        <label>N&ordm; Reserva</label>
+        <input
+          type="text"
+          placeholder="Referencia..."
+          [value]="bkg.bookingNumber()"
+          (change)="onFilterChange('bookingNumber', $event)"
+        />
+      </div>
+    </div>
+
+    <div class="filter-actions">
+      <button class="btn-secondary" (click)="clearBookings(); bookingDateRange.closeCalendar()">
+        Limpiar
+      </button>
+      <button
+        class="btn-secondary"
+        [disabled]="bkg.loading()"
+        (click)="searchCurrentYearBookings(); bookingDateRange.closeCalendar()"
+      >
+        Reservas de este a&ntilde;o
+      </button>
+      <button class="btn-primary" [disabled]="bkg.loading()" (click)="searchBookings()">
+        @if (bkg.loading()) {
+          <span class="spinner"></span>
+        }
+        Buscar reservas
+      </button>
+    </div>
+  </div>
+
+  @if (bkg.error()) {
+    <div class="error-banner">{{ bkg.error() }}</div>
+  }
+
+  @if (bkg.stats(); as stats) {
+    <div class="section-title section-title--actions">
+      <span>Estad&iacute;sticas</span>
+      <button
+        type="button"
+        class="btn-secondary btn-secondary--compact"
+        (click)="downloadStatsExcel()"
+      >
+        Descargar Excel
+      </button>
+    </div>
+    <app-search-stats-grid [stats]="stats" />
+  }
+
+  @if (bkg.results().length > 0) {
+    <div class="results-header">
+      <span class="results-count">
+        {{ bkg.results().length }} reserva{{ bkg.results().length !== 1 ? 's' : '' }}
+      </span>
+      <span class="results-hint">Haz clic en una fila para ver el detalle</span>
+    </div>
+    <div class="table-wrapper">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Piso</th>
+            <th>Hu&eacute;sped</th>
+            <th>Check-in</th>
+            <th>Check-out</th>
+            <th class="text-center">Noches</th>
+            <th class="text-center">Personas</th>
+            <th>Estado</th>
+            <th class="text-right">Precio</th>
+            <th class="text-right">Cargos</th>
+            <th class="text-right">Luz</th>
+            <th>N&ordm; Reserva</th>
+            <th>Notas</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (booking of bkg.results(); track booking.record_id) {
+            <tr class="clickable-row" (click)="openModal(booking)">
+              <td>
+                <span class="apt-badge" [style.background]="booking.apartment_id | bookingColor">
+                  {{ booking.apartment_id }}
+                </span>
+              </td>
+              <td class="guest-name">{{ booking.guest_name }}</td>
+              <td>{{ booking.check_in | date: 'd MMM y' }}</td>
+              <td>{{ booking.check_out | date: 'd MMM y' }}</td>
+              <td class="text-center">{{ booking.nights }}</td>
+              <td class="text-center">{{ booking.persons }}</td>
+              <td>
+                <span class="status-pill" [attr.data-status]="booking.status.toLowerCase()">
+                  {{ booking.status }}
+                </span>
+              </td>
+              <td class="text-right">
+                {{
+                  booking.price != null
+                    ? (booking.price | currency: 'EUR' : 'symbol' : '1.0-0')
+                    : '--'
+                }}
+              </td>
+              <td class="text-right">
+                {{
+                  booking.charges != null
+                    ? (booking.charges | currency: 'EUR' : 'symbol' : '1.0-0')
+                    : '--'
+                }}
+              </td>
+              <td class="text-right">
+                {{
+                  booking.electric_allowance != null
+                    ? (booking.electric_allowance | currency: 'EUR' : 'symbol' : '1.0-0')
+                    : '--'
+                }}
+              </td>
+              <td class="text-muted">{{ booking.booking_number ?? '--' }}</td>
+              <td class="notes-cell">{{ booking.notes ?? '' }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+
+  @if (!bkg.loading() && !bkg.error() && bkg.stats() && bkg.results().length === 0) {
+    <div class="empty-state">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <circle cx="11" cy="11" r="8" />
+        <path d="m21 21-4.35-4.35" />
+      </svg>
+      <p>Sin reservas para los filtros aplicados.</p>
+    </div>
+  }
+</section>

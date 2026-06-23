@@ -1,0 +1,250 @@
+<section class="tab-content">
+  <div class="filter-card">
+    <div class="filter-grid">
+      <div class="field field--id">
+        <label>ID del piso <span class="required">*</span></label>
+        <input
+          type="text"
+          list="apt-ids-list"
+          placeholder="R180, R200..."
+          [value]="apt.id()"
+          (input)="setApartmentId(inputValue($event))"
+        />
+        <datalist id="apt-ids-list">
+          @for (id of allApartmentIds; track id) {
+            <option [value]="id"></option>
+          }
+        </datalist>
+      </div>
+      <app-date-range-picker
+        #aptDateRange
+        [from]="apt.from()"
+        [to]="apt.to()"
+        (rangeChange)="setApartmentRange($event)"
+        (rangeComplete)="completeApartmentRange($event)"
+        (calendarClosed)="handleApartmentCalendarClosed()"
+      />
+    </div>
+
+    <div class="filter-actions">
+      <button class="btn-secondary" (click)="clearApartmentDetail(); aptDateRange.closeCalendar()">
+        Limpiar
+      </button>
+      <button
+        class="btn-primary"
+        [disabled]="!apt.id().trim() || apt.loading()"
+        (click)="searchApartmentDetail()"
+      >
+        @if (apt.loading()) {
+          <span class="spinner"></span>
+        }
+        Buscar
+      </button>
+    </div>
+  </div>
+
+  @if (apt.error()) {
+    <div class="error-banner">{{ apt.error() }}</div>
+  }
+
+  @if (apt.stats(); as stats) {
+    <div class="apt-info-header">
+      <span class="apt-id-big" [style.background]="stats.apartment_id | bookingColor">
+        {{ stats.apartment_id }}
+      </span>
+      <div class="apt-info-details">
+        @if (stats.apartment.community) {
+          <span>{{ stats.apartment.community }}</span>
+        }
+        @if (stats.apartment.address) {
+          <span>{{ stats.apartment.address }}</span>
+        }
+        <span>
+          {{ stats.apartment.rooms }} hab. &middot; {{ stats.apartment.bathrooms }} ba&ntilde;os
+          &middot; {{ stats.apartment.total_occupants }} ocup. m&aacute;x.
+        </span>
+        @if (stats.apartment.owner_name) {
+          <span>Propietario: {{ stats.apartment.owner_name }}</span>
+        }
+      </div>
+    </div>
+
+    <div class="section-title section-title--actions">
+      <span>
+        Estad&iacute;sticas del per&iacute;odo
+        @if (stats.filtered_range.start_date && stats.filtered_range.end_date) {
+          <span class="date-range-label">
+            {{ stats.filtered_range.start_date | date: 'd MMM y' }} -
+            {{ stats.filtered_range.end_date | date: 'd MMM y' }}
+          </span>
+        } @else {
+          <span class="date-range-label">Todas las reservas</span>
+        }
+      </span>
+      <button
+        type="button"
+        class="btn-secondary btn-secondary--compact"
+        (click)="downloadStatsExcel()"
+      >
+        Descargar Excel
+      </button>
+    </div>
+    <app-search-stats-grid [stats]="stats.filtered_range" nightsLabel="Noches ocupadas" />
+
+    @if (stats.by_year.length > 0) {
+      <div class="section-title">
+        Ocupaci&oacute;n por a&ntilde;o <span class="date-range-label">(todas las reservas)</span>
+      </div>
+      <div class="table-wrapper">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>A&ntilde;o</th>
+              <th class="text-center">Reservas</th>
+              <th class="text-center">Activas</th>
+              <th class="text-center">Canceladas</th>
+              <th class="text-center">% Cancelaci&oacute;n</th>
+              <th class="text-center">Noches</th>
+              <th class="text-center">D&iacute;as a&ntilde;o</th>
+              <th class="text-center">% Ocupaci&oacute;n</th>
+              <th class="text-right">Ingresos</th>
+              <th class="text-right">Media/reserva</th>
+              <th class="text-right">Cargos</th>
+              <th class="text-right">Electricidad</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (yr of stats.by_year; track yr.year) {
+              <tr>
+                <td class="year-cell">{{ yr.year }}</td>
+                <td class="text-center">{{ yr.total_bookings }}</td>
+                <td class="text-center text-green">{{ yr.active_bookings }}</td>
+                <td class="text-center text-red">{{ yr.cancelled_bookings }}</td>
+                <td class="text-center">
+                  {{
+                    yr.cancellation_rate != null
+                      ? (yr.cancellation_rate | number: '1.1-1') + '%'
+                      : '--'
+                  }}
+                </td>
+                <td class="text-center">{{ yr.total_nights }}</td>
+                <td class="text-center text-muted">{{ yr.total_days_in_year }}</td>
+                <td class="text-center">
+                  <span
+                    class="occ-badge"
+                    [class.occ-high]="yr.occupancy_pct >= 70"
+                    [class.occ-mid]="yr.occupancy_pct >= 40 && yr.occupancy_pct < 70"
+                    [class.occ-low]="yr.occupancy_pct < 40"
+                  >
+                    {{ yr.occupancy_pct | number: '1.1-1' }}%
+                  </span>
+                </td>
+                <td class="text-right">
+                  {{
+                    yr.total_revenue != null
+                      ? (yr.total_revenue | currency: 'EUR' : 'symbol' : '1.0-0')
+                      : '--'
+                  }}
+                </td>
+                <td class="text-right">
+                  {{
+                    yr.avg_revenue_per_booking != null
+                      ? (yr.avg_revenue_per_booking | currency: 'EUR' : 'symbol' : '1.0-0')
+                      : '--'
+                  }}
+                </td>
+                <td class="text-right">
+                  {{
+                    yr.total_charges != null
+                      ? (yr.total_charges | currency: 'EUR' : 'symbol' : '1.0-0')
+                      : '--'
+                  }}
+                </td>
+                <td class="text-right">
+                  {{
+                    yr.total_electric_allowance != null
+                      ? (yr.total_electric_allowance | currency: 'EUR' : 'symbol' : '1.0-0')
+                      : '--'
+                  }}
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+
+    @if (apt.bookings().length > 0) {
+      <div class="section-title">
+        Reservas <span class="results-count">{{ apt.bookings().length }}</span>
+      </div>
+      <div class="table-wrapper">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Hu&eacute;sped</th>
+              <th>Check-in</th>
+              <th>Check-out</th>
+              <th class="text-center">Noches</th>
+              <th class="text-center">Personas</th>
+              <th>Estado</th>
+              <th class="text-right">Precio</th>
+              <th class="text-right">Cargos</th>
+              <th class="text-right">Luz</th>
+              <th>N&ordm; Reserva</th>
+              <th>Notas</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (booking of apt.bookings(); track booking.record_id) {
+              <tr class="clickable-row" (click)="openModal(booking)">
+                <td class="guest-name">{{ booking.guest_name }}</td>
+                <td>{{ booking.check_in | date: 'd MMM y' }}</td>
+                <td>{{ booking.check_out | date: 'd MMM y' }}</td>
+                <td class="text-center">{{ booking.nights }}</td>
+                <td class="text-center">{{ booking.persons }}</td>
+                <td>
+                  <span class="status-pill" [attr.data-status]="booking.status.toLowerCase()">
+                    {{ booking.status }}
+                  </span>
+                </td>
+                <td class="text-right">
+                  {{
+                    booking.price != null
+                      ? (booking.price | currency: 'EUR' : 'symbol' : '1.0-0')
+                      : '--'
+                  }}
+                </td>
+                <td class="text-right">
+                  {{
+                    booking.charges != null
+                      ? (booking.charges | currency: 'EUR' : 'symbol' : '1.0-0')
+                      : '--'
+                  }}
+                </td>
+                <td class="text-right">
+                  {{
+                    booking.electric_allowance != null
+                      ? (booking.electric_allowance | currency: 'EUR' : 'symbol' : '1.0-0')
+                      : '--'
+                  }}
+                </td>
+                <td class="text-muted">{{ booking.booking_number ?? '--' }}</td>
+                <td class="notes-cell">{{ booking.notes ?? '' }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+    @if (!apt.loading() && apt.bookings().length === 0) {
+      <div class="empty-state">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+          <polyline points="14 2 14 8 20 8" />
+        </svg>
+        <p>Sin reservas para los filtros aplicados.</p>
+      </div>
+    }
+  }
+</section>

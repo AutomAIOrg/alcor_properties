@@ -94,9 +94,16 @@ class SQLAlchemyApartmentRepository(IApartmentRepository):
             )
 
         if filters.parking:
-            stmt = stmt.where(
-                func.lower(ApartmentORM.parking).like(f"%{filters.parking.strip().lower()}%")
-            )
+            parking_filter = filters.parking.strip().lower()
+
+            if parking_filter == "yes":
+                stmt = stmt.where(func.lower(ApartmentORM.parking) != "n/a")
+            elif parking_filter == "no":
+                stmt = stmt.where(func.lower(ApartmentORM.parking) == "n/a")
+            else:
+                stmt = stmt.where(
+                    func.lower(ApartmentORM.parking).like(f"%{filters.parking.strip().lower()}%")
+                )
 
         if filters.owner_name:
             stmt = stmt.where(
@@ -123,14 +130,8 @@ class SQLAlchemyApartmentRepository(IApartmentRepository):
         if filters.min_rooms is not None:
             stmt = stmt.where(ApartmentORM.rooms >= filters.min_rooms)
 
-        if filters.max_rooms is not None:
-            stmt = stmt.where(ApartmentORM.rooms <= filters.max_rooms)
-
         if filters.min_bathrooms is not None:
             stmt = stmt.where(ApartmentORM.bathrooms >= filters.min_bathrooms)
-
-        if filters.max_bathrooms is not None:
-            stmt = stmt.where(ApartmentORM.bathrooms <= filters.max_bathrooms)
 
         if filters.min_occupants is not None:
             stmt = stmt.where(ApartmentORM.total_occupants >= filters.min_occupants)

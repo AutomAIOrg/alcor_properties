@@ -152,6 +152,25 @@ describe('BookingService', () => {
 
   // ── C: updateBooking ───────────────────────────────────────────────────────
 
+  describe('B2 - getCalendarBookings', () => {
+    it('hace GET a calendar-events y devuelve las reservas de extendedProps', () => {
+      const booking = makeBooking({ record_id: 7, apartment_id: 'R777' });
+      let result: Booking[] | undefined;
+
+      service.getCalendarBookings('2026-06-01', 42).subscribe(response => {
+        result = response;
+      });
+
+      const req = httpMock.expectOne(`${API}/calendar-events?start_date=2026-06-01&days=42`);
+
+      expect(req.request.method).toBe('GET');
+
+      req.flush([{ extendedProps: booking }]);
+
+      expect(result).toEqual([booking]);
+    });
+  });
+
   describe('C — updateBooking', () => {
     it('hace PUT al endpoint de la reserva indicada y devuelve la reserva actualizada', () => {
       const recordId = 10;

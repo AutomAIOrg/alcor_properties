@@ -76,21 +76,7 @@ class TestApartmentSearchFiltersRanges:
     def test_no_filters_is_valid(self):
         filters = ApartmentSearchFilters()
         assert filters.min_rooms is None
-        assert filters.max_rooms is None
         assert filters.available_from is None
-
-    def test_min_rooms_greater_than_max_rooms_raises(self):
-        with pytest.raises(ValueError, match="min_rooms no puede ser mayor que max_rooms"):
-            ApartmentSearchFilters(min_rooms=5, max_rooms=2)
-
-    def test_equal_min_max_rooms_is_valid(self):
-        filters = ApartmentSearchFilters(min_rooms=2, max_rooms=2)
-        assert filters.min_rooms == 2
-        assert filters.max_rooms == 2
-
-    def test_min_bathrooms_greater_than_max_bathrooms_raises(self):
-        with pytest.raises(ValueError, match="min_bathrooms no puede ser mayor"):
-            ApartmentSearchFilters(min_bathrooms=3, max_bathrooms=1)
 
     def test_min_occupants_greater_than_max_occupants_raises(self):
         with pytest.raises(ValueError, match="min_occupants no puede ser mayor"):

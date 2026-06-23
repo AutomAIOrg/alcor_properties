@@ -1,0 +1,106 @@
+@use '../search-common' as *;
+
+.apt-info-header {
+  background: #fff;
+  border: 1px solid #eaecf0;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  border-radius: 10px;
+  padding: 1rem 1.25rem;
+  margin-bottom: 0.5rem;
+}
+
+.field {
+  &--id {
+    grid-column: span 2;
+  }
+}
+
+.required {
+  color: #f04438;
+}
+
+.apt-id-big {
+  padding: 0.4rem 1rem;
+  border-radius: 8px;
+  color: #fff;
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.apt-info-details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1.25rem;
+  font-size: 0.875rem;
+  color: #344054;
+}
+
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.date-range-label {
+  font-size: 0.78rem;
+  font-weight: 400;
+  color: #667085;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.occ-badge {
+  display: inline-block;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.occ-high {
+  background: #ecfdf3;
+  color: #027a48;
+}
+
+.occ-mid {
+  background: #fffbeb;
+  color: #b45309;
+}
+
+.occ-low {
+  background: #fef3f2;
+  color: #b42318;
+}
+
+.text-green {
+  color: #027a48 !important;
+  font-weight: 600;
+}
+
+.text-red {
+  color: #b42318 !important;
+  font-weight: 600;
+}
+
+.year-cell,
+.guest-name {
+  font-weight: 700;
+  color: #101828;
+}
+
+.guest-name,
+.notes-cell {
+  max-width: 200px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.notes-cell {
+  color: #667085;
+  font-style: italic;
+}
