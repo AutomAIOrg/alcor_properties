@@ -40,6 +40,7 @@ class BookingUpdateData:
         """Devuelve solo los campos enviados; conserva None como limpieza explícita."""
         return {k: v for k, v in vars(self).items() if v is not _UNSET}
 
+
 def _apply_electric_allowance(booking: Booking, electric_ids: set[str]) -> Booking:
     """Establece electric_allowance en una reserva según los IDs configurados."""
     if booking.apartment_id.strip() in electric_ids:
