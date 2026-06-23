@@ -432,6 +432,7 @@ export class BookingCreateModalComponent implements OnInit {
       phone: d.phone ?? null,
       booking_number: d.booking_number ?? null,
       notes: d.notes ?? null,
+      notes_cleaning: null,
     };
 
     this.bookingService.createBooking(payload).subscribe({

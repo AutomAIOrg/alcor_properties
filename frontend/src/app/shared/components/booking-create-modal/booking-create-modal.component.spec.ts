@@ -26,6 +26,7 @@ function makeCreatedBooking(overrides: Partial<Booking> = {}): Booking {
     phone: null,
     booking_number: null,
     notes: null,
+    notes_cleaning: null,
     ...overrides,
   };
 }
