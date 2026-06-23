@@ -20,8 +20,8 @@ export const permissionGuard =
 
     if (auth.isAuthenticated() && auth.hasPermission(permission)) return true;
 
-    // Autenticado pero sin permiso → volver al calendario
-    if (auth.isAuthenticated()) return router.createUrlTree(['/calendar']);
+    // Autenticado pero sin permiso -> volver a la vista principal de su rol
+    if (auth.isAuthenticated()) return router.createUrlTree([auth.getDefaultRoute()]);
 
     return router.createUrlTree(['/login']);
   };

@@ -56,6 +56,7 @@ class Booking(BaseModel):
         default=None, description="Referencia de reserva de la plataforma"
     )
     notes: str | None = Field(default=None, description="Notas en texto libre")
+    notes_cleaning: str | None = Field(default=None, description="Notas de limpieza")
 
     # Campo calculado — establecido por la capa de aplicación, no persistido en la BD
     electric_allowance: float | None = Field(
@@ -105,3 +106,15 @@ class Booking(BaseModel):
         """Devuelve True si el check-out es en los próximos *days* días."""
         today = reference_date or date.today()
         return today <= self.check_out <= today + timedelta(days=days)
+
+
+class CleaningOpportunity(BaseModel):
+    """Ventana de limpieza entre el checkout de una reserva y el check-in de la siguiente."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    source_booking_record_id: int
+    apartment_id: str
+    available_from: date
+    available_until: date | None = None
+    comments: str = ""

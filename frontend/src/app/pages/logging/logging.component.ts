@@ -28,7 +28,7 @@ export class LoggingComponent {
     this.loading.set(true);
 
     this.authService.login({ username: this.username, password: this.password }).subscribe({
-      next: () => this.router.navigate(['/calendar']),
+      next: () => this.router.navigate([this.authService.getDefaultRoute()]),
       error: () => {
         this.errorMsg = 'Usuario o contraseña incorrectos.';
         this.loading.set(false);

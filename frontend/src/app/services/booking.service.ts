@@ -2,11 +2,11 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
-import { Booking } from '../models/booking.model';
+import { Booking, CleaningOpportunity } from '../models/booking.model';
 import { BookingSearchFilters, BookingStatsResponse } from '../models/search.model';
 import { environment } from '../../environments/environment';
 
-export type { Booking } from '../models/booking.model';
+export type { Booking, CleaningOpportunity } from '../models/booking.model';
 
 type BookingCreatePayload = Omit<Booking, 'record_id' | 'electric_allowance'>;
 
@@ -22,6 +22,10 @@ export class BookingService {
 
   getBookings(): Observable<Booking[]> {
     return this.http.get<Booking[]>(`${this.API}/`);
+  }
+
+  getCleaningOpportunities(): Observable<CleaningOpportunity[]> {
+    return this.http.get<CleaningOpportunity[]>(`${this.API}/cleaning-opportunities`);
   }
 
   getCalendarBookings(startDate: string, days: number): Observable<Booking[]> {

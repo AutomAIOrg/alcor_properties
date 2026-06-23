@@ -1,6 +1,8 @@
 export type Role = 'admin' | 'limpiadora';
 
 export type Permission =
+  | 'calendar:access'
+  | 'cleaning:access'
   | 'bookings:read'
   | 'bookings:create'
   | 'bookings:update'
