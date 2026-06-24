@@ -22,25 +22,6 @@ class LoginResponse(BaseModel):
     token_type: str = "bearer"
 
 
-class ForgotPasswordRequest(BaseModel):
-    """DTO de entrada para POST /forgot-password."""
-
-    email: str = Field(..., description="Email del usuario que olvidó la contraseña")
-
-
-class MessageResponse(BaseModel):
-    """DTO de salida genérico con un mensaje informativo."""
-
-    message: str
-
-
-class ResetPasswordRequest(BaseModel):
-    """DTO de entrada para POST /reset-password."""
-
-    reset_token: str = Field(..., description="Token de restablecimiento")
-    new_password: str = Field(..., description="Nueva contraseña")
-
-
 class RefreshTokenRequest(BaseModel):
     """DTO de entrada para POST /refresh."""
 

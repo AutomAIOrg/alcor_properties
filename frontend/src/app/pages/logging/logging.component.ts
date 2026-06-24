@@ -18,9 +18,9 @@ export class LoggingComponent {
   errorMsg = '';
   loading = signal(false);
 
-  // Pasos del flujo de recuperación: 'login' | 'email' | 'sent'
-  recoveryStep: 'login' | 'email' | 'sent' = 'login';
+  showRecovery = false;
   recoveryEmail = '';
+  recoveryMsg = '';
 
   onSubmit() {
     if (this.loading()) return;
@@ -36,33 +36,16 @@ export class LoggingComponent {
     });
   }
 
-  // Solicita el envío del enlace de restablecimiento al email indicado.
-  // La respuesta es siempre la misma (no revela si el email existe).
   onRecovery() {
-    if (this.loading()) return;
+    // TODO: conectar con el endpoint de recuperación de contraseña
     this.errorMsg = '';
-    this.loading.set(true);
-
-    this.authService.forgotPassword(this.recoveryEmail).subscribe({
-      next: () => {
-        this.recoveryStep = 'sent';
-        this.loading.set(false);
-      },
-      error: () => {
-        this.errorMsg = 'No se ha podido procesar la solicitud. Inténtalo de nuevo.';
-        this.loading.set(false);
-      },
-    });
-  }
-
-  startRecovery() {
-    this.recoveryStep = 'email';
-    this.errorMsg = '';
+    this.recoveryMsg = `Se ha enviado un enlace de recuperación a ${this.recoveryEmail}.`;
+    this.recoveryEmail = '';
   }
 
   backToLogin() {
-    this.recoveryStep = 'login';
+    this.showRecovery = false;
     this.errorMsg = '';
-    this.recoveryEmail = '';
+    this.recoveryMsg = '';
   }
 }

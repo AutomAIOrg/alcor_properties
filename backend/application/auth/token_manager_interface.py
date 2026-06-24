@@ -35,13 +35,3 @@ class ITokenManager(ABC):
     def decode_refresh_token(self, token: str) -> TokenPayload:
         """Valida un token de refresh y devuelve sus claims normalizados."""
         pass
-
-    @abstractmethod
-    def create_reset_token(self, subject: str) -> str:
-        """Crea un token de un solo uso para restablecer la contraseña."""
-        pass
-
-    @abstractmethod
-    def decode_reset_token(self, token: str) -> TokenPayload:
-        """Valida un token de restablecimiento de contraseña y devuelve sus claims."""
-        pass

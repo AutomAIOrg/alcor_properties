@@ -5,7 +5,7 @@ import { of, Subject, throwError } from 'rxjs';
 
 import { LoggingComponent } from './logging.component';
 import { AuthService } from '../../auth/auth.service';
-import { AuthResponse, MessageResponse } from '../../models/auth.model';
+import { AuthResponse } from '../../models/auth.model';
 
 // ─── Fixture helpers ──────────────────────────────────────────────────────────
 
@@ -14,12 +14,6 @@ function makeAuthResponse(overrides: Partial<AuthResponse> = {}): AuthResponse {
     access_token: 'fake.jwt.token',
     ...overrides,
   } as AuthResponse;
-}
-
-function makeMessageResponse(
-  message = 'Si el email está registrado, recibirás un enlace.'
-): MessageResponse {
-  return { message };
 }
 
 // ─── Spec ─────────────────────────────────────────────────────────────────────
@@ -33,7 +27,6 @@ describe('LoggingComponent', () => {
   beforeEach(async () => {
     authServiceSpy = {
       login: jest.fn(),
-      forgotPassword: jest.fn(),
       getDefaultRoute: jest.fn().mockReturnValue('/calendar'),
     } as unknown as jest.Mocked<AuthService>;
 
@@ -85,7 +78,7 @@ describe('LoggingComponent', () => {
             </button>
 
             <p class="error-msg">{{ errorMsg }}</p>
-            <p class="recovery-step">{{ recoveryStep }}</p>
+            <p class="recovery-msg">{{ recoveryMsg }}</p>
             <p class="loading-state">{{ loading() }}</p>
           `,
         },
@@ -108,8 +101,9 @@ describe('LoggingComponent', () => {
       expect(component.username).toBe('');
       expect(component.password).toBe('');
       expect(component.errorMsg).toBe('');
+      expect(component.recoveryMsg).toBe('');
       expect(component.loading()).toBe(false);
-      expect(component.recoveryStep).toBe('login');
+      expect(component.showRecovery).toBe(false);
       expect(component.recoveryEmail).toBe('');
     });
   });
@@ -200,58 +194,56 @@ describe('LoggingComponent', () => {
     });
   });
 
-  // ── E: onRecovery (solicitar enlace por email) ──────────────────────────────
+  // ── E: Recuperación de contraseña ───────────────────────────────────────────
 
   describe('E — onRecovery', () => {
-    it('solicita el enlace, avanza al paso "sent" y limpia errores', () => {
-      authServiceSpy.forgotPassword.mockReturnValue(of(makeMessageResponse()));
-
+    it('limpia errorMsg', () => {
       component.errorMsg = 'Error anterior';
       component.recoveryEmail = 'user@test.com';
 
       component.onRecovery();
 
-      expect(authServiceSpy.forgotPassword).toHaveBeenCalledWith('user@test.com');
       expect(component.errorMsg).toBe('');
-      expect(component.recoveryStep).toBe('sent');
-      expect(component.loading()).toBe(false);
     });
 
-    it('muestra error genérico ante un fallo y permanece en el paso email', () => {
-      authServiceSpy.forgotPassword.mockReturnValue(throwError(() => ({ status: 500 })));
-
-      component.recoveryStep = 'email';
+    it('muestra mensaje de recuperación con el email indicado', () => {
       component.recoveryEmail = 'user@test.com';
 
       component.onRecovery();
 
-      expect(component.errorMsg).toBe('No se ha podido procesar la solicitud. Inténtalo de nuevo.');
-      expect(component.recoveryStep).toBe('email');
-      expect(component.loading()).toBe(false);
+      expect(component.recoveryMsg).toBe(
+        'Se ha enviado un enlace de recuperación a user@test.com.'
+      );
     });
 
-    it('no llama a forgotPassword si loading ya está en true', () => {
-      component.loading.set(true);
+    it('limpia recoveryEmail después de enviar recuperación', () => {
+      component.recoveryEmail = 'user@test.com';
 
       component.onRecovery();
 
-      expect(authServiceSpy.forgotPassword).not.toHaveBeenCalled();
+      expect(component.recoveryEmail).toBe('');
     });
   });
 
-  // ── F: backToLogin ──────────────────────────────────────────────────────────
+  // ── F: Volver al login ──────────────────────────────────────────────────────
 
   describe('F — backToLogin', () => {
-    it('vuelve al paso de login y limpia el estado de recuperación', () => {
-      component.recoveryStep = 'sent';
-      component.errorMsg = 'Error anterior';
-      component.recoveryEmail = 'user@test.com';
+    it('pone showRecovery en false', () => {
+      component.showRecovery = true;
 
       component.backToLogin();
 
-      expect(component.recoveryStep).toBe('login');
+      expect(component.showRecovery).toBe(false);
+    });
+
+    it('limpia errorMsg y recoveryMsg', () => {
+      component.errorMsg = 'Error anterior';
+      component.recoveryMsg = 'Mensaje anterior';
+
+      component.backToLogin();
+
       expect(component.errorMsg).toBe('');
-      expect(component.recoveryEmail).toBe('');
+      expect(component.recoveryMsg).toBe('');
     });
   });
 
@@ -309,9 +301,7 @@ describe('LoggingComponent', () => {
       expect(routerSpy.navigate).toHaveBeenCalledWith(['/calendar']);
     });
 
-    it('click en recuperación ejecuta onRecovery y avanza a "sent"', async () => {
-      authServiceSpy.forgotPassword.mockReturnValue(of(makeMessageResponse()));
-
+    it('click en recuperación ejecuta onRecovery', async () => {
       const recoveryInput: HTMLInputElement =
         fixture.nativeElement.querySelector('.recovery-email-input');
 
@@ -326,13 +316,17 @@ describe('LoggingComponent', () => {
 
       recoveryButton.click();
 
-      expect(authServiceSpy.forgotPassword).toHaveBeenCalledWith('recovery@test.com');
-      expect(component.recoveryStep).toBe('sent');
+      expect(component.recoveryMsg).toBe(
+        'Se ha enviado un enlace de recuperación a recovery@test.com.'
+      );
+
+      expect(component.recoveryEmail).toBe('');
     });
 
     it('click en volver ejecuta backToLogin', () => {
-      component.recoveryStep = 'sent';
+      component.showRecovery = true;
       component.errorMsg = 'Error';
+      component.recoveryMsg = 'Mensaje';
 
       fixture.detectChanges();
 
@@ -340,8 +334,9 @@ describe('LoggingComponent', () => {
 
       backButton.click();
 
-      expect(component.recoveryStep).toBe('login');
+      expect(component.showRecovery).toBe(false);
       expect(component.errorMsg).toBe('');
+      expect(component.recoveryMsg).toBe('');
     });
   });
 });

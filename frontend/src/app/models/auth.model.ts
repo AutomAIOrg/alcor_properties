@@ -11,11 +11,6 @@ export interface AuthRequest {
   password: string;
 }
 
-// Respuesta genérica del backend (recuperación de contraseña, etc.)
-export interface MessageResponse {
-  message: string;
-}
-
 // Payload que se envía al backend para renovar el access token
 export interface RefreshTokenRequest {
   refresh_token: string;

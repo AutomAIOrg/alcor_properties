@@ -15,10 +15,8 @@ from application.apartments.use_cases import (
     GetApartmentStatsUseCase,
     SearchApartmentsUseCase,
 )
-from application.auth.forgot_password_use_case import ForgotPasswordUseCase
 from application.auth.login_use_case import LoginUseCase
 from application.auth.refresh_token_use_case import RefreshTokenUseCase
-from application.auth.reset_password_use_case import ResetPasswordUseCase
 from application.auth.token_manager_interface import ITokenManager
 from application.bills.commands import CreateBillUseCase, UpdateBillStateUseCase
 from application.bills.queries import ListBillsQuery, ListPendingBillsQuery
@@ -41,7 +39,6 @@ from application.settings.use_cases import (
     GetCleaningHourlyRateUseCase,
     UpdateCleaningHourlyRateUseCase,
 )
-from application.shared.email_sender_interface import IEmailSender
 from application.shared.password_manager_interface import IPasswordManager
 from application.shared.user_repository_interface import IUserRepository
 from application.users.create_user_use_case import CreateUserUseCase
@@ -56,7 +53,6 @@ from domain.bookings.repository import IBookingRepository
 from domain.exceptions import InvalidToken
 from domain.settings.repository import ISettingsRepository
 from infrastructure.database.session import get_db
-from infrastructure.email.smtp_email_sender import ConsoleEmailSender, SMTPEmailSender
 from infrastructure.repositories.sqlalchemy_apartment_repository import (
     SQLAlchemyApartmentRepository,
 )
@@ -95,20 +91,6 @@ def get_token_manager() -> ITokenManager:
 def get_password_manager() -> IPasswordManager:
     """Verificador de contraseñas."""
     return PasslibPasswordManager()
-
-
-def get_email_sender() -> IEmailSender:
-    """Emisor de emails. Usa SMTP si está configurado; si no, cae a consola (solo dev)."""
-    if settings.SMTP_HOST:
-        return SMTPEmailSender(
-            host=settings.SMTP_HOST,
-            port=settings.SMTP_PORT,
-            username=settings.SMTP_USER,
-            password=settings.SMTP_PASSWORD,
-            sender=settings.SMTP_FROM or settings.SMTP_USER,
-            use_tls=settings.SMTP_USE_TLS,
-        )
-    return ConsoleEmailSender()
 
 
 def get_current_user(
@@ -222,26 +204,6 @@ def get_refresh_token_use_case(
 ) -> RefreshTokenUseCase:
     """Inyección de dependencias para renovar access tokens."""
     return RefreshTokenUseCase(user_repository, token_manager)
-
-
-def get_forgot_password_use_case(
-    user_repository: IUserRepository = Depends(get_user_repository),
-    token_manager: ITokenManager = Depends(get_token_manager),
-    email_sender: IEmailSender = Depends(get_email_sender),
-) -> ForgotPasswordUseCase:
-    """Inyección de dependencias para iniciar el restablecimiento de contraseña."""
-    return ForgotPasswordUseCase(
-        user_repository, token_manager, email_sender, settings.FRONTEND_URL
-    )
-
-
-def get_reset_password_use_case(
-    user_repository: IUserRepository = Depends(get_user_repository),
-    token_manager: ITokenManager = Depends(get_token_manager),
-    password_manager: IPasswordManager = Depends(get_password_manager),
-) -> ResetPasswordUseCase:
-    """Inyección de dependencias para restablecer la contraseña."""
-    return ResetPasswordUseCase(user_repository, token_manager, password_manager)
 
 
 def get_create_user_use_case(

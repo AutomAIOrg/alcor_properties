@@ -58,18 +58,6 @@ class Settings(BaseSettings):
     JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
     JWT_REFRESH_TOKEN_EXPIRE_DAYS: int = 1
 
-    # URL pública del frontend, usada para construir el enlace de restablecimiento de contraseña.
-    FRONTEND_URL: str = "http://localhost:4200"
-
-    # Email / SMTP — usado para enviar el enlace de restablecimiento de contraseña.
-    # Si SMTP_HOST está vacío, el sistema cae a un emisor de consola (solo desarrollo).
-    SMTP_HOST: str = ""
-    SMTP_PORT: int = 587
-    SMTP_USER: str = ""
-    SMTP_PASSWORD: str = ""
-    SMTP_FROM: str = ""
-    SMTP_USE_TLS: bool = True
-
     # Contraseña por defecto para nuevos usuarios
     DEFAULT_PASSWORD: str = Field(...)
 
