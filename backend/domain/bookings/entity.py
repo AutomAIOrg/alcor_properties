@@ -97,6 +97,13 @@ class Booking(BaseModel):
     def is_cancelled(self) -> bool:
         return self.status.lower() in NON_BLOCKING_STATUSES
 
+    def blocks_apartment_deletion(self, reference_date: date | None = None) -> bool:
+        """Devuelve True si la reserva impide eliminar el apartamento."""
+        if self.is_cancelled():
+            return False
+        today = reference_date or date.today()
+        return self.check_out > today
+
     def has_upcoming_checkin(self, days: int = 7, reference_date: date | None = None) -> bool:
         """Devuelve True si el check-in es en los próximos *days* días."""
         today = reference_date or date.today()
