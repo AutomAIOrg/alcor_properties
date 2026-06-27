@@ -3,6 +3,12 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
 import { Role } from '../../models/user.model';
 import {
+  ApartmentCreateRequest,
+  ApartmentResponse,
+  ApartmentService,
+  ApartmentUpdateRequest,
+} from '../../services/apartment.service';
+import {
   AdminUserResponse,
   AdminUserSaveRequest,
   AdminUserService,
@@ -34,16 +40,23 @@ interface AdminUserDraft {
 }
 
 interface AdminPropertyRow {
-  id: number;
   reference: string;
   name: string;
   address: string;
 }
 
 interface AdminPropertyDraft {
-  reference: string;
-  name: string;
+  apartment_id: string;
+  community: string;
+  apartment_description: string;
   address: string;
+  rooms: number;
+  bathrooms: number;
+  parking: string;
+  total_occupants: number;
+  owner_name: string;
+  email: string;
+  phone: string;
 }
 
 @Component({
@@ -55,11 +68,10 @@ interface AdminPropertyDraft {
 })
 export class AdminComponent implements OnInit, OnDestroy {
   private adminUserService = inject(AdminUserService);
+  private apartmentService = inject(ApartmentService);
   private toastTimeout: ReturnType<typeof setTimeout> | null = null;
 
   readonly roleOptions: Role[] = ['admin', 'limpiadora'];
-
-  private nextPropertyId = 4;
 
   users = signal<AdminUserRow[]>([]);
   isLoadingUsers = signal(false);
@@ -69,31 +81,17 @@ export class AdminComponent implements OnInit, OnDestroy {
   editingUserId = signal<number | null>(null);
   isUserFormModalOpen = signal(false);
   userPendingDeletion = signal<AdminUserRow | null>(null);
-  editingPropertyId = signal<number | null>(null);
   isPropertyFormModalOpen = signal(false);
+  isSavingProperty = signal(false);
+  isDeletingProperty = signal(false);
+  editingPropertyReference = signal<string | null>(null);
   propertyPendingDeletion = signal<AdminPropertyRow | null>(null);
   toast = signal<ToastMessage | null>(null);
 
-  properties = signal<AdminPropertyRow[]>([
-    {
-      id: 1,
-      reference: 'R180',
-      name: 'Apartamento R180',
-      address: 'Dirección pendiente de confirmar',
-    },
-    {
-      id: 2,
-      reference: 'R184',
-      name: 'Apartamento R184',
-      address: 'Dirección pendiente de confirmar',
-    },
-    {
-      id: 3,
-      reference: 'VILLA-01',
-      name: 'Villa principal',
-      address: 'Dirección pendiente de confirmar',
-    },
-  ]);
+  properties = signal<AdminPropertyRow[]>([]);
+  apartments = signal<ApartmentResponse[]>([]);
+  isLoadingProperties = signal(false);
+  propertiesError = signal<string | null>(null);
 
   isUsersSectionOpen = signal(false);
   isPropertiesSectionOpen = signal(false);
@@ -106,14 +104,29 @@ export class AdminComponent implements OnInit, OnDestroy {
     role: 'limpiadora',
   });
 
-  newProperty = signal<AdminPropertyDraft>({
-    reference: '',
-    name: '',
-    address: '',
-  });
+  newProperty = signal<AdminPropertyDraft>(this.createEmptyPropertyDraft());
 
   ngOnInit(): void {
     this.loadUsers();
+    this.loadProperties();
+  }
+
+  loadProperties(): void {
+    this.isLoadingProperties.set(true);
+    this.propertiesError.set(null);
+
+    this.apartmentService.getAllApartments().subscribe({
+      next: apartments => {
+        this.apartments.set(apartments);
+        this.properties.set(apartments.map(apartment => this.toPropertyRow(apartment)));
+        this.isLoadingProperties.set(false);
+      },
+      error: () => {
+        this.properties.set([]);
+        this.propertiesError.set('No se han podido cargar los apartamentos desde la API.');
+        this.isLoadingProperties.set(false);
+      },
+    });
   }
 
   loadUsers(): void {
@@ -161,16 +174,54 @@ export class AdminComponent implements OnInit, OnDestroy {
     this.newUser.update(user => ({ ...user, role }));
   }
 
-  updateNewPropertyReference(reference: string): void {
-    this.newProperty.update(property => ({ ...property, reference }));
+  updateNewPropertyApartmentId(apartmentId: string): void {
+    this.newProperty.update(property => ({ ...property, apartment_id: apartmentId }));
   }
 
-  updateNewPropertyName(name: string): void {
-    this.newProperty.update(property => ({ ...property, name }));
+  updateNewPropertyCommunity(community: string): void {
+    this.newProperty.update(property => ({ ...property, community }));
+  }
+
+  updateNewPropertyDescription(description: string): void {
+    this.newProperty.update(property => ({ ...property, apartment_description: description }));
   }
 
   updateNewPropertyAddress(address: string): void {
     this.newProperty.update(property => ({ ...property, address }));
+  }
+
+  updateNewPropertyRooms(rooms: number | string): void {
+    this.newProperty.update(property => ({ ...property, rooms: this.toNonNegativeNumber(rooms) }));
+  }
+
+  updateNewPropertyBathrooms(bathrooms: number | string): void {
+    this.newProperty.update(property => ({
+      ...property,
+      bathrooms: this.toNonNegativeNumber(bathrooms),
+    }));
+  }
+
+  updateNewPropertyParking(parking: string): void {
+    this.newProperty.update(property => ({ ...property, parking }));
+  }
+
+  updateNewPropertyTotalOccupants(totalOccupants: number | string): void {
+    this.newProperty.update(property => ({
+      ...property,
+      total_occupants: this.toNonNegativeNumber(totalOccupants),
+    }));
+  }
+
+  updateNewPropertyOwnerName(ownerName: string): void {
+    this.newProperty.update(property => ({ ...property, owner_name: ownerName }));
+  }
+
+  updateNewPropertyEmail(email: string): void {
+    this.newProperty.update(property => ({ ...property, email }));
+  }
+
+  updateNewPropertyPhone(phone: string): void {
+    this.newProperty.update(property => ({ ...property, phone }));
   }
 
   openCreateUserDialog(): void {
@@ -286,40 +337,59 @@ export class AdminComponent implements OnInit, OnDestroy {
 
   saveProperty(): void {
     const draft = this.newProperty();
-    if (!draft.reference.trim() || !draft.name.trim()) return;
+    if (!draft.apartment_id.trim()) return;
 
-    const property: AdminPropertyRow = {
-      id: this.editingPropertyId() ?? this.nextPropertyId++,
-      reference: draft.reference.trim().toUpperCase(),
-      name: draft.name.trim(),
-      address: draft.address.trim() || 'Dirección pendiente de confirmar',
-    };
+    this.isSavingProperty.set(true);
 
-    this.properties.update(properties =>
-      this.editingPropertyId() === null
-        ? [...properties, property]
-        : properties.map(existingProperty =>
-            existingProperty.id === property.id ? property : existingProperty
-          )
-    );
+    const editingReference = this.editingPropertyReference();
+    const request$ =
+      editingReference === null
+        ? this.apartmentService.createApartment(this.buildApartmentCreatePayload(draft))
+        : this.apartmentService.updateApartment(
+            editingReference,
+            this.buildApartmentUpdatePayload(draft)
+          );
 
-    this.resetPropertyForm();
-    this.isPropertyFormModalOpen.set(false);
+    request$.subscribe({
+      next: response => {
+        this.resetPropertyForm();
+        this.isPropertyFormModalOpen.set(false);
+        this.isSavingProperty.set(false);
+        this.showToast('success', response.message);
+        this.loadProperties();
+      },
+      error: (error: HttpErrorResponse) => {
+        this.showToast(
+          'error',
+          editingReference === null
+            ? 'Error al crear el apartamento.'
+            : 'Error al actualizar el apartamento.',
+          this.getApiErrorMessage(error)
+        );
+        this.isSavingProperty.set(false);
+      },
+    });
   }
 
   startEditingProperty(property: AdminPropertyRow): void {
-    this.editingPropertyId.set(property.id);
+    const apartment = this.apartments().find(item => item.apartment_id === property.reference);
+    if (!apartment) return;
+
+    this.editingPropertyReference.set(property.reference);
     this.newProperty.set({
-      reference: property.reference,
-      name: property.name,
-      address: property.address,
+      apartment_id: apartment.apartment_id,
+      community: apartment.community ?? '',
+      apartment_description: apartment.apartment_description ?? '',
+      address: apartment.address ?? '',
+      rooms: apartment.rooms,
+      bathrooms: apartment.bathrooms,
+      parking: apartment.parking,
+      total_occupants: apartment.total_occupants,
+      owner_name: apartment.owner_name ?? '',
+      email: apartment.email ?? '',
+      phone: apartment.phone ?? '',
     });
     this.isPropertyFormModalOpen.set(true);
-  }
-
-  closePropertyFormDialog(): void {
-    this.resetPropertyForm();
-    this.isPropertyFormModalOpen.set(false);
   }
 
   openDeletePropertyDialog(property: AdminPropertyRow): void {
@@ -327,6 +397,7 @@ export class AdminComponent implements OnInit, OnDestroy {
   }
 
   closeDeletePropertyDialog(): void {
+    if (this.isDeletingProperty()) return;
     this.propertyPendingDeletion.set(null);
   }
 
@@ -334,16 +405,44 @@ export class AdminComponent implements OnInit, OnDestroy {
     const property = this.propertyPendingDeletion();
     if (!property) return;
 
-    this.properties.update(properties =>
-      properties.filter(existingProperty => existingProperty.id !== property.id)
-    );
+    this.isDeletingProperty.set(true);
 
-    if (this.editingPropertyId() === property.id) {
-      this.resetPropertyForm();
-      this.isPropertyFormModalOpen.set(false);
-    }
+    this.apartmentService.deleteApartment(property.reference).subscribe({
+      next: response => {
+        if (this.editingPropertyReference() === property.reference) {
+          this.resetPropertyForm();
+          this.isPropertyFormModalOpen.set(false);
+        }
+        this.propertyPendingDeletion.set(null);
+        this.isDeletingProperty.set(false);
+        this.showToast('success', response.message);
+        this.loadProperties();
+      },
+      error: (error: HttpErrorResponse) => {
+        this.showToast(
+          'error',
+          'Error al eliminar el apartamento.',
+          this.getApiErrorMessage(error)
+        );
+        this.isDeletingProperty.set(false);
+      },
+    });
+  }
 
-    this.propertyPendingDeletion.set(null);
+  closePropertyFormDialog(): void {
+    if (this.isSavingProperty()) return;
+    this.resetPropertyForm();
+    this.isPropertyFormModalOpen.set(false);
+  }
+
+  private toPropertyRow(apartment: ApartmentResponse): AdminPropertyRow {
+    const description = apartment.apartment_description?.trim();
+
+    return {
+      reference: apartment.apartment_id,
+      name: description || apartment.apartment_id,
+      address: apartment.address?.trim() || 'Sin dirección',
+    };
   }
 
   private toUserRow(user: AdminUserResponse): AdminUserRow {
@@ -359,6 +458,58 @@ export class AdminComponent implements OnInit, OnDestroy {
     };
   }
 
+  private buildApartmentCreatePayload(draft: AdminPropertyDraft): ApartmentCreateRequest {
+    return {
+      apartment_id: draft.apartment_id.trim(),
+      community: draft.community.trim() || null,
+      apartment_description: draft.apartment_description.trim() || null,
+      address: draft.address.trim() || null,
+      rooms: draft.rooms,
+      bathrooms: draft.bathrooms,
+      parking: draft.parking.trim() || 'N/A',
+      total_occupants: draft.total_occupants,
+      owner_name: draft.owner_name.trim() || null,
+      email: draft.email.trim() || null,
+      phone: draft.phone.trim() || null,
+    };
+  }
+
+  private buildApartmentUpdatePayload(draft: AdminPropertyDraft): ApartmentUpdateRequest {
+    return {
+      community: draft.community.trim() || null,
+      apartment_description: draft.apartment_description.trim() || null,
+      address: draft.address.trim() || null,
+      rooms: draft.rooms,
+      bathrooms: draft.bathrooms,
+      parking: draft.parking.trim() || 'N/A',
+      total_occupants: draft.total_occupants,
+      owner_name: draft.owner_name.trim() || null,
+      email: draft.email.trim() || null,
+      phone: draft.phone.trim() || null,
+    };
+  }
+
+  private createEmptyPropertyDraft(): AdminPropertyDraft {
+    return {
+      apartment_id: '',
+      community: '',
+      apartment_description: '',
+      address: '',
+      rooms: 0,
+      bathrooms: 0,
+      parking: 'N/A',
+      total_occupants: 0,
+      owner_name: '',
+      email: '',
+      phone: '',
+    };
+  }
+
+  private toNonNegativeNumber(value: number | string): number {
+    const parsed = typeof value === 'number' ? value : Number(value);
+    return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
+  }
+
   private resetUserForm(): void {
     this.editingUserId.set(null);
     this.newUser.set({
@@ -371,12 +522,8 @@ export class AdminComponent implements OnInit, OnDestroy {
   }
 
   private resetPropertyForm(): void {
-    this.editingPropertyId.set(null);
-    this.newProperty.set({
-      reference: '',
-      name: '',
-      address: '',
-    });
+    this.editingPropertyReference.set(null);
+    this.newProperty.set(this.createEmptyPropertyDraft());
   }
 
   ngOnDestroy(): void {
