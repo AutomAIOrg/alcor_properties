@@ -99,6 +99,46 @@ class TestIsCancelled:
 
 
 # ---------------------------------------------------------------------------
+# blocks_apartment_deletion()
+# ---------------------------------------------------------------------------
+
+
+class TestBlocksApartmentDeletion:
+    def test_blocks_future_confirmed_booking(self):
+        ref = date(2026, 6, 1)
+        booking = make_booking(check_in=date(2026, 6, 10), check_out=date(2026, 6, 15))
+        assert booking.blocks_apartment_deletion(reference_date=ref)
+
+    def test_blocks_ongoing_confirmed_booking(self):
+        ref = date(2026, 6, 3)
+        booking = make_booking(check_in=date(2026, 6, 1), check_out=date(2026, 6, 5))
+        assert booking.blocks_apartment_deletion(reference_date=ref)
+
+    def test_does_not_block_past_booking(self):
+        ref = date(2026, 6, 10)
+        booking = make_booking(check_in=date(2026, 6, 1), check_out=date(2026, 6, 5))
+        assert not booking.blocks_apartment_deletion(reference_date=ref)
+
+    def test_does_not_block_cancelled_future_booking(self):
+        ref = date(2026, 6, 1)
+        booking = make_booking(
+            check_in=date(2026, 6, 10),
+            check_out=date(2026, 6, 15),
+            status="cancelled",
+        )
+        assert not booking.blocks_apartment_deletion(reference_date=ref)
+
+    def test_does_not_block_cancelled_ongoing_booking(self):
+        ref = date(2026, 6, 3)
+        booking = make_booking(
+            check_in=date(2026, 6, 1),
+            check_out=date(2026, 6, 5),
+            status="Cancelled",
+        )
+        assert not booking.blocks_apartment_deletion(reference_date=ref)
+
+
+# ---------------------------------------------------------------------------
 # has_upcoming_checkin() / has_upcoming_checkout()
 # ---------------------------------------------------------------------------
 
