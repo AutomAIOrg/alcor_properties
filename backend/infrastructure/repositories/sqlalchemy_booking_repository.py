@@ -32,7 +32,7 @@ class SQLAlchemyBookingRepository(IBookingRepository):
             raise BookingNotFound(record_id)
         return self._to_entity(orm)
 
-    def list(
+    def search_bookings(
         self,
         start_date: date | None = None,
         end_date: date | None = None,
@@ -95,6 +95,10 @@ class SQLAlchemyBookingRepository(IBookingRepository):
             raise BookingNotFound(record_id)
         self._db.delete(orm)
         self._db.commit()
+
+    def get_all_by_apartment_id(self, apartment_id: str) -> list[Booking]:
+        orm = self._db.query(BookingORM).filter(BookingORM.apartment_id == apartment_id).all()
+        return [self._to_entity(orm) for orm in orm]
 
     # ------------------------------------------------------------------ #
     # Helpers privados de conversión                                   #

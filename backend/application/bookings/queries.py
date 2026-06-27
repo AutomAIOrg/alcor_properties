@@ -74,13 +74,13 @@ class ListBookingsQuery:
         limit: int | None = None,
     ) -> list[Booking]:
         if start_date and end_date:
-            bookings = self._repo.list(start_date=start_date, end_date=end_date)
+            bookings = self._repo.search_bookings(start_date=start_date, end_date=end_date)
         elif days is not None:
             resolved_start = start_date or date.today()
             resolved_end = resolved_start + timedelta(days=days)
-            bookings = self._repo.list(start_date=resolved_start, end_date=resolved_end)
+            bookings = self._repo.search_bookings(start_date=resolved_start, end_date=resolved_end)
         else:
-            bookings = self._repo.list(limit=limit)
+            bookings = self._repo.search_bookings(limit=limit)
         return _apply_all(bookings, self._electric_ids)
 
 
@@ -113,7 +113,7 @@ class GetActiveBookingsQuery:
 
     def execute(self) -> list[Booking]:
         today = date.today()
-        bookings = self._repo.list(start_date=today, end_date=today)
+        bookings = self._repo.search_bookings(start_date=today, end_date=today)
         active = [b for b in bookings if b.is_active()]
         return _apply_all(active, self._electric_ids)
 
@@ -132,7 +132,7 @@ class GetUpcomingCheckinsQuery:
     def execute(self, days: int = 7) -> list[Booking]:
         today = date.today()
         end_date = today + timedelta(days=days)
-        bookings = self._repo.list(start_date=today, end_date=end_date)
+        bookings = self._repo.search_bookings(start_date=today, end_date=end_date)
         upcoming = [b for b in bookings if b.has_upcoming_checkin(days)]
         upcoming.sort(key=lambda b: b.check_in)
         return _apply_all(upcoming, self._electric_ids)
@@ -152,7 +152,7 @@ class GetUpcomingCheckoutsQuery:
     def execute(self, days: int = 7) -> list[Booking]:
         today = date.today()
         end_date = today + timedelta(days=days)
-        bookings = self._repo.list(start_date=today, end_date=end_date)
+        bookings = self._repo.search_bookings(start_date=today, end_date=end_date)
         upcoming = [b for b in bookings if b.has_upcoming_checkout(days)]
         upcoming.sort(key=lambda b: b.check_out)
         return _apply_all(upcoming, self._electric_ids)
@@ -180,7 +180,7 @@ class GetCalendarEventsQuery:
     ) -> list[dict[str, Any]]:
         resolved_start = start_date or date.today()
         end_date = resolved_start + timedelta(days=days)
-        bookings = self._repo.list(start_date=resolved_start, end_date=end_date)
+        bookings = self._repo.search_bookings(start_date=resolved_start, end_date=end_date)
         bookings = _apply_all(bookings, self._electric_ids)
 
         today = date.today()
@@ -271,7 +271,7 @@ class GetCleaningOpportunitiesUseCase:
 
     def execute(self, reference_date: date | None = None) -> list[CleaningOpportunity]:
         range_start, range_end = _cleaning_operational_range(reference_date)
-        bookings = self._repo.list(
+        bookings = self._repo.search_bookings(
             start_date=range_start - timedelta(days=_CLEANING_BOOKING_LOOKBACK_DAYS),
             end_date=range_end + timedelta(days=_CLEANING_BOOKING_LOOKAHEAD_DAYS),
         )

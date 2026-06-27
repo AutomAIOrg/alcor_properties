@@ -22,7 +22,7 @@ class IBookingRepository(ABC):
         pass
 
     @abstractmethod
-    def list(
+    def search_bookings(
         self,
         start_date: date | None = None,
         end_date: date | None = None,
@@ -62,5 +62,12 @@ class IBookingRepository(ABC):
 
         Excepciones:
             BookingNotFound: si no existe una reserva con ese ID.
+        """
+        pass
+
+    @abstractmethod
+    def get_all_by_apartment_id(self, apartment_id: str) -> list[Booking]:
+        """
+        Devuelve todas las reservas de un apartamento.
         """
         pass

@@ -28,29 +28,29 @@ pytestmark = pytest.mark.unit
 
 class TestListBookingsQuery:
     def test_with_start_and_end_date_delegates_range_to_repo(self, mock_repo):
-        mock_repo.list.return_value = []
+        mock_repo.search_bookings.return_value = []
         start, end = date(2026, 6, 1), date(2026, 6, 30)
 
         ListBookingsQuery(mock_repo, set()).execute(start_date=start, end_date=end)
 
-        mock_repo.list.assert_called_once_with(start_date=start, end_date=end)
+        mock_repo.search_bookings.assert_called_once_with(start_date=start, end_date=end)
 
     def test_with_days_calculates_end_date_from_start(self, mock_repo):
-        mock_repo.list.return_value = []
+        mock_repo.search_bookings.return_value = []
         start = date(2026, 6, 1)
 
         ListBookingsQuery(mock_repo, set()).execute(start_date=start, days=10)
 
-        mock_repo.list.assert_called_once_with(
+        mock_repo.search_bookings.assert_called_once_with(
             start_date=start, end_date=start + timedelta(days=10)
         )
 
     def test_without_filters_passes_limit_to_repo(self, mock_repo):
-        mock_repo.list.return_value = []
+        mock_repo.search_bookings.return_value = []
 
         ListBookingsQuery(mock_repo, set()).execute(limit=5)
 
-        mock_repo.list.assert_called_once_with(limit=5)
+        mock_repo.search_bookings.assert_called_once_with(limit=5)
 
 
 # ---------------------------------------------------------------------------
@@ -93,7 +93,7 @@ class TestGetUpcomingCheckinsQuery:
             check_in=today + timedelta(days=20),
             check_out=today + timedelta(days=24),
         )
-        mock_repo.list.return_value = [soon, far]
+        mock_repo.search_bookings.return_value = [soon, far]
 
         results = GetUpcomingCheckinsQuery(mock_repo, set()).execute(days=7)
 
@@ -112,7 +112,7 @@ class TestGetUpcomingCheckinsQuery:
             check_in=today + timedelta(days=2),
             check_out=today + timedelta(days=6),
         )
-        mock_repo.list.return_value = [b1, b2]
+        mock_repo.search_bookings.return_value = [b1, b2]
 
         results = GetUpcomingCheckinsQuery(mock_repo, set()).execute(days=7)
 
@@ -138,7 +138,7 @@ class TestGetUpcomingCheckoutsQuery:
             check_in=today - timedelta(days=2),
             check_out=today + timedelta(days=15),
         )
-        mock_repo.list.return_value = [soon, far]
+        mock_repo.search_bookings.return_value = [soon, far]
 
         results = GetUpcomingCheckoutsQuery(mock_repo, set()).execute(days=7)
 
@@ -160,7 +160,7 @@ class TestGetCalendarEventsQuery:
             check_in=date(2026, 6, 1),
             check_out=date(2026, 6, 5),
         )
-        mock_repo.list.return_value = [booking]
+        mock_repo.search_bookings.return_value = [booking]
 
         events = GetCalendarEventsQuery(mock_repo, set()).execute(
             start_date=date(2026, 5, 1), days=90
@@ -184,7 +184,7 @@ class TestGetCalendarEventsQuery:
             check_in=today + timedelta(days=1),
             check_out=today + timedelta(days=5),
         )
-        mock_repo.list.return_value = [cancelled_soon]
+        mock_repo.search_bookings.return_value = [cancelled_soon]
 
         events = GetCalendarEventsQuery(mock_repo, set()).execute(start_date=today, days=90)
 
@@ -198,7 +198,7 @@ class TestGetCalendarEventsQuery:
             check_in=today + timedelta(days=10),
             check_out=today + timedelta(days=14),
         )
-        mock_repo.list.return_value = [cancelled_far]
+        mock_repo.search_bookings.return_value = [cancelled_far]
 
         events = GetCalendarEventsQuery(mock_repo, set()).execute(start_date=today, days=90)
 

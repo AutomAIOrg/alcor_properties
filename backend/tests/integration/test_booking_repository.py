@@ -79,7 +79,7 @@ class TestList:
         _insert_orm(sqlite_session, apartment_id="B1")
         _insert_orm(sqlite_session, apartment_id="B2")
 
-        results = SQLAlchemyBookingRepository(sqlite_session).list()
+        results = SQLAlchemyBookingRepository(sqlite_session).search_bookings()
 
         assert len(results) == 2
 
@@ -99,7 +99,7 @@ class TestList:
             nights=4,
         )
 
-        results = SQLAlchemyBookingRepository(sqlite_session).list(
+        results = SQLAlchemyBookingRepository(sqlite_session).search_bookings(
             start_date=date(2026, 6, 1), end_date=date(2026, 6, 30)
         )
 
@@ -111,7 +111,7 @@ class TestList:
         for i in range(5):
             _insert_orm(sqlite_session, apartment_id=f"B{i}")
 
-        results = SQLAlchemyBookingRepository(sqlite_session).list(limit=3)
+        results = SQLAlchemyBookingRepository(sqlite_session).search_bookings(limit=3)
 
         assert len(results) == 3
 
