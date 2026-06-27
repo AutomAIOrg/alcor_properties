@@ -92,7 +92,7 @@ class TestApartmentAdminCrudFlow:
         assert create_response.status_code == 200
         assert create_response.json() == {"message": "Apartamento creado correctamente"}
 
-        list_response = e2e_client.get("/api/v1/apartments/all", headers=admin_auth_headers)
+        list_response = e2e_client.get("/api/v1/apartments", headers=admin_auth_headers)
         assert list_response.status_code == 200
         apartment_ids = [item["apartment_id"] for item in list_response.json()]
         assert "APT-CRUD-001" in apartment_ids

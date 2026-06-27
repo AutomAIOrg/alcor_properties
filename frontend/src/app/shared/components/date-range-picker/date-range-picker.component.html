@@ -1,0 +1,97 @@
+<div class="date-range-fields">
+  <div class="field">
+    <label>
+      {{ fromLabel() }}
+      @if (required()) {
+        <span class="required">*</span>
+      }
+    </label>
+    <button
+      type="button"
+      class="date-range-input"
+      [attr.aria-expanded]="calendarOpen()"
+      aria-haspopup="dialog"
+      (click)="onDateInputClick($event, 'from')"
+    >
+      {{ formatDisplayDate(from()) || fromPlaceholder() }}
+    </button>
+  </div>
+
+  <div class="field">
+    <label>
+      {{ toLabel() }}
+      @if (required()) {
+        <span class="required">*</span>
+      }
+    </label>
+    <button
+      type="button"
+      class="date-range-input"
+      [attr.aria-expanded]="calendarOpen()"
+      aria-haspopup="dialog"
+      (click)="onDateInputClick($event, 'to')"
+    >
+      {{ formatDisplayDate(to()) || toPlaceholder() }}
+    </button>
+  </div>
+</div>
+
+@if (calendarOpen()) {
+  <div
+    class="range-calendar"
+    role="dialog"
+    aria-label="Selector de fechas"
+    (mouseleave)="hoverIso.set(null)"
+  >
+    <div class="range-calendar-header">
+      <button
+        type="button"
+        class="calendar-nav-btn"
+        aria-label="Mes anterior"
+        (click)="prevMonth()"
+      >
+        &lsaquo;
+      </button>
+      <span class="range-calendar-title">{{ calendarTitle() }}</span>
+      <button
+        type="button"
+        class="calendar-nav-btn"
+        aria-label="Mes siguiente"
+        (click)="nextMonth()"
+      >
+        &rsaquo;
+      </button>
+    </div>
+
+    <div class="range-weekdays">
+      @for (day of weekdays; track day) {
+        <span>{{ day }}</span>
+      }
+    </div>
+
+    <div class="range-days">
+      @for (day of calendarDays(); track day.iso) {
+        <button
+          type="button"
+          class="range-day"
+          [class.outside]="!day.inCurrentMonth"
+          [class.start]="day.isStart"
+          [class.end]="day.isEnd"
+          [class.in-range]="day.inRange"
+          (click)="selectDate(day.iso)"
+          (mouseenter)="onDayHover(day)"
+        >
+          {{ day.label }}
+        </button>
+      }
+    </div>
+
+    <div class="range-calendar-footer">
+      <div class="range-summary">
+        <span>Entrada: {{ formatDisplayDate(from()) || '—' }}</span>
+        <span>Salida: {{ formatDisplayDate(to()) || '—' }}</span>
+      </div>
+      <button type="button" class="clear-dates-btn" (click)="clearDates()">Borrar fechas</button>
+    </div>
+  </div>
+}

@@ -80,7 +80,97 @@ class TestListBookings:
             end_date=date(2026, 6, 30),
             days=None,
             limit=10,
+            apartment_id=None,
+            status=None,
+            guest_name=None,
+            booking_number=None,
         )
+
+    def test_start_date_only_is_allowed(self, api_client, mock_use_cases):
+        mock_use_cases.list_query.execute.return_value = []
+
+        response = api_client.get("/api/v1/bookings/?start_date=2026-06-01")
+
+        assert response.status_code == 200
+        mock_use_cases.list_query.execute.assert_called_once_with(
+            start_date=date(2026, 6, 1),
+            end_date=None,
+            days=None,
+            limit=None,
+            apartment_id=None,
+            status=None,
+            guest_name=None,
+            booking_number=None,
+        )
+
+    def test_returns_422_when_date_range_is_inverted(self, api_client, mock_use_cases):
+        response = api_client.get("/api/v1/bookings/?start_date=2026-06-30&end_date=2026-06-01")
+
+        assert response.status_code == 422
+        assert "start_date debe ser anterior a end_date" in response.text
+        mock_use_cases.list_query.execute.assert_not_called()
+
+    def test_returns_422_when_days_is_not_positive(self, api_client, mock_use_cases):
+        response = api_client.get("/api/v1/bookings/?start_date=2026-06-01&days=0")
+
+        assert response.status_code == 422
+        mock_use_cases.list_query.execute.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# GET /api/v1/bookings/stats
+# ---------------------------------------------------------------------------
+
+
+class TestBookingStats:
+    def test_start_date_only_is_allowed(self, api_client, mock_use_cases):
+        mock_use_cases.stats_query.execute.return_value = {
+            "total_bookings": 0,
+            "active_bookings": 0,
+            "cancelled_bookings": 0,
+            "cancellation_rate": None,
+            "total_nights": 0,
+            "avg_nights_per_booking": None,
+            "total_persons": 0,
+            "avg_persons_per_booking": None,
+            "total_revenue": None,
+            "avg_revenue_per_booking": None,
+            "avg_revenue_per_night": None,
+            "total_charges": None,
+            "total_electric_allowance": None,
+            "status_breakdown": {},
+            "start_date": date(2026, 6, 1),
+            "end_date": None,
+            "occupancy_pct": None,
+        }
+
+        response = api_client.get("/api/v1/bookings/stats?start_date=2026-06-01")
+
+        assert response.status_code == 200
+        mock_use_cases.stats_query.execute.assert_called_once_with(
+            start_date=date(2026, 6, 1),
+            end_date=None,
+            days=None,
+            apartment_id=None,
+            status=None,
+            guest_name=None,
+            booking_number=None,
+        )
+
+    def test_returns_422_when_date_range_is_inverted(self, api_client, mock_use_cases):
+        response = api_client.get(
+            "/api/v1/bookings/stats?start_date=2026-06-30&end_date=2026-06-01"
+        )
+
+        assert response.status_code == 422
+        assert "start_date debe ser anterior a end_date" in response.text
+        mock_use_cases.stats_query.execute.assert_not_called()
+
+    def test_returns_422_when_days_is_not_positive(self, api_client, mock_use_cases):
+        response = api_client.get("/api/v1/bookings/stats?start_date=2026-06-01&days=0")
+
+        assert response.status_code == 422
+        mock_use_cases.stats_query.execute.assert_not_called()
 
 
 # ---------------------------------------------------------------------------
@@ -233,6 +323,17 @@ class TestUpdateBooking:
         response = api_client.put("/api/v1/bookings/1", json={"guest_name": "Nombre Nuevo"})
 
         assert response.status_code == 200
+        _, update_data = mock_use_cases.update_command.execute.call_args.args
+        assert update_data.as_update_dict() == {"guest_name": "Nombre Nuevo"}
+
+    def test_update_forwards_explicit_null_for_optional_fields(self, api_client, mock_use_cases):
+        mock_use_cases.update_command.execute.return_value = make_booking(record_id=1, email=None)
+
+        response = api_client.put("/api/v1/bookings/1", json={"email": None})
+
+        assert response.status_code == 200
+        _, update_data = mock_use_cases.update_command.execute.call_args.args
+        assert update_data.as_update_dict() == {"email": None}
 
     def test_returns_404_when_not_found(self, api_client, mock_use_cases):
         mock_use_cases.update_command.execute.side_effect = BookingNotFound(99)

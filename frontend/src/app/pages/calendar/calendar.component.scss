@@ -25,6 +25,26 @@
   border: 1px solid #eaecf0;
 }
 
+.calendar-error,
+.calendar-loading {
+  margin: 0;
+  padding: 0.7rem 0.9rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
+}
+
+.calendar-error {
+  border: 1px solid #fecaca;
+  background: #fef2f2;
+  color: #b42318;
+}
+
+.calendar-loading {
+  border: 1px solid #bfdbfe;
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
 // ── Buscador (estilos compartidos entre posición móvil y desktop) ─────────────
 .search-wrapper {
   position: relative;

@@ -50,15 +50,8 @@ class ApartmentSearchFilters(BaseModel):
         default=None, ge=0, description="Filtra por número mínimo de habitaciones"
     )
 
-    max_rooms: int | None = Field(
-        default=None, ge=0, description="Filtra por número máximo de habitaciones"
-    )
-
     min_bathrooms: int | None = Field(
         default=None, ge=0, description="Filtra por número mínimo de baños"
-    )
-    max_bathrooms: int | None = Field(
-        default=None, ge=0, description="Filtra por número máximo de baños"
     )
 
     min_occupants: int | None = Field(
@@ -78,20 +71,6 @@ class ApartmentSearchFilters(BaseModel):
 
     @model_validator(mode="after")
     def validate_ranges(self):
-        if (
-            self.min_rooms is not None
-            and self.max_rooms is not None
-            and self.min_rooms > self.max_rooms
-        ):
-            raise ValueError("min_rooms no puede ser mayor que max_rooms")
-
-        if (
-            self.min_bathrooms is not None
-            and self.max_bathrooms is not None
-            and self.min_bathrooms > self.max_bathrooms
-        ):
-            raise ValueError("min_bathrooms no puede ser mayor que max_bathrooms")
-
         if (
             self.min_occupants is not None
             and self.max_occupants is not None

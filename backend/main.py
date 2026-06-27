@@ -56,17 +56,21 @@ app = FastAPI(
     title=settings.APP_NAME,
     version=settings.APP_VERSION,
     description="REST API for Property Management System",
-    docs_url="/docs",
-    redoc_url="/redoc",
+    docs_url="/docs" if settings.DEBUG else None,
+    redoc_url="/redoc" if settings.DEBUG else None,
 )
 
 # CORS
+# Nota: el navegador prohíbe combinar el comodín "*" con allow_credentials=True.
+# Si se configura "*", se desactivan las credenciales para mantener una respuesta válida;
+# en producción debe definirse el/los origen(es) concreto(s) en CORS_ORIGINS.
+_allow_all_origins = "*" in settings.CORS_ORIGINS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.CORS_ORIGINS,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_credentials=not _allow_all_origins,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type"],
 )
 
 # Excepción de dominio → Respuesta HTTP

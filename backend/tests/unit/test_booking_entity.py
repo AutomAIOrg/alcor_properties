@@ -74,8 +74,8 @@ class TestIsActive:
     def test_active_on_check_in_day(self):
         assert self.b.is_active(reference_date=date(2026, 6, 1))
 
-    def test_active_on_check_out_day(self):
-        assert self.b.is_active(reference_date=date(2026, 6, 5))
+    def test_not_active_on_check_out_day(self):
+        assert not self.b.is_active(reference_date=date(2026, 6, 5))
 
     def test_not_active_before_check_in(self):
         assert not self.b.is_active(reference_date=date(2026, 5, 31))

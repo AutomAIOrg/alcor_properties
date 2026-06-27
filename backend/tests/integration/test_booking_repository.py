@@ -70,11 +70,11 @@ class TestGetById:
 
 
 # ---------------------------------------------------------------------------
-# list
+# search_bookings
 # ---------------------------------------------------------------------------
 
 
-class TestList:
+class TestSearchBookings:
     def test_returns_all_bookings_without_filters(self, sqlite_session):
         _insert_orm(sqlite_session, apartment_id="B1")
         _insert_orm(sqlite_session, apartment_id="B2")
@@ -107,6 +107,96 @@ class TestList:
         assert "OVERLAPS" in apartment_ids
         assert "OUTSIDE" not in apartment_ids
 
+    def test_date_range_filter_uses_exclusive_check_out_boundary(self, sqlite_session):
+        _insert_orm(
+            sqlite_session,
+            apartment_id="ENDS_AT_START",
+            check_in=date(2026, 5, 28),
+            check_out=date(2026, 6, 1),
+            nights=4,
+        )
+        _insert_orm(
+            sqlite_session,
+            apartment_id="STARTS_AT_END",
+            check_in=date(2026, 6, 30),
+            check_out=date(2026, 7, 2),
+            nights=2,
+        )
+        _insert_orm(
+            sqlite_session,
+            apartment_id="OVERLAPS",
+            check_in=date(2026, 6, 29),
+            check_out=date(2026, 7, 2),
+            nights=3,
+        )
+
+        results = SQLAlchemyBookingRepository(sqlite_session).search_bookings(
+            start_date=date(2026, 6, 1), end_date=date(2026, 6, 30)
+        )
+
+        apartment_ids = [r.apartment_id for r in results]
+        assert apartment_ids == ["OVERLAPS"]
+
+    def test_start_date_only_returns_bookings_with_checkin_from_start(self, sqlite_session):
+        _insert_orm(
+            sqlite_session,
+            apartment_id="CHECKIN_BEFORE",
+            check_in=date(2026, 5, 20),
+            check_out=date(2026, 6, 3),
+            nights=12,
+        )
+        _insert_orm(
+            sqlite_session,
+            apartment_id="CHECKIN_AT_START",
+            check_in=date(2026, 6, 1),
+            check_out=date(2026, 6, 3),
+            nights=2,
+        )
+        _insert_orm(
+            sqlite_session,
+            apartment_id="CHECKIN_AFTER",
+            check_in=date(2026, 7, 1),
+            check_out=date(2026, 7, 5),
+            nights=4,
+        )
+
+        results = SQLAlchemyBookingRepository(sqlite_session).search_bookings(
+            start_date=date(2026, 6, 1)
+        )
+
+        apartment_ids = [r.apartment_id for r in results]
+        assert apartment_ids == ["CHECKIN_AT_START", "CHECKIN_AFTER"]
+
+    def test_end_date_only_returns_bookings_with_checkin_until_end(self, sqlite_session):
+        _insert_orm(
+            sqlite_session,
+            apartment_id="CHECKIN_BEFORE_END",
+            check_in=date(2026, 5, 28),
+            check_out=date(2026, 6, 3),
+            nights=6,
+        )
+        _insert_orm(
+            sqlite_session,
+            apartment_id="CHECKIN_AT_END",
+            check_in=date(2026, 6, 30),
+            check_out=date(2026, 7, 2),
+            nights=2,
+        )
+        _insert_orm(
+            sqlite_session,
+            apartment_id="CHECKIN_AFTER_END",
+            check_in=date(2026, 7, 1),
+            check_out=date(2026, 7, 5),
+            nights=4,
+        )
+
+        results = SQLAlchemyBookingRepository(sqlite_session).search_bookings(
+            end_date=date(2026, 6, 30)
+        )
+
+        apartment_ids = [r.apartment_id for r in results]
+        assert apartment_ids == ["CHECKIN_BEFORE_END", "CHECKIN_AT_END"]
+
     def test_limit_restricts_result_count(self, sqlite_session):
         for i in range(5):
             _insert_orm(sqlite_session, apartment_id=f"B{i}")
@@ -114,6 +204,108 @@ class TestList:
         results = SQLAlchemyBookingRepository(sqlite_session).search_bookings(limit=3)
 
         assert len(results) == 3
+
+
+# ---------------------------------------------------------------------------
+# find_overlapping_active
+# ---------------------------------------------------------------------------
+
+
+class TestFindOverlappingActive:
+    def test_returns_true_when_active_booking_overlaps(self, sqlite_session):
+        _insert_orm(
+            sqlite_session,
+            apartment_id="R180",
+            check_in=date(2026, 6, 1),
+            check_out=date(2026, 6, 5),
+            nights=4,
+        )
+
+        result = SQLAlchemyBookingRepository(sqlite_session).find_overlapping_active(
+            apartment_id="R180",
+            check_in=date(2026, 6, 4),
+            check_out=date(2026, 6, 8),
+        )
+
+        assert result is True
+
+    def test_returns_false_for_back_to_back_bookings(self, sqlite_session):
+        _insert_orm(
+            sqlite_session,
+            apartment_id="R180",
+            check_in=date(2026, 6, 1),
+            check_out=date(2026, 6, 5),
+            nights=4,
+        )
+
+        result = SQLAlchemyBookingRepository(sqlite_session).find_overlapping_active(
+            apartment_id="R180",
+            check_in=date(2026, 6, 5),
+            check_out=date(2026, 6, 8),
+        )
+
+        assert result is False
+
+    def test_returns_false_for_cancelled_booking(self, sqlite_session):
+        _insert_orm(
+            sqlite_session,
+            apartment_id="R180",
+            check_in=date(2026, 6, 1),
+            check_out=date(2026, 6, 5),
+            nights=4,
+            status="Cancelled",
+        )
+
+        result = SQLAlchemyBookingRepository(sqlite_session).find_overlapping_active(
+            apartment_id="R180",
+            check_in=date(2026, 6, 2),
+            check_out=date(2026, 6, 4),
+        )
+
+        assert result is False
+
+    def test_can_exclude_current_booking_from_overlap_search(self, sqlite_session):
+        orm = _insert_orm(
+            sqlite_session,
+            apartment_id="R180",
+            check_in=date(2026, 6, 1),
+            check_out=date(2026, 6, 5),
+            nights=4,
+        )
+
+        result = SQLAlchemyBookingRepository(sqlite_session).find_overlapping_active(
+            apartment_id="R180",
+            check_in=date(2026, 6, 1),
+            check_out=date(2026, 6, 5),
+            exclude_record_id=orm.record_id,
+        )
+
+        assert result is False
+
+    def test_exclude_current_booking_still_detects_other_overlaps(self, sqlite_session):
+        current = _insert_orm(
+            sqlite_session,
+            apartment_id="R180",
+            check_in=date(2026, 6, 1),
+            check_out=date(2026, 6, 5),
+            nights=4,
+        )
+        _insert_orm(
+            sqlite_session,
+            apartment_id="R180",
+            check_in=date(2026, 6, 4),
+            check_out=date(2026, 6, 8),
+            nights=4,
+        )
+
+        result = SQLAlchemyBookingRepository(sqlite_session).find_overlapping_active(
+            apartment_id="R180",
+            check_in=date(2026, 6, 3),
+            check_out=date(2026, 6, 6),
+            exclude_record_id=current.record_id,
+        )
+
+        assert result is True
 
 
 # ---------------------------------------------------------------------------

@@ -14,6 +14,7 @@ from application.apartments.use_cases import (
     DeleteApartmentUseCase,
     GetAllApartmentsUseCase,
     GetApartmentByIdUseCase,
+    GetApartmentStatsUseCase,
     SearchApartmentsUseCase,
     UpdateApartmentUseCase,
 )
@@ -28,6 +29,7 @@ from application.bookings.commands import (
 from application.bookings.queries import (
     GetActiveBookingsQuery,
     GetBookingByIdQuery,
+    GetBookingStatsQuery,
     GetCalendarEventsQuery,
     GetCleaningOpportunitiesUseCase,
     GetUpcomingCheckinsQuery,
@@ -202,6 +204,7 @@ class BookingUseCases:
     upcoming_checkouts_query: GetUpcomingCheckoutsQuery
     calendar_events_query: GetCalendarEventsQuery
     get_cleaning_opportunities_query: GetCleaningOpportunitiesUseCase
+    stats_query: GetBookingStatsQuery
     create_command: CreateBookingUseCase
     update_command: UpdateBookingUseCase
     delete_command: DeleteBookingUseCase
@@ -220,6 +223,7 @@ def get_booking_use_cases(
         upcoming_checkouts_query=GetUpcomingCheckoutsQuery(repo, electric_ids),
         calendar_events_query=GetCalendarEventsQuery(repo, electric_ids),
         get_cleaning_opportunities_query=GetCleaningOpportunitiesUseCase(repo),
+        stats_query=GetBookingStatsQuery(repo, electric_ids),
         create_command=CreateBookingUseCase(repo, electric_ids),
         update_command=UpdateBookingUseCase(repo, electric_ids),
         delete_command=DeleteBookingUseCase(repo),
@@ -267,3 +271,14 @@ def get_get_all_apartments_use_case(
 ) -> GetAllApartmentsUseCase:
     """Inyección de dependencias para el caso de uso de obtener todos los apartamentos."""
     return GetAllApartmentsUseCase(repository)
+
+
+def get_apartment_stats_use_case(
+    apartment_repository: IApartmentRepository = Depends(get_apartment_repository),
+    booking_repository: IBookingRepository = Depends(get_booking_repository),
+    electric_apartment_ids: set[str] = Depends(get_electric_ids),
+) -> GetApartmentStatsUseCase:
+    """Inyección de dependencias para el caso de uso de estadísticas de apartamentos."""
+    return GetApartmentStatsUseCase(
+        apartment_repository, booking_repository, electric_apartment_ids
+    )

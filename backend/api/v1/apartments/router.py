@@ -2,12 +2,14 @@
 Enrutador para los apartamentos.
 """
 
+from datetime import date
 from typing import Annotated
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query
 
 from api.dependencies import (
     get_apartment_by_id_use_case,
+    get_apartment_stats_use_case,
     get_create_apartment_use_case,
     get_delete_apartment_use_case,
     get_get_all_apartments_use_case,
@@ -17,6 +19,7 @@ from api.dependencies import (
 )
 from api.v1.apartments.schemas import (
     ApartmentResponse,
+    ApartmentStatsResponse,
     CreateApartmentRequest,
     UpdateApartmentRequest,
 )
@@ -25,11 +28,13 @@ from application.apartments.use_cases import (
     DeleteApartmentUseCase,
     GetAllApartmentsUseCase,
     GetApartmentByIdUseCase,
+    GetApartmentStatsUseCase,
     SearchApartmentsUseCase,
     UpdateApartmentUseCase,
 )
 from domain.apartments.entity import Apartment
 from domain.apartments.filters import ApartmentSearchFilters
+from domain.exceptions import ApartmentNotFound
 
 router = APIRouter(prefix="/apartments", tags=["Apartments"], dependencies=[Depends(require_admin)])
 
@@ -91,7 +96,7 @@ def search_apartments(
     return [ApartmentResponse.model_validate(apartment.model_dump()) for apartment in apartments]
 
 
-@router.get("/all", response_model=list[ApartmentResponse])
+@router.get("/", response_model=list[ApartmentResponse])
 def get_all_apartments(
     get_all_apartments_use_case: GetAllApartmentsUseCase = Depends(get_get_all_apartments_use_case),
 ) -> list[ApartmentResponse]:
@@ -123,3 +128,39 @@ def get_apartment_by_id(
         )
 
     return ApartmentResponse.model_validate(apartment.model_dump())
+
+
+@router.get("/stats/{apartment_id}", response_model=ApartmentStatsResponse)
+def get_apartment_stats(
+    apartment_id: str,
+    start_date: date | None = Query(None, description="Filtrar desde esta fecha"),
+    end_date: date | None = Query(None, description="Filtrar hasta esta fecha"),
+    query: GetApartmentStatsUseCase = Depends(get_apartment_stats_use_case),
+) -> ApartmentStatsResponse:
+    """
+    Devuelve estadísticas de un apartamento: métricas del rango filtrado y desglose anual.
+    """
+    if (start_date is None) != (end_date is None):
+        raise HTTPException(
+            status_code=422,
+            detail="start_date y end_date deben informarse juntas",
+        )
+
+    if start_date is not None and end_date is not None and start_date >= end_date:
+        raise HTTPException(
+            status_code=422,
+            detail="start_date debe ser anterior a end_date",
+        )
+
+    try:
+        stats = query.execute(
+            apartment_id,
+            start_date=start_date,
+            end_date=end_date,
+        )
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+    except ApartmentNotFound as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+
+    return ApartmentStatsResponse.model_validate(stats)

@@ -36,7 +36,9 @@ from infrastructure.models.user import UserORM
 @pytest.fixture
 def mock_repo() -> MagicMock:
     """Repositorio mockeado con spec de IBookingRepository."""
-    return MagicMock(spec=IBookingRepository)
+    repo = MagicMock(spec=IBookingRepository)
+    repo.find_overlapping_active.return_value = False
+    return repo
 
 
 @pytest.fixture
@@ -72,6 +74,12 @@ def mock_delete_apartment_use_case() -> MagicMock:
 @pytest.fixture
 def mock_get_all_apartments_use_case() -> MagicMock:
     """GetAllApartmentsUseCase mockeado para tests de API."""
+    return MagicMock()
+
+
+@pytest.fixture
+def mock_get_apartment_stats_use_case() -> MagicMock:
+    """GetApartmentStatsUseCase mockeado para tests de API."""
     return MagicMock()
 
 
@@ -159,6 +167,12 @@ def mock_search_apartments_use_case() -> MagicMock:
 
 
 @pytest.fixture
+def mock_search_apartments_query() -> MagicMock:
+    """ApartmentUseCases completamente mockeado para tests de API."""
+    return MagicMock()
+
+
+@pytest.fixture
 def apartment_api_client(
     mock_search_apartments_use_case: MagicMock,
     mock_get_apartment_by_id_use_case: MagicMock,
@@ -166,9 +180,11 @@ def apartment_api_client(
     mock_update_apartment_use_case: MagicMock,
     mock_delete_apartment_use_case: MagicMock,
     mock_get_all_apartments_use_case: MagicMock,
+    mock_get_apartment_stats_use_case: MagicMock,
 ) -> TestClient:
     from api.dependencies import (
         get_apartment_by_id_use_case,
+        get_apartment_stats_use_case,
         get_create_apartment_use_case,
         get_current_user,
         get_delete_apartment_use_case,
@@ -199,6 +215,9 @@ def apartment_api_client(
     app.dependency_overrides[get_get_all_apartments_use_case] = lambda: (
         mock_get_all_apartments_use_case
     )
+    app.dependency_overrides[get_apartment_stats_use_case] = lambda: (
+        mock_get_apartment_stats_use_case
+    )
     app.dependency_overrides[get_current_user] = lambda: admin_payload
 
     try:
@@ -211,6 +230,7 @@ def apartment_api_client(
         app.dependency_overrides.pop(get_update_apartment_use_case, None)
         app.dependency_overrides.pop(get_delete_apartment_use_case, None)
         app.dependency_overrides.pop(get_get_all_apartments_use_case, None)
+        app.dependency_overrides.pop(get_apartment_stats_use_case, None)
         app.dependency_overrides.pop(get_current_user, None)
 
 

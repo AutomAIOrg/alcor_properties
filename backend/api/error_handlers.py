@@ -13,6 +13,11 @@ async def booking_not_found_handler(request: Request, exc: Exception) -> JSONRes
     return JSONResponse(status_code=404, content={"detail": str(exc)})
 
 
+async def apartment_not_found_handler(request: Request, exc: Exception) -> JSONResponse:
+    """Devuelve un error 404 cuando no se encuentra el apartamento."""
+    return JSONResponse(status_code=404, content={"detail": str(exc)})
+
+
 async def booking_conflict_handler(request: Request, exc: Exception) -> JSONResponse:
     """Devuelve un error 409 ante un conflicto de reserva."""
     return JSONResponse(status_code=409, content={"detail": str(exc)})

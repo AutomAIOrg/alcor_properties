@@ -67,13 +67,10 @@ class TestSearchApartments:
     ):
         mock_search_apartments_use_case.execute.return_value = []
 
-        apartment_api_client.get(
-            "/api/v1/apartments/search?min_rooms=2&max_rooms=4&min_occupants=4"
-        )
+        apartment_api_client.get("/api/v1/apartments/search?min_rooms=2&min_occupants=4")
 
         filters = mock_search_apartments_use_case.execute.call_args[0][0]
         assert filters.min_rooms == 2
-        assert filters.max_rooms == 4
         assert filters.min_occupants == 4
 
     def test_date_filters_are_forwarded_to_use_case(
@@ -96,15 +93,6 @@ class TestSearchApartments:
 
         assert response.status_code == 422
         assert "available_from y available_to deben informarse juntas" in response.text
-
-    def test_returns_422_when_min_rooms_greater_than_max_rooms(
-        self,
-        apartment_api_client,
-    ):
-        response = apartment_api_client.get("/api/v1/apartments/search?min_rooms=5&max_rooms=2")
-
-        assert response.status_code == 422
-        assert "min_rooms no puede ser mayor que max_rooms" in response.text
 
     def test_returns_422_when_min_rooms_is_negative(self, apartment_api_client):
         response = apartment_api_client.get("/api/v1/apartments/search?min_rooms=-1")
@@ -181,7 +169,7 @@ class TestGetApartmentByApartmentId:
 
 
 # ---------------------------------------------------------------------------
-# GET /api/v1/apartments/all
+# GET /api/v1/apartments
 # ---------------------------------------------------------------------------
 
 
@@ -205,7 +193,7 @@ class TestGetAllApartments:
             )
         ]
 
-        response = apartment_api_client.get("/api/v1/apartments/all")
+        response = apartment_api_client.get("/api/v1/apartments")
 
         assert response.status_code == 200
         data = response.json()
@@ -369,3 +357,70 @@ class TestDeleteApartment:
 
         assert response.status_code == 409
         assert "reservas" in response.json()["detail"].lower()
+
+
+# ---------------------------------------------------------------------------
+# GET /api/v1/apartments/stats/{apartment_id}
+# ---------------------------------------------------------------------------
+
+
+class TestGetApartmentStats:
+    def test_returns_200_and_forwards_full_date_range(
+        self, apartment_api_client, mock_get_apartment_stats_use_case
+    ):
+        from datetime import date
+
+        mock_get_apartment_stats_use_case.execute.return_value = {
+            "apartment_id": "R180",
+            "apartment": make_apartment(apartment_id="R180").model_dump(),
+            "filtered_range": {
+                "start_date": date(2026, 6, 1),
+                "end_date": date(2026, 6, 30),
+                "total_bookings": 0,
+                "active_bookings": 0,
+                "cancelled_bookings": 0,
+                "cancellation_rate": None,
+                "total_nights": 0,
+                "avg_nights_per_booking": None,
+                "total_persons": 0,
+                "avg_persons_per_booking": None,
+                "total_revenue": None,
+                "avg_revenue_per_booking": None,
+                "avg_revenue_per_night": None,
+                "total_charges": None,
+                "total_electric_allowance": None,
+                "occupancy_pct": None,
+                "status_breakdown": {},
+            },
+            "by_year": [],
+        }
+
+        response = apartment_api_client.get(
+            "/api/v1/apartments/stats/R180?start_date=2026-06-01&end_date=2026-06-30"
+        )
+
+        assert response.status_code == 200
+        mock_get_apartment_stats_use_case.execute.assert_called_once_with(
+            "R180",
+            start_date=date(2026, 6, 1),
+            end_date=date(2026, 6, 30),
+        )
+        assert response.json()["apartment_id"] == "R180"
+
+    def test_returns_422_when_only_start_date_provided(
+        self, apartment_api_client, mock_get_apartment_stats_use_case
+    ):
+        response = apartment_api_client.get("/api/v1/apartments/stats/R180?start_date=2026-06-01")
+
+        assert response.status_code == 422
+        assert "start_date y end_date deben informarse juntas" in response.text
+        mock_get_apartment_stats_use_case.execute.assert_not_called()
+
+    def test_returns_422_when_only_end_date_provided(
+        self, apartment_api_client, mock_get_apartment_stats_use_case
+    ):
+        response = apartment_api_client.get("/api/v1/apartments/stats/R180?end_date=2026-06-30")
+
+        assert response.status_code == 422
+        assert "start_date y end_date deben informarse juntas" in response.text
+        mock_get_apartment_stats_use_case.execute.assert_not_called()

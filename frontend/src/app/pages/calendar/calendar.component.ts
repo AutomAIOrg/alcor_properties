@@ -3,13 +3,14 @@
 // HostListener para escuchar eventos del documento, OnInit para el ciclo de vida, signal para estado reactivo.
 import { Component, computed, effect, HostListener, inject, OnInit, signal } from '@angular/core';
 import { BookingService } from '../../services/booking.service';
+import { ApartmentService } from '../../services/apartment.service';
 import { CalendarLayoutService } from '../../services/calendar-layout.service';
 import { Booking, BASE_STATUSES } from '../../models/booking.model';
 import { CalendarWeek } from '../../models/calendar.model';
 import { CalendarHeaderComponent } from './components/calendar-header/calendar-header.component';
 import { WeekRowComponent } from './components/week-row/week-row.component';
-import { BookingModalComponent } from './components/booking-modal/booking-modal.component';
-import { BookingCreateModalComponent } from './components/booking-create-modal/booking-create-modal.component';
+import { BookingModalComponent } from '../../shared/components/booking-modal/booking-modal.component';
+import { BookingCreateModalComponent } from '../../shared/components/booking-create-modal/booking-create-modal.component';
 import { AuthService } from '../../auth/auth.service';
 
 @Component({
@@ -28,8 +29,10 @@ import { AuthService } from '../../auth/auth.service';
 export class CalendarComponent implements OnInit {
   // Inyección de dependencias: servicios disponibles en toda la clase.
   private bookingService = inject(BookingService);
+  private apartmentService = inject(ApartmentService);
   private layout = inject(CalendarLayoutService);
   authService = inject(AuthService);
+  private calendarRequestId = 0;
 
   // ─── Constantes de etiquetas ────────────────────────────────────────────────
   // Nombres de días para la cabecera del calendario (vista mes/semana).
@@ -59,8 +62,13 @@ export class CalendarComponent implements OnInit {
   viewMode = signal<'month' | 'week'>('month'); // signal<'month' | 'week' | 'day'>('month');
   // Fecha de referencia que determina qué mes/semana/día se muestra.
   currentDate = signal(new Date());
-  // Lista completa de reservas cargadas desde la API.
+  // Reservas cargadas para la ventana visible del calendario.
   bookings = signal<Booking[]>([]);
+  calendarLoading = signal(false);
+  calendarError = signal<string | null>(null);
+  allApartmentIds = signal<string[]>([]);
+  apartmentIdsError = signal<string | null>(null);
+  private apartmentIdsLoaded = false;
   // Reserva seleccionada que se muestra en el modal de detalle. null = modal cerrado.
   selectedBooking = signal<Booking | null>(null);
   // Controla la visibilidad del modal de creación de reserva.
@@ -218,11 +226,9 @@ export class CalendarComponent implements OnInit {
     });
   }
 
-  // Se ejecuta una vez al montar el componente: carga todas las reservas desde la API.
+  // Se ejecuta una vez al montar el componente: carga solo las reservas visibles.
   ngOnInit(): void {
-    this.bookingService.getBookings().subscribe(bookings => {
-      this.bookings.set(bookings);
-    });
+    this.loadCalendarBookings();
   }
 
   // ─── Navegación del calendario ───────────────────────────────────────────────
@@ -238,6 +244,7 @@ export class CalendarComponent implements OnInit {
         break;
       // case 'day':   this.currentDate.set(new Date(d.getFullYear(), d.getMonth(), d.getDate() - 1)); break;
     }
+    this.loadCalendarBookings();
   }
 
   // Avanza un período según la vista activa (mes, semana o día).
@@ -252,24 +259,42 @@ export class CalendarComponent implements OnInit {
         break;
       // case 'day':   this.currentDate.set(new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1)); break;
     }
+    this.loadCalendarBookings();
   }
 
   // Vuelve al mes/semana/día de hoy.
   goToToday(): void {
     this.currentDate.set(new Date());
+    this.loadCalendarBookings();
   }
 
   // Salta directamente a un mes y año concretos (lo emite el calendar-header).
   goToDate(event: { month: number; year: number }): void {
     this.currentDate.set(new Date(event.year, event.month, 1));
+    this.loadCalendarBookings();
+  }
+
+  changeViewMode(mode: string): void {
+    if (mode !== 'month' && mode !== 'week') return;
+    if (this.viewMode() === mode) return;
+
+    this.viewMode.set(mode);
+    this.loadCalendarBookings();
+  }
+
+  openCreateModal(): void {
+    this.ensureApartmentIdsLoaded();
+    this.showCreateModal.set(true);
   }
 
   // ─── Métodos de filtro ────────────────────────────────────────────────────────
-  // Cierra ambos desplegables si el click fue fuera de un .filter-dropdown.
+  // Cierra cada desplegable si el click fue fuera de su propio contenedor.
   @HostListener('document:click', ['$event.target'])
   onDocumentClick(target: HTMLElement): void {
-    if (!target.closest('.filter-dropdown')) {
+    if (!target.closest('.id-filter-dropdown')) {
       this.showIdDropdown.set(false);
+    }
+    if (!target.closest('.state-filter-dropdown')) {
       this.showStateDropdown.set(false);
     }
     if (!target.closest('.search-wrapper')) {
@@ -296,6 +321,8 @@ export class CalendarComponent implements OnInit {
     this.filterBookingIds.set([]);
     this.filterBookingStates.set([]);
     this.searchQuery.set('');
+
+    this.goToToday();
   }
 
   // ─── Buscador con autocompletado ──────────────────────────────────────────────
@@ -341,10 +368,10 @@ export class CalendarComponent implements OnInit {
     this.selectedBooking.set(updated);
   }
 
-  // Añade la reserva recién creada a la lista local y cierra el modal.
-  onBookingCreated(booking: Booking): void {
-    this.bookings.update(list => [...list, booking]);
+  // Cierra el modal y recarga la ventana visible tras crear una reserva.
+  onBookingCreated(_booking: Booking): void {
     this.showCreateModal.set(false);
+    this.loadCalendarBookings();
   }
 
   formatHour(h: number): string {
@@ -353,5 +380,74 @@ export class CalendarComponent implements OnInit {
 
   isToday(date: Date): boolean {
     return this.layout.toIso(date) === this.layout.toIso(new Date());
+  }
+
+  private loadCalendarBookings(): void {
+    const { startDate, days } = this.visibleCalendarRange();
+    const requestId = ++this.calendarRequestId;
+
+    this.calendarLoading.set(true);
+    this.calendarError.set(null);
+
+    this.bookingService.getCalendarBookings(startDate, days).subscribe({
+      next: bookings => {
+        if (requestId !== this.calendarRequestId) return;
+
+        this.bookings.set(bookings);
+        this.calendarLoading.set(false);
+      },
+      error: () => {
+        if (requestId !== this.calendarRequestId) return;
+
+        this.bookings.set([]);
+        this.calendarError.set('No se pudieron cargar las reservas del calendario.');
+        this.calendarLoading.set(false);
+      },
+    });
+  }
+
+  private visibleCalendarRange(): { startDate: string; days: number } {
+    const current = this.currentDate();
+
+    if (this.viewMode() === 'week') {
+      const monday = new Date(current);
+      monday.setDate(current.getDate() - ((current.getDay() + 6) % 7));
+
+      return {
+        startDate: this.layout.toIso(monday),
+        days: 7,
+      };
+    }
+
+    const year = current.getFullYear();
+    const month = current.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const leadingDays = (firstDay.getDay() + 6) % 7;
+    const visibleDaysBeforePadding = leadingDays + lastDay.getDate();
+    const trailingDays = (7 - (visibleDaysBeforePadding % 7)) % 7;
+    const gridStart = new Date(year, month, 1 - leadingDays);
+
+    return {
+      startDate: this.layout.toIso(gridStart),
+      days: visibleDaysBeforePadding + trailingDays,
+    };
+  }
+
+  private ensureApartmentIdsLoaded(): void {
+    if (this.apartmentIdsLoaded) return;
+
+    this.apartmentIdsError.set(null);
+
+    this.apartmentService.getAllApartmentIds().subscribe({
+      next: ids => {
+        this.allApartmentIds.set(ids);
+        this.apartmentIdsLoaded = true;
+      },
+      error: () => {
+        this.allApartmentIds.set([]);
+        this.apartmentIdsError.set('No se pudieron cargar los pisos.');
+      },
+    });
   }
 }

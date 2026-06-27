@@ -39,6 +39,14 @@ class DomainValidationError(DomainException):
         super().__init__(message)
 
 
+class ApartmentNotFound(DomainException):
+    """Se lanza cuando no se puede encontrar un apartamento por su apartment_id."""
+
+    def __init__(self, apartment_id: str) -> None:
+        self.apartment_id = apartment_id
+        super().__init__(f"Apartamento '{apartment_id}' no encontrado")
+
+
 class InvalidToken(DomainException):
     """Se lanza cuando un token de acceso no es válido."""
 

@@ -1,0 +1,95 @@
+<div class="stats-grid">
+  <div class="stat-card">
+    <span class="stat-label">Total reservas</span>
+    <span class="stat-value">{{ stats.total_bookings }}</span>
+  </div>
+  <div class="stat-card stat-card--green">
+    <span class="stat-label">Activas</span>
+    <span class="stat-value">{{ stats.active_bookings }}</span>
+  </div>
+  <div class="stat-card stat-card--gold">
+    <span class="stat-label">Pendientes</span>
+    <span class="stat-value">{{ pendingBookings() }}</span>
+  </div>
+  <div class="stat-card stat-card--red">
+    <span class="stat-label">Canceladas</span>
+    <span class="stat-value">{{ stats.cancelled_bookings }}</span>
+    @if (stats.cancellation_rate != null) {
+      <span class="stat-sub"
+        >{{ stats.cancellation_rate | number: '1.1-1' }}% cancelaci&oacute;n</span
+      >
+    }
+  </div>
+  <div class="stat-card">
+    <span class="stat-label">{{ nightsLabel }}</span>
+    <span class="stat-value">{{ stats.total_nights }}</span>
+    @if (stats.avg_nights_per_booking != null) {
+      <span class="stat-sub">
+        {{ stats.avg_nights_per_booking | number: '1.1-1' }} media/reserva
+      </span>
+    }
+  </div>
+  <div class="stat-card">
+    <span class="stat-label">Total personas</span>
+    <span class="stat-value">{{ stats.total_persons }}</span>
+    @if (stats.avg_persons_per_booking != null) {
+      <span class="stat-sub">
+        {{ stats.avg_persons_per_booking | number: '1.1-1' }} media/reserva
+      </span>
+    }
+  </div>
+  @if (stats.occupancy_pct != null) {
+    <div class="stat-card stat-card--blue">
+      <span class="stat-label">% Ocupaci&oacute;n rango</span>
+      <span class="stat-value">{{ stats.occupancy_pct | number: '1.1-1' }}%</span>
+    </div>
+  }
+  @if (stats.total_revenue != null) {
+    <div class="stat-card stat-card--gold">
+      <span class="stat-label">Ingresos totales</span>
+      <span class="stat-value">
+        {{ stats.total_revenue | currency: 'EUR' : 'symbol' : '1.0-0' }}
+      </span>
+      @if (stats.avg_revenue_per_booking != null) {
+        <span class="stat-sub">
+          {{ stats.avg_revenue_per_booking | currency: 'EUR' : 'symbol' : '1.0-0' }}
+          media/reserva
+        </span>
+      }
+    </div>
+  }
+  @if (stats.avg_revenue_per_night != null) {
+    <div class="stat-card">
+      <span class="stat-label">Precio medio/noche reserva</span>
+      <span class="stat-value">
+        {{ stats.avg_revenue_per_night | currency: 'EUR' : 'symbol' : '1.0-0' }}
+      </span>
+    </div>
+  }
+  @if (stats.total_charges != null) {
+    <div class="stat-card">
+      <span class="stat-label">Cargos extra</span>
+      <span class="stat-value">
+        {{ stats.total_charges | currency: 'EUR' : 'symbol' : '1.0-0' }}
+      </span>
+    </div>
+  }
+  @if (stats.total_electric_allowance != null) {
+    <div class="stat-card stat-card--electric">
+      <span class="stat-label">Electricidad</span>
+      <span class="stat-value">
+        {{ stats.total_electric_allowance | currency: 'EUR' : 'symbol' : '1.0-0' }}
+      </span>
+    </div>
+  }
+</div>
+
+@if (statusBreakdownEntries().length > 0) {
+  <div class="breakdown-row">
+    @for (entry of statusBreakdownEntries(); track entry.key) {
+      <span class="status-chip" [attr.data-status]="entry.key.toLowerCase()">
+        {{ entry.key }}: {{ entry.value }}
+      </span>
+    }
+  </div>
+}
