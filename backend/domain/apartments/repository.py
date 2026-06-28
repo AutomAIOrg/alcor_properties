@@ -12,6 +12,27 @@ class IApartmentRepository(ABC):
     """Puerto para las operaciones de persistencia de apartamentos."""
 
     @abstractmethod
+    def create_apartment(self, new_apartment: Apartment) -> None:
+        """
+        Crea un nuevo apartamento.
+        """
+        pass
+
+    @abstractmethod
+    def delete_apartment(self, apartment: Apartment) -> None:
+        """
+        Elimina un apartamento.
+        """
+        pass
+
+    @abstractmethod
+    def update_apartment(self, updated_apartment: Apartment) -> None:
+        """
+        Actualiza un apartamento.
+        """
+        pass
+
+    @abstractmethod
     def get_by_apartment_id(self, apartment_id: str) -> Apartment | None:
         """
         Devuelve el apartamento asociado a apartment_id.
@@ -25,5 +46,12 @@ class IApartmentRepository(ABC):
     ) -> list[Apartment]:
         """
         Devuelve la lista de apartamentos disponibles.
+        """
+        pass
+
+    @abstractmethod
+    def get_all(self) -> list[Apartment]:
+        """
+        Devuelve la lista de todos los apartamentos.
         """
         pass

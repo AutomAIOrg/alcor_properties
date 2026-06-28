@@ -106,7 +106,7 @@ class TestGetApartmentStatsUseCase:
             check_out=date(2026, 6, 20),
         )
         mock_apartment_repo.get_by_apartment_id.return_value = apartment
-        mock_repo.list.side_effect = [[booking], [booking]]
+        mock_repo.search_bookings.side_effect = [[booking], [booking]]
 
         GetApartmentStatsUseCase(mock_apartment_repo, mock_repo, set()).execute(
             apartment_id="R180",
@@ -114,7 +114,7 @@ class TestGetApartmentStatsUseCase:
             end_date=date(2026, 6, 15),
         )
 
-        assert mock_repo.list.call_args_list[0].kwargs == {
+        assert mock_repo.search_bookings.call_args_list[0].kwargs == {
             "start_date": date(2026, 6, 10),
             "end_date": date(2026, 6, 15),
             "apartment_id": "R180",
@@ -132,7 +132,7 @@ class TestGetApartmentStatsUseCase:
             check_out=date(2026, 6, 20),
         )
         mock_apartment_repo.get_by_apartment_id.return_value = apartment
-        mock_repo.list.side_effect = [[booking], [booking]]
+        mock_repo.search_bookings.side_effect = [[booking], [booking]]
 
         result = GetApartmentStatsUseCase(mock_apartment_repo, mock_repo, set()).execute(
             apartment_id="R180",
@@ -155,7 +155,7 @@ class TestGetApartmentStatsUseCase:
             check_out=date(2026, 6, 20),
         )
         mock_apartment_repo.get_by_apartment_id.return_value = apartment
-        mock_repo.list.side_effect = [[booking], [booking]]
+        mock_repo.search_bookings.side_effect = [[booking], [booking]]
 
         result = GetApartmentStatsUseCase(mock_apartment_repo, mock_repo, set()).execute(
             apartment_id="R180",
@@ -178,13 +178,13 @@ class TestGetApartmentStatsUseCase:
             price=400,
         )
         mock_apartment_repo.get_by_apartment_id.return_value = apartment
-        mock_repo.list.side_effect = [[booking], [booking]]
+        mock_repo.search_bookings.side_effect = [[booking], [booking]]
 
         result = GetApartmentStatsUseCase(mock_apartment_repo, mock_repo, set()).execute(
             apartment_id="R180"
         )
 
-        assert mock_repo.list.call_args_list[0].kwargs == {"apartment_id": "R180"}
+        assert mock_repo.search_bookings.call_args_list[0].kwargs == {"apartment_id": "R180"}
         assert result["filtered_range"]["start_date"] is None
         assert result["filtered_range"]["end_date"] is None
         assert result["filtered_range"]["occupancy_pct"] is None
@@ -206,7 +206,7 @@ class TestGetApartmentStatsUseCase:
             charges=40,
         )
         mock_apartment_repo.get_by_apartment_id.return_value = apartment
-        mock_repo.list.side_effect = [[booking], [booking]]
+        mock_repo.search_bookings.side_effect = [[booking], [booking]]
 
         result = GetApartmentStatsUseCase(mock_apartment_repo, mock_repo, {"R180"}).execute(
             apartment_id="R180",
@@ -238,7 +238,7 @@ class TestGetApartmentStatsUseCase:
             price=400,
         )
         mock_apartment_repo.get_by_apartment_id.return_value = apartment
-        mock_repo.list.side_effect = [[booking], [booking]]
+        mock_repo.search_bookings.side_effect = [[booking], [booking]]
 
         result = GetApartmentStatsUseCase(mock_apartment_repo, mock_repo, set()).execute(
             apartment_id="R180",

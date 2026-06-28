@@ -324,3 +324,116 @@ class TestSearchOrdering:
         )
 
         assert [r.apartment_id for r in results] == ["R100", "R300", "R500"]
+
+
+# ---------------------------------------------------------------------------
+# CRUD — create, get_all, update, delete
+# ---------------------------------------------------------------------------
+
+
+class TestCreateApartment:
+    def test_persists_all_fields(self, sqlite_session):
+        from tests.helpers import make_apartment
+
+        repo = SQLAlchemyApartmentRepository(sqlite_session)
+        apartment = make_apartment(
+            apartment_id="R999",
+            community="Nueva Comunidad",
+            apartment_description="Descripción test",
+            address="Calle Test 99",
+            rooms=3,
+            bathrooms=2,
+            parking="P-99",
+            total_occupants=5,
+            owner_name="Owner Test",
+            email="owner@test.com",
+            phone="+34 611 222 333",
+        )
+
+        repo.create_apartment(apartment)
+        stored = repo.get_by_apartment_id("R999")
+
+        assert stored is not None
+        assert stored.community == "Nueva Comunidad"
+        assert stored.apartment_description == "Descripción test"
+        assert stored.address == "Calle Test 99"
+        assert stored.rooms == 3
+        assert stored.bathrooms == 2
+        assert stored.parking == "P-99"
+        assert stored.total_occupants == 5
+        assert stored.owner_name == "Owner Test"
+        assert stored.email == "owner@test.com"
+        assert stored.phone == "+34 611 222 333"
+
+
+class TestGetAll:
+    def test_returns_apartments_ordered_by_apartment_id(self, sqlite_session):
+        _insert_apartment(sqlite_session, apartment_id="R300")
+        _insert_apartment(sqlite_session, apartment_id="R100")
+        _insert_apartment(sqlite_session, apartment_id="R200")
+
+        results = SQLAlchemyApartmentRepository(sqlite_session).get_all()
+
+        assert [r.apartment_id for r in results] == ["R100", "R200", "R300"]
+
+
+class TestUpdateApartment:
+    def test_persists_changes_and_keeps_primary_key(self, sqlite_session):
+        from tests.helpers import make_apartment
+
+        repo = SQLAlchemyApartmentRepository(sqlite_session)
+        _insert_apartment(sqlite_session, apartment_id="R180", community="Original")
+
+        updated = make_apartment(
+            apartment_id="R180",
+            community="Actualizada",
+            apartment_description="Nueva descripción",
+            address="Nueva dirección",
+            rooms=4,
+            bathrooms=3,
+            parking="P-NEW",
+            total_occupants=8,
+            owner_name="Nuevo Owner",
+            email="nuevo@test.com",
+            phone="+34 699 888 777",
+        )
+        repo.update_apartment(updated)
+
+        stored = repo.get_by_apartment_id("R180")
+        assert stored is not None
+        assert stored.apartment_id == "R180"
+        assert stored.community == "Actualizada"
+        assert stored.apartment_description == "Nueva descripción"
+        assert stored.rooms == 4
+        assert stored.parking == "P-NEW"
+
+    def test_raises_not_found_for_missing_apartment(self, sqlite_session):
+        from domain.exceptions import ApartmentNotFoundError
+        from tests.helpers import make_apartment
+
+        with pytest.raises(ApartmentNotFoundError):
+            SQLAlchemyApartmentRepository(sqlite_session).update_apartment(
+                make_apartment(apartment_id="MISSING")
+            )
+
+
+class TestDeleteApartment:
+    def test_removes_apartment_from_database(self, sqlite_session):
+
+        repo = SQLAlchemyApartmentRepository(sqlite_session)
+        _insert_apartment(sqlite_session, apartment_id="R180")
+        apartment = repo.get_by_apartment_id("R180")
+        assert apartment is not None
+
+        repo.delete_apartment(apartment)
+
+        assert repo.get_by_apartment_id("R180") is None
+
+    def test_raises_not_found_for_missing_apartment(self, sqlite_session):
+        from domain.exceptions import ApartmentNotFoundError
+        from tests.helpers import make_apartment
+
+        with pytest.raises(ApartmentNotFoundError):
+            SQLAlchemyApartmentRepository(sqlite_session).delete_apartment(
+                make_apartment(apartment_id="MISSING")
+            )

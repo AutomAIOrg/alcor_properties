@@ -54,6 +54,30 @@ def mock_get_apartment_by_id_use_case() -> MagicMock:
 
 
 @pytest.fixture
+def mock_create_apartment_use_case() -> MagicMock:
+    """CreateApartmentUseCase mockeado para tests de API."""
+    return MagicMock()
+
+
+@pytest.fixture
+def mock_update_apartment_use_case() -> MagicMock:
+    """UpdateApartmentUseCase mockeado para tests de API."""
+    return MagicMock()
+
+
+@pytest.fixture
+def mock_delete_apartment_use_case() -> MagicMock:
+    """DeleteApartmentUseCase mockeado para tests de API."""
+    return MagicMock()
+
+
+@pytest.fixture
+def mock_get_all_apartments_use_case() -> MagicMock:
+    """GetAllApartmentsUseCase mockeado para tests de API."""
+    return MagicMock()
+
+
+@pytest.fixture
 def mock_get_apartment_stats_use_case() -> MagicMock:
     """GetApartmentStatsUseCase mockeado para tests de API."""
     return MagicMock()
@@ -152,13 +176,21 @@ def mock_search_apartments_query() -> MagicMock:
 def apartment_api_client(
     mock_search_apartments_use_case: MagicMock,
     mock_get_apartment_by_id_use_case: MagicMock,
+    mock_create_apartment_use_case: MagicMock,
+    mock_update_apartment_use_case: MagicMock,
+    mock_delete_apartment_use_case: MagicMock,
+    mock_get_all_apartments_use_case: MagicMock,
     mock_get_apartment_stats_use_case: MagicMock,
 ) -> TestClient:
     from api.dependencies import (
         get_apartment_by_id_use_case,
         get_apartment_stats_use_case,
+        get_create_apartment_use_case,
         get_current_user,
+        get_delete_apartment_use_case,
+        get_get_all_apartments_use_case,
         get_search_apartments_use_case,
+        get_update_apartment_use_case,
     )
     from main import app
 
@@ -177,6 +209,12 @@ def apartment_api_client(
     app.dependency_overrides[get_apartment_by_id_use_case] = lambda: (
         mock_get_apartment_by_id_use_case
     )
+    app.dependency_overrides[get_create_apartment_use_case] = lambda: mock_create_apartment_use_case
+    app.dependency_overrides[get_update_apartment_use_case] = lambda: mock_update_apartment_use_case
+    app.dependency_overrides[get_delete_apartment_use_case] = lambda: mock_delete_apartment_use_case
+    app.dependency_overrides[get_get_all_apartments_use_case] = lambda: (
+        mock_get_all_apartments_use_case
+    )
     app.dependency_overrides[get_apartment_stats_use_case] = lambda: (
         mock_get_apartment_stats_use_case
     )
@@ -188,6 +226,10 @@ def apartment_api_client(
     finally:
         app.dependency_overrides.pop(get_search_apartments_use_case, None)
         app.dependency_overrides.pop(get_apartment_by_id_use_case, None)
+        app.dependency_overrides.pop(get_create_apartment_use_case, None)
+        app.dependency_overrides.pop(get_update_apartment_use_case, None)
+        app.dependency_overrides.pop(get_delete_apartment_use_case, None)
+        app.dependency_overrides.pop(get_get_all_apartments_use_case, None)
         app.dependency_overrides.pop(get_apartment_stats_use_case, None)
         app.dependency_overrides.pop(get_current_user, None)
 

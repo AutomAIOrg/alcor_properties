@@ -130,6 +130,15 @@
     @if (isPropertiesSectionOpen()) {
       <div class="accordion-content">
         <article class="admin-card">
+          @if (propertiesError()) {
+            <div class="notice error-notice">
+              <span>{{ propertiesError() }}</span>
+              <button class="secondary-btn" type="button" (click)="loadProperties()">
+                Reintentar
+              </button>
+            </div>
+          }
+
           <div class="table-wrapper">
             <table>
               <thead>
@@ -141,12 +150,23 @@
                 </tr>
               </thead>
               <tbody>
-                @if (!properties().length) {
+                @if (isLoadingProperties()) {
+                  <tr>
+                    <td colspan="4" class="state-cell">Cargando apartamentos...</td>
+                  </tr>
+                } @else if (propertiesError()) {
+                  <tr>
+                    <td colspan="4" class="state-cell">
+                      No se han podido cargar los apartamentos. Revisa el error y vuelve a
+                      intentarlo.
+                    </td>
+                  </tr>
+                } @else if (!properties().length) {
                   <tr>
                     <td colspan="4" class="state-cell">No hay apartamentos para mostrar.</td>
                   </tr>
                 } @else {
-                  @for (property of properties(); track property.id) {
+                  @for (property of properties(); track property.reference) {
                     <tr>
                       <td>
                         <span class="reference-chip">{{ property.reference }}</span>
@@ -164,6 +184,7 @@
                             type="button"
                             title="Editar apartamento"
                             aria-label="Editar apartamento"
+                            [disabled]="isSavingProperty() || isDeletingProperty()"
                             (click)="startEditingProperty(property)"
                           >
                             ✎
@@ -173,6 +194,7 @@
                             type="button"
                             title="Eliminar apartamento"
                             aria-label="Eliminar apartamento"
+                            [disabled]="isSavingProperty() || isDeletingProperty()"
                             (click)="openDeletePropertyDialog(property)"
                           >
                             🗑
@@ -298,36 +320,47 @@
   @if (isPropertyFormModalOpen()) {
     <div class="modal-backdrop" role="presentation">
       <section
-        class="confirm-dialog user-form-dialog"
+        class="confirm-dialog user-form-dialog property-form-dialog"
         role="dialog"
         aria-modal="true"
         aria-labelledby="property-form-title"
       >
         <h2 id="property-form-title">
-          {{ editingPropertyId() === null ? 'Incluir apartamento' : 'Editar apartamento' }}
+          {{ editingPropertyReference() === null ? 'Incluir apartamento' : 'Editar apartamento' }}
         </h2>
         <form class="admin-form property-form" (ngSubmit)="saveProperty()" #propertyForm="ngForm">
           <label>
-            Referencia
+            Referencia (ID del apartamento)
             <input
               type="text"
-              name="propertyReference"
+              name="apartmentId"
               placeholder="R180"
-              [ngModel]="newProperty().reference"
-              (ngModelChange)="updateNewPropertyReference($event)"
+              [ngModel]="newProperty().apartment_id"
+              (ngModelChange)="updateNewPropertyApartmentId($event)"
+              [readonly]="editingPropertyReference() !== null"
               required
             />
           </label>
 
           <label>
-            Nombre
+            Comunidad
             <input
               type="text"
-              name="propertyName"
+              name="community"
+              placeholder="Residencial Norte"
+              [ngModel]="newProperty().community"
+              (ngModelChange)="updateNewPropertyCommunity($event)"
+            />
+          </label>
+
+          <label class="wide-field">
+            Nombre en Booking
+            <input
+              type="text"
+              name="apartmentDescription"
               placeholder="Apartamento R180"
-              [ngModel]="newProperty().name"
-              (ngModelChange)="updateNewPropertyName($event)"
-              required
+              [ngModel]="newProperty().apartment_description"
+              (ngModelChange)="updateNewPropertyDescription($event)"
             />
           </label>
 
@@ -342,12 +375,104 @@
             />
           </label>
 
+          <label>
+            Habitaciones
+            <input
+              type="number"
+              name="rooms"
+              min="0"
+              [ngModel]="newProperty().rooms"
+              (ngModelChange)="updateNewPropertyRooms($event)"
+            />
+          </label>
+
+          <label>
+            Baños
+            <input
+              type="number"
+              name="bathrooms"
+              min="0"
+              [ngModel]="newProperty().bathrooms"
+              (ngModelChange)="updateNewPropertyBathrooms($event)"
+            />
+          </label>
+
+          <label>
+            Parking
+            <input
+              type="text"
+              name="parking"
+              placeholder="N/A"
+              [ngModel]="newProperty().parking"
+              (ngModelChange)="updateNewPropertyParking($event)"
+            />
+          </label>
+
+          <label>
+            Ocupantes máximos
+            <input
+              type="number"
+              name="totalOccupants"
+              min="0"
+              [ngModel]="newProperty().total_occupants"
+              (ngModelChange)="updateNewPropertyTotalOccupants($event)"
+            />
+          </label>
+
+          <label>
+            Propietario
+            <input
+              type="text"
+              name="ownerName"
+              placeholder="Nombre del propietario"
+              [ngModel]="newProperty().owner_name"
+              (ngModelChange)="updateNewPropertyOwnerName($event)"
+            />
+          </label>
+
+          <label>
+            Email
+            <input
+              type="email"
+              name="ownerEmail"
+              placeholder="Email del propietario"
+              [ngModel]="newProperty().email"
+              (ngModelChange)="updateNewPropertyEmail($event)"
+            />
+          </label>
+
+          <label>
+            Teléfono
+            <input
+              type="text"
+              name="ownerPhone"
+              placeholder="Teléfono del propietario"
+              [ngModel]="newProperty().phone"
+              (ngModelChange)="updateNewPropertyPhone($event)"
+            />
+          </label>
+
           <div class="dialog-actions">
-            <button class="secondary-btn" type="button" (click)="closePropertyFormDialog()">
+            <button
+              class="secondary-btn"
+              type="button"
+              [disabled]="isSavingProperty()"
+              (click)="closePropertyFormDialog()"
+            >
               Cancelar
             </button>
-            <button class="primary-btn" type="submit" [disabled]="propertyForm.invalid">
-              {{ editingPropertyId() === null ? 'Añadir apartamento' : 'Guardar cambios' }}
+            <button
+              class="primary-btn"
+              type="submit"
+              [disabled]="propertyForm.invalid || isSavingProperty()"
+            >
+              @if (isSavingProperty()) {
+                Guardando...
+              } @else if (editingPropertyReference() !== null) {
+                Guardar cambios
+              } @else {
+                Añadir apartamento
+              }
             </button>
           </div>
         </form>
@@ -406,11 +531,21 @@
           >?
         </p>
         <div class="dialog-actions">
-          <button class="secondary-btn" type="button" (click)="closeDeletePropertyDialog()">
+          <button
+            class="secondary-btn"
+            type="button"
+            [disabled]="isDeletingProperty()"
+            (click)="closeDeletePropertyDialog()"
+          >
             Cancelar
           </button>
-          <button class="danger-btn" type="button" (click)="confirmDeleteProperty()">
-            Confirmar
+          <button
+            class="danger-btn"
+            type="button"
+            [disabled]="isDeletingProperty()"
+            (click)="confirmDeleteProperty()"
+          >
+            {{ isDeletingProperty() ? 'Eliminando...' : 'Confirmar' }}
           </button>
         </div>
       </section>
