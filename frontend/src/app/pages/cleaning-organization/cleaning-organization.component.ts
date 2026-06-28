@@ -1,7 +1,7 @@
 import { Component, computed, inject, OnDestroy, OnInit, signal } from '@angular/core';
 import { AuthService } from '../../auth/auth.service';
 import { CleaningOpportunity as CleaningOpportunityDto } from '../../models/booking.model';
-import { BookingColorPipe } from '../../pipes/booking-color.pipe';
+import { ApartmentColorService } from '../../services/apartment-color.service';
 import { BookingService } from '../../services/booking.service';
 import { CalendarLayoutService } from '../../services/calendar-layout.service';
 
@@ -51,7 +51,7 @@ export class CleaningOrganizationComponent implements OnInit, OnDestroy {
   private bookingService = inject(BookingService);
   private authService = inject(AuthService);
   private layout = inject(CalendarLayoutService);
-  private colorPipe = new BookingColorPipe();
+  private apartmentColor = inject(ApartmentColorService);
   private toastTimeout: ReturnType<typeof setTimeout> | null = null;
 
   readonly weekdays = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
@@ -164,6 +164,9 @@ export class CleaningOrganizationComponent implements OnInit, OnDestroy {
   });
 
   ngOnInit(): void {
+    // El mapa de colores se sirve desde un endpoint solo-admin. Para limpiadoras
+    // (sin acceso) se mantiene el color automático, que es válido por sí solo.
+    if (this.isAdmin()) this.apartmentColor.ensureLoaded();
     this.loadBookings();
   }
 
@@ -219,7 +222,7 @@ export class CleaningOrganizationComponent implements OnInit, OnDestroy {
   }
 
   getApartmentColor(apartmentId: string): string {
-    return this.colorPipe.transform(apartmentId);
+    return this.apartmentColor.resolve(apartmentId);
   }
 
   openCommentModal(opportunity: CleaningWindow): void {

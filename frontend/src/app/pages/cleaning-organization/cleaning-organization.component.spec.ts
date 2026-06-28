@@ -4,6 +4,7 @@ import { of, throwError } from 'rxjs';
 import { CleaningOrganizationComponent } from './cleaning-organization.component';
 import { AuthService } from '../../auth/auth.service';
 import { Booking, CleaningOpportunity as CleaningOpportunityDto } from '../../models/booking.model';
+import { ApartmentService } from '../../services/apartment.service';
 import { BookingService } from '../../services/booking.service';
 import { CalendarLayoutService } from '../../services/calendar-layout.service';
 
@@ -65,6 +66,10 @@ describe('CleaningOrganizationComponent', () => {
       providers: [
         { provide: BookingService, useValue: bookingServiceSpy },
         { provide: AuthService, useValue: authServiceSpy },
+        {
+          provide: ApartmentService,
+          useValue: { getAllApartments: jest.fn().mockReturnValue(of([])) },
+        },
         CalendarLayoutService,
       ],
     });
@@ -471,6 +476,10 @@ describe('CleaningOrganizationComponent', () => {
       providers: [
         { provide: BookingService, useValue: bookingServiceSpy },
         { provide: AuthService, useValue: authServiceSpy },
+        {
+          provide: ApartmentService,
+          useValue: { getAllApartments: jest.fn().mockReturnValue(of([])) },
+        },
         CalendarLayoutService,
       ],
     });

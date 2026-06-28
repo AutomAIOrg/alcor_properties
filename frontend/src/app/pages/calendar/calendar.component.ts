@@ -4,6 +4,7 @@
 import { Component, computed, effect, HostListener, inject, OnInit, signal } from '@angular/core';
 import { BookingService } from '../../services/booking.service';
 import { ApartmentService } from '../../services/apartment.service';
+import { ApartmentColorService } from '../../services/apartment-color.service';
 import { CalendarLayoutService } from '../../services/calendar-layout.service';
 import { Booking, BASE_STATUSES } from '../../models/booking.model';
 import { CalendarWeek } from '../../models/calendar.model';
@@ -30,6 +31,7 @@ export class CalendarComponent implements OnInit {
   // Inyección de dependencias: servicios disponibles en toda la clase.
   private bookingService = inject(BookingService);
   private apartmentService = inject(ApartmentService);
+  private apartmentColor = inject(ApartmentColorService);
   private layout = inject(CalendarLayoutService);
   authService = inject(AuthService);
   private calendarRequestId = 0;
@@ -165,7 +167,8 @@ export class CalendarComponent implements OnInit {
       d.getMonth(),
       fb,
       today,
-      this.layout.buildLaneAssignment(fb)
+      this.layout.buildLaneAssignment(fb),
+      id => this.apartmentColor.resolve(id)
     );
   });
 
@@ -228,6 +231,7 @@ export class CalendarComponent implements OnInit {
 
   // Se ejecuta una vez al montar el componente: carga solo las reservas visibles.
   ngOnInit(): void {
+    this.apartmentColor.ensureLoaded();
     this.loadCalendarBookings();
   }
 

@@ -94,6 +94,7 @@ function makeApartment(overrides: Partial<Apartment> = {}): Apartment {
     owner_name: 'Ana',
     email: null,
     phone: null,
+    color: null,
     ...overrides,
   };
 }
@@ -130,6 +131,7 @@ describe('SearchesComponent', () => {
   beforeEach(async () => {
     apartmentServiceSpy = {
       getAllApartmentIds: jest.fn().mockReturnValue(of(['R101', 'R202'])),
+      getAllApartments: jest.fn().mockReturnValue(of([])),
     } as unknown as jest.Mocked<ApartmentService>;
 
     await TestBed.configureTestingModule({

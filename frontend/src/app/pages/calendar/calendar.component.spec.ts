@@ -100,6 +100,7 @@ describe('CalendarComponent', () => {
     } as unknown as jest.Mocked<BookingService>;
     apartmentServiceSpy = {
       getAllApartmentIds: jest.fn().mockReturnValue(of([])),
+      getAllApartments: jest.fn().mockReturnValue(of([])),
     } as unknown as jest.Mocked<ApartmentService>;
 
     await TestBed.configureTestingModule({
