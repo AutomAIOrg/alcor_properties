@@ -452,6 +452,29 @@
             />
           </label>
 
+          <div class="wide-field color-field">
+            Color en el calendario
+            <div class="color-picker">
+              <div class="color-picker__main">
+                <input
+                  type="color"
+                  name="color"
+                  [ngModel]="colorPickerValue()"
+                  (ngModelChange)="updateNewPropertyColor($event)"
+                  aria-label="Color del apartamento en el calendario"
+                />
+                <span class="color-picker__state">
+                  {{ hasCustomColor() ? 'Color personalizado' : 'Color automático' }}
+                </span>
+              </div>
+              @if (hasCustomColor()) {
+                <button type="button" class="color-picker__reset" (click)="resetNewPropertyColor()">
+                  Usar color automático
+                </button>
+              }
+            </div>
+          </div>
+
           <div class="dialog-actions">
             <button
               class="secondary-btn"

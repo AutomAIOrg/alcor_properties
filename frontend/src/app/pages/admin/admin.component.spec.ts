@@ -31,6 +31,7 @@ function makeApartment(overrides: Partial<ApartmentResponse> = {}): ApartmentRes
     owner_name: null,
     email: null,
     phone: null,
+    color: null,
     ...overrides,
   };
 }
@@ -280,6 +281,7 @@ describe('AdminComponent', () => {
         owner_name: ' Juan Pérez ',
         email: ' juan@example.com ',
         phone: ' 600000000 ',
+        color: null,
       });
 
       component.saveProperty();
@@ -296,6 +298,7 @@ describe('AdminComponent', () => {
         owner_name: 'Juan Pérez',
         email: 'juan@example.com',
         phone: '600000000',
+        color: null,
       });
       expect(apartmentServiceSpy.getAllApartments).toHaveBeenCalledTimes(2);
       expect(component.isPropertyFormModalOpen()).toBe(false);
@@ -338,6 +341,7 @@ describe('AdminComponent', () => {
         owner_name: null,
         email: null,
         phone: null,
+        color: null,
       });
       expect(component.editingPropertyReference()).toBeNull();
       expect(component.isPropertyFormModalOpen()).toBe(false);

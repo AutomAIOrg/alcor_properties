@@ -2,6 +2,7 @@ import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
 import { Role } from '../../models/user.model';
+import { ApartmentColorService, autoApartmentColor } from '../../services/apartment-color.service';
 import {
   ApartmentCreateRequest,
   ApartmentResponse,
@@ -57,6 +58,7 @@ interface AdminPropertyDraft {
   owner_name: string;
   email: string;
   phone: string;
+  color: string | null;
 }
 
 @Component({
@@ -69,6 +71,7 @@ interface AdminPropertyDraft {
 export class AdminComponent implements OnInit, OnDestroy {
   private adminUserService = inject(AdminUserService);
   private apartmentService = inject(ApartmentService);
+  private apartmentColor = inject(ApartmentColorService);
   private toastTimeout: ReturnType<typeof setTimeout> | null = null;
 
   readonly roleOptions: Role[] = ['admin', 'limpiadora'];
@@ -119,6 +122,8 @@ export class AdminComponent implements OnInit, OnDestroy {
       next: apartments => {
         this.apartments.set(apartments);
         this.properties.set(apartments.map(apartment => this.toPropertyRow(apartment)));
+        // Mantiene el mapa de colores compartido al día para el resto de vistas.
+        this.apartmentColor.setFromApartments(apartments);
         this.isLoadingProperties.set(false);
       },
       error: () => {
@@ -222,6 +227,29 @@ export class AdminComponent implements OnInit, OnDestroy {
 
   updateNewPropertyPhone(phone: string): void {
     this.newProperty.update(property => ({ ...property, phone }));
+  }
+
+  updateNewPropertyColor(color: string): void {
+    this.newProperty.update(property => ({ ...property, color }));
+  }
+
+  /** Quita el color personalizado: el apartamento vuelve al color automático. */
+  resetNewPropertyColor(): void {
+    this.newProperty.update(property => ({ ...property, color: null }));
+  }
+
+  /**
+   * Color que muestra el selector: el personalizado si lo tiene o, si no, el
+   * color automático del apartamento (para que el selector arranque en el color
+   * real que se ve en el calendario).
+   */
+  colorPickerValue(): string {
+    const draft = this.newProperty();
+    return draft.color ?? autoApartmentColor(draft.apartment_id);
+  }
+
+  hasCustomColor(): boolean {
+    return this.newProperty().color !== null;
   }
 
   openCreateUserDialog(): void {
@@ -388,6 +416,7 @@ export class AdminComponent implements OnInit, OnDestroy {
       owner_name: apartment.owner_name ?? '',
       email: apartment.email ?? '',
       phone: apartment.phone ?? '',
+      color: apartment.color ?? null,
     });
     this.isPropertyFormModalOpen.set(true);
   }
@@ -471,6 +500,7 @@ export class AdminComponent implements OnInit, OnDestroy {
       owner_name: draft.owner_name.trim() || null,
       email: draft.email.trim() || null,
       phone: draft.phone.trim() || null,
+      color: draft.color,
     };
   }
 
@@ -486,6 +516,7 @@ export class AdminComponent implements OnInit, OnDestroy {
       owner_name: draft.owner_name.trim() || null,
       email: draft.email.trim() || null,
       phone: draft.phone.trim() || null,
+      color: draft.color,
     };
   }
 
@@ -502,6 +533,7 @@ export class AdminComponent implements OnInit, OnDestroy {
       owner_name: '',
       email: '',
       phone: '',
+      color: null,
     };
   }
 
