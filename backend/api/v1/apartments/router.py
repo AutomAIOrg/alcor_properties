@@ -34,7 +34,7 @@ from application.apartments.use_cases import (
 )
 from domain.apartments.entity import Apartment
 from domain.apartments.filters import ApartmentSearchFilters
-from domain.exceptions import ApartmentNotFound
+from domain.exceptions import ApartmentNotFoundError
 
 router = APIRouter(prefix="/apartments", tags=["Apartments"], dependencies=[Depends(require_admin)])
 
@@ -160,7 +160,7 @@ def get_apartment_stats(
         )
     except ValueError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
-    except ApartmentNotFound as error:
+    except ApartmentNotFoundError as error:
         raise HTTPException(status_code=404, detail=str(error)) from error
 
     return ApartmentStatsResponse.model_validate(stats)
