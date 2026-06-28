@@ -25,6 +25,9 @@ class ApartmentResponse(BaseModel):
     owner_name: str | None = Field(default=None, description="Nombre del propietario")
     email: str | None = Field(default=None, description="Email del propietario")
     phone: str | None = Field(default=None, description="Teléfono del propietario")
+    color: str | None = Field(
+        default=None, description="Color personalizado en el calendario (hexadecimal #RRGGBB)"
+    )
 
 
 class CreateApartmentRequest(BaseModel):
@@ -55,6 +58,11 @@ class CreateApartmentRequest(BaseModel):
     )
     email: str | None = Field(default=None, max_length=35, description="Email del propietario")
     phone: str | None = Field(default=None, max_length=15, description="Teléfono del propietario")
+    color: str | None = Field(
+        default=None,
+        pattern=r"^#[0-9A-Fa-f]{6}$",
+        description="Color personalizado en el calendario (hexadecimal #RRGGBB)",
+    )
 
 
 class UpdateApartmentRequest(BaseModel):
@@ -82,6 +90,11 @@ class UpdateApartmentRequest(BaseModel):
     )
     email: str | None = Field(default=None, max_length=35, description="Email del propietario")
     phone: str | None = Field(default=None, max_length=15, description="Teléfono del propietario")
+    color: str | None = Field(
+        default=None,
+        pattern=r"^#[0-9A-Fa-f]{6}$",
+        description="Color personalizado en el calendario (hexadecimal #RRGGBB)",
+    )
 
 
 class ApartmentStatsRange(BaseModel):

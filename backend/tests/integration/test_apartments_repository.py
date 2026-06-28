@@ -396,6 +396,7 @@ class TestUpdateApartment:
             owner_name="Nuevo Owner",
             email="nuevo@test.com",
             phone="+34 699 888 777",
+            color="#aabbcc",
         )
         repo.update_apartment(updated)
 
@@ -406,6 +407,7 @@ class TestUpdateApartment:
         assert stored.apartment_description == "Nueva descripción"
         assert stored.rooms == 4
         assert stored.parking == "P-NEW"
+        assert stored.color == "#aabbcc"
 
     def test_raises_not_found_for_missing_apartment(self, sqlite_session):
         from domain.exceptions import ApartmentNotFoundError

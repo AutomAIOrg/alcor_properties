@@ -210,6 +210,7 @@ class TestGetAllApartments:
             "owner_name": "Katarzyna Tokarska",
             "email": "owner@example.com",
             "phone": "+34 600 000 000",
+            "color": None,
         }
 
 
@@ -268,6 +269,22 @@ class TestCreateApartment:
         response = apartment_api_client.post("/api/v1/apartments/", json=payload)
 
         assert response.status_code == 422
+
+    def test_returns_422_when_color_is_not_hex(self, apartment_api_client):
+        payload = {**self._VALID_PAYLOAD, "color": "red"}
+
+        response = apartment_api_client.post("/api/v1/apartments/", json=payload)
+
+        assert response.status_code == 422
+
+    def test_accepts_valid_hex_color(self, apartment_api_client, mock_create_apartment_use_case):
+        payload = {**self._VALID_PAYLOAD, "color": "#aabbcc"}
+
+        response = apartment_api_client.post("/api/v1/apartments/", json=payload)
+
+        assert response.status_code == 200
+        called_apartment = mock_create_apartment_use_case.execute.call_args[0][0]
+        assert called_apartment.color == "#aabbcc"
 
 
 # ---------------------------------------------------------------------------
