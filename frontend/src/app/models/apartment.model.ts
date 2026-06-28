@@ -10,4 +10,5 @@ export interface Apartment {
   owner_name: string | null;
   email: string | null;
   phone: string | null;
+  color: string | null;
 }
