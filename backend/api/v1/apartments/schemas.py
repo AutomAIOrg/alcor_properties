@@ -26,7 +26,9 @@ class ApartmentResponse(BaseModel):
     email: str | None = Field(default=None, description="Email del propietario")
     phone: str | None = Field(default=None, description="Teléfono del propietario")
     color: str | None = Field(
-        default=None, description="Color personalizado en el calendario (hexadecimal #RRGGBB)"
+        default=None,
+        pattern=r"^#[0-9A-Fa-f]{6}$",
+        description="Color personalizado en el calendario (hexadecimal #RRGGBB)",
     )
 
 
