@@ -174,4 +174,87 @@ describe('DateRangePickerComponent', () => {
     expect(emitted).toEqual([]);
     expect(component.calendarOpen()).toBe(true);
   });
+
+  describe('entrada manual de fechas', () => {
+    function changeEvent(value: string): Event {
+      const input = document.createElement('input');
+      input.value = value;
+      return { target: input } as unknown as Event;
+    }
+
+    it('muestra inputs de texto y botones de calendario cuando manualInput esta activo', () => {
+      fixture.componentRef.setInput('manualInput', true);
+      fixture.detectChanges();
+
+      const inputs = fixture.nativeElement.querySelectorAll('input.date-range-input--editable');
+      const toggles = fixture.nativeElement.querySelectorAll('.calendar-toggle-btn');
+      expect(inputs.length).toBe(2);
+      expect(toggles.length).toBe(2);
+    });
+
+    it('escribir una fecha valida en dd/mm/aaaa emite el rango', () => {
+      const emitted: DateRangeValue[] = [];
+      component.rangeChange.subscribe(value => emitted.push(value));
+
+      component.onManualDateInput('from', changeEvent('10/06/2026'));
+
+      expect(emitted).toEqual([{ from: '2026-06-10', to: '' }]);
+    });
+
+    it('admite separadores y anio de dos digitos', () => {
+      const emitted: DateRangeValue[] = [];
+      component.rangeChange.subscribe(value => emitted.push(value));
+
+      component.onManualDateInput('from', changeEvent('1-6-26'));
+
+      expect(emitted).toEqual([{ from: '2026-06-01', to: '' }]);
+    });
+
+    it('completar ambas fechas a mano emite rangeComplete', () => {
+      const completed: DateRangeValue[] = [];
+      component.rangeComplete.subscribe(value => completed.push(value));
+      fixture.componentRef.setInput('from', '2026-06-10');
+      fixture.detectChanges();
+
+      component.onManualDateInput('to', changeEvent('14/06/2026'));
+
+      expect(completed).toEqual([{ from: '2026-06-10', to: '2026-06-14' }]);
+    });
+
+    it('una fecha invalida no emite y restaura el valor mostrado', () => {
+      const emitted: DateRangeValue[] = [];
+      component.rangeChange.subscribe(value => emitted.push(value));
+      fixture.componentRef.setInput('from', '2026-06-10');
+      fixture.detectChanges();
+      const event = changeEvent('31/02/2026');
+
+      component.onManualDateInput('from', event);
+
+      expect(emitted).toEqual([]);
+      expect((event.target as HTMLInputElement).value).toBe('10/06/2026');
+    });
+
+    it('vaciar el input limpia esa fecha', () => {
+      const emitted: DateRangeValue[] = [];
+      component.rangeChange.subscribe(value => emitted.push(value));
+      fixture.componentRef.setInput('from', '2026-06-10');
+      fixture.componentRef.setInput('to', '2026-06-14');
+      fixture.detectChanges();
+
+      component.onManualDateInput('from', changeEvent(''));
+
+      expect(emitted).toEqual([{ from: '', to: '2026-06-14' }]);
+    });
+
+    it('una fecha de inicio posterior a la final reinicia la fecha final', () => {
+      const emitted: DateRangeValue[] = [];
+      component.rangeChange.subscribe(value => emitted.push(value));
+      fixture.componentRef.setInput('to', '2026-06-14');
+      fixture.detectChanges();
+
+      component.onManualDateInput('from', changeEvent('20/06/2026'));
+
+      expect(emitted).toEqual([{ from: '2026-06-20', to: '' }]);
+    });
+  });
 });
