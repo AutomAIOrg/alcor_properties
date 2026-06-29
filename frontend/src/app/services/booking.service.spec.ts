@@ -171,6 +171,25 @@ describe('BookingService', () => {
     });
   });
 
+  describe('B3 — searchBookings (búsqueda global)', () => {
+    it('reenvía el filtro search como query param y devuelve las coincidencias', () => {
+      const bookings = [makeBooking({ record_id: 5 }), makeBooking({ record_id: 50 })];
+      let result: Booking[] | undefined;
+
+      service.searchBookings({ search: 'Ana', limit: 50 }).subscribe(response => {
+        result = response;
+      });
+
+      const req = httpMock.expectOne(`${API}/?search=Ana&limit=50`);
+
+      expect(req.request.method).toBe('GET');
+
+      req.flush(bookings);
+
+      expect(result).toEqual(bookings);
+    });
+  });
+
   describe('C — updateBooking', () => {
     it('hace PUT al endpoint de la reserva indicada y devuelve la reserva actualizada', () => {
       const recordId = 10;

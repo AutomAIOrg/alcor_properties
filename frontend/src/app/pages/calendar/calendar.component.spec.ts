@@ -1,4 +1,4 @@
-import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { of } from 'rxjs';
 
@@ -95,6 +95,7 @@ describe('CalendarComponent', () => {
   beforeEach(async () => {
     bookingServiceSpy = {
       getCalendarBookings: jest.fn().mockReturnValue(of([])),
+      searchBookings: jest.fn().mockReturnValue(of([])),
       updateBooking: jest.fn(),
       createBooking: jest.fn(),
     } as unknown as jest.Mocked<BookingService>;
@@ -587,6 +588,164 @@ describe('CalendarComponent', () => {
       component.toggleBookingId('R180');
       expect(component.currentDayBookings().length).toBe(1);
       expect(component.currentDayBookings()[0].apartment_id).toBe('R180');
+    });
+  });
+
+  // ── J: Búsqueda global (huésped, nº de reserva o ID) ──────────────────────────
+
+  describe('J — búsqueda global', () => {
+    it('tras el debounce, consulta el backend con el texto y ofrece las coincidencias', fakeAsync(() => {
+      const matches = [
+        makeBooking({ record_id: 5, guest_name: 'Ana García' }),
+        makeBooking({ record_id: 50, guest_name: 'Ana López' }),
+      ];
+      bookingServiceSpy.searchBookings.mockReturnValue(of(matches));
+
+      component.onSearchInput('Ana');
+      tick(250);
+
+      expect(bookingServiceSpy.searchBookings).toHaveBeenCalledWith({ search: 'Ana', limit: 50 });
+      expect(component.searchSuggestions().map(b => b.record_id)).toEqual([5, 50]);
+    }));
+
+    it('busca también por ID (texto numérico)', fakeAsync(() => {
+      bookingServiceSpy.searchBookings.mockReturnValue(of([makeBooking({ record_id: 5 })]));
+
+      component.onSearchInput('5');
+      tick(250);
+
+      expect(bookingServiceSpy.searchBookings).toHaveBeenCalledWith({ search: '5', limit: 50 });
+      expect(component.searchSuggestions().map(b => b.record_id)).toEqual([5]);
+    }));
+
+    it('no ofrece sugerencias si no hay coincidencias', fakeAsync(() => {
+      bookingServiceSpy.searchBookings.mockReturnValue(of([]));
+
+      component.onSearchInput('zzz');
+      tick(250);
+
+      expect(component.searchSuggestions()).toEqual([]);
+    }));
+
+    it('no consulta el backend si la query está vacía', fakeAsync(() => {
+      component.onSearchInput('   ');
+      tick(250);
+
+      expect(bookingServiceSpy.searchBookings).not.toHaveBeenCalled();
+      expect(component.searchSuggestions()).toEqual([]);
+    }));
+
+    it('searchSuggestions queda vacío si se borra el buscador', () => {
+      component.searchMatches.set([makeBooking({ record_id: 5 })]);
+
+      component.searchQuery.set('Ana');
+      expect(component.searchSuggestions().length).toBe(1);
+
+      component.searchQuery.set('');
+      expect(component.searchSuggestions()).toEqual([]);
+    });
+
+    it('goToBooking sitúa el calendario, deja el ID en el buscador y no abre el modal', () => {
+      const booking = makeBooking({
+        record_id: 77,
+        check_in: '2025-03-15',
+        check_out: '2025-03-20',
+      });
+      component.currentDate.set(new Date(2025, 5, 1)); // junio, distinto del check-in
+      bookingServiceSpy.getCalendarBookings.mockClear();
+
+      component.goToBooking(booking);
+
+      const d = component.currentDate();
+      expect(d.getFullYear()).toBe(2025);
+      expect(d.getMonth()).toBe(2); // marzo
+      expect(component.searchQuery()).toBe('77'); // filtra el calendario a esa reserva
+      expect(component.selectedBooking()).toBeNull(); // no abre el detalle
+      expect(component.searchMatches()).toEqual([]);
+      expect(bookingServiceSpy.getCalendarBookings).toHaveBeenCalledTimes(1);
+    });
+
+    it('el buscador con un record_id deja en el calendario solo esa reserva', () => {
+      const target = makeBooking({
+        record_id: 77,
+        apartment_id: 'R180',
+        check_in: '2025-06-01',
+        check_out: '2025-06-07',
+      });
+      const other = makeBooking({
+        record_id: 80,
+        apartment_id: 'R101',
+        check_in: '2025-06-02',
+        check_out: '2025-06-08',
+      });
+      component.bookings.set([target, other]);
+      component.currentDate.set(new Date(2025, 5, 3));
+
+      component.searchQuery.set('77');
+
+      expect(component.currentDayBookings().map(b => b.record_id)).toEqual([77]);
+      expect(component.hasActiveFilters()).toBe(true);
+    });
+
+    it('el buscador por nombre de huésped filtra el calendario', () => {
+      const ana = makeBooking({
+        record_id: 1,
+        guest_name: 'Ana García',
+        check_in: '2025-06-01',
+        check_out: '2025-06-07',
+      });
+      const pedro = makeBooking({
+        record_id: 2,
+        guest_name: 'Pedro Ruiz',
+        check_in: '2025-06-02',
+        check_out: '2025-06-08',
+      });
+      component.bookings.set([ana, pedro]);
+      component.currentDate.set(new Date(2025, 5, 3));
+
+      component.searchQuery.set('ana');
+
+      expect(component.currentDayBookings().map(b => b.record_id)).toEqual([1]);
+    });
+
+    it('clearAllFilters limpia el buscador (incluida una selección)', () => {
+      component.searchQuery.set('77');
+      component.clearAllFilters();
+      expect(component.searchQuery()).toBe('');
+    });
+
+    it('onSearchEnter salta a la reserva con el ID exacto entre las coincidencias', () => {
+      const exact = makeBooking({ record_id: 5, check_in: '2025-03-15', check_out: '2025-03-20' });
+      component.searchQuery.set('5');
+      component.searchMatches.set([exact, makeBooking({ record_id: 50 })]);
+
+      component.onSearchEnter();
+
+      expect(component.currentDate().getMonth()).toBe(2); // marzo
+      expect(component.searchQuery()).toBe('5');
+      expect(component.selectedBooking()).toBeNull();
+    });
+
+    it('onSearchEnter usa la única coincidencia aunque no sea exacta', () => {
+      const only = makeBooking({ record_id: 51, check_in: '2025-03-15', check_out: '2025-03-20' });
+      component.searchQuery.set('Ana');
+      component.searchMatches.set([only]);
+
+      component.onSearchEnter();
+
+      expect(component.currentDate().getMonth()).toBe(2); // marzo
+      expect(component.searchQuery()).toBe('51');
+    });
+
+    it('onSearchEnter no hace nada si hay varias coincidencias sin ID exacto', () => {
+      component.currentDate.set(new Date(2025, 5, 1));
+      component.searchQuery.set('Ana');
+      component.searchMatches.set([makeBooking({ record_id: 51 }), makeBooking({ record_id: 52 })]);
+
+      component.onSearchEnter();
+
+      expect(component.currentDate().getMonth()).toBe(5); // sin cambios
+      expect(component.selectedBooking()).toBeNull();
     });
   });
 });

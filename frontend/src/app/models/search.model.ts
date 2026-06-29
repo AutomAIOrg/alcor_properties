@@ -5,6 +5,7 @@ export interface BookingSearchFilters {
   status?: string;
   guest_name?: string;
   booking_number?: string;
+  search?: string;
   days?: number;
   limit?: number;
 }

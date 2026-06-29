@@ -77,6 +77,11 @@ export class CalendarComponent implements OnInit {
   searchQuery = signal('');
   // Controla si el desplegable de sugerencias está visible.
   showSuggestions = signal(false);
+  // Reservas resueltas contra el backend (en TODA la base de datos) que coinciden
+  // con el texto buscado: huésped, nº de reserva o ID. Se actualiza con debounce.
+  searchMatches = signal<Booking[]>([]);
+  private searchLookupTimer: ReturnType<typeof setTimeout> | null = null;
+  private searchLookupRequestId = 0;
 
   // ─── Filtros ─────────────────────────────────────────────────────────────────
   // Arrays con los valores seleccionados. Array vacío = sin filtro activo.
@@ -101,32 +106,9 @@ export class CalendarComponent implements OnInit {
       this.searchQuery().trim().length > 0
   );
 
-  // Sugerencias de autocompletado: nombres de huésped y números de reserva que
-  // contienen el texto buscado. Máximo 10 resultados.
-  suggestions = computed(() => {
-    const query = this.searchQuery().trim().toLowerCase();
-    if (!query) return [];
-
-    const results: { text: string; label: string }[] = [];
-    const seen = new Set<string>();
-
-    for (const b of this.bookings()) {
-      if (b.guest_name && b.guest_name.toLowerCase().includes(query) && !seen.has(b.guest_name)) {
-        seen.add(b.guest_name);
-        results.push({ text: b.guest_name, label: 'Huésped' });
-      }
-      if (
-        b.booking_number &&
-        b.booking_number.toLowerCase().includes(query) &&
-        !seen.has(b.booking_number)
-      ) {
-        seen.add(b.booking_number);
-        results.push({ text: b.booking_number, label: 'Nº reserva' });
-      }
-    }
-
-    return results.slice(0, 10);
-  });
+  // Sugerencias del buscador: reservas (de cualquier mes) que coinciden con el
+  // texto, resueltas contra el backend. Solo se muestran si hay texto buscado.
+  searchSuggestions = computed(() => (this.searchQuery().trim() ? this.searchMatches() : []));
 
   // Reservas tras aplicar todos los filtros activos.
   // Este computed es el punto central del filtrado: todos los computeds de vista
@@ -146,7 +128,8 @@ export class CalendarComponent implements OnInit {
       const matchesQuery =
         !query ||
         b.guest_name?.toLowerCase().includes(query) ||
-        (b.booking_number?.toLowerCase().includes(query) ?? false);
+        (b.booking_number?.toLowerCase().includes(query) ?? false) ||
+        String(b.record_id).includes(query);
 
       return matchesId && matchesState && matchesQuery;
     });
@@ -321,6 +304,7 @@ export class CalendarComponent implements OnInit {
     this.filterBookingIds.set([]);
     this.filterBookingStates.set([]);
     this.searchQuery.set('');
+    this.resetSearchLookup();
 
     this.goToToday();
   }
@@ -334,17 +318,82 @@ export class CalendarComponent implements OnInit {
   onSearchInput(value: string): void {
     this.searchQuery.set(value);
     this.showSuggestions.set(true);
+    this.scheduleSearchLookup();
   }
 
   onSearchFocus(): void {
-    if (this.suggestions().length > 0) {
+    if (this.searchSuggestions().length > 0) {
       this.showSuggestions.set(true);
     }
   }
 
-  selectSuggestion(text: string): void {
-    this.searchQuery.set(text);
+  // Al pulsar Enter, si el texto es un ID exacto de una coincidencia salta a ella;
+  // si solo hay una coincidencia, también; si no, deja elegir en el desplegable.
+  onSearchEnter(): void {
+    const matches = this.searchSuggestions();
+    if (!matches.length) return;
+
+    const query = this.searchQuery().trim();
+    const exact = matches.find(b => String(b.record_id) === query);
+    if (exact) {
+      this.goToBooking(exact);
+    } else if (matches.length === 1) {
+      this.goToBooking(matches[0]);
+    }
+  }
+
+  // Selecciona una reserva del buscador (huésped, nº de reserva o ID). Deja el
+  // ID en el buscador (que filtra el calendario a esa reserva) y sitúa el
+  // calendario en el periodo donde cae, aunque esté en otro mes. No abre el modal.
+  goToBooking(booking: Booking): void {
     this.showSuggestions.set(false);
+    this.resetSearchLookup();
+    this.searchQuery.set(String(booking.record_id));
+
+    const checkIn = new Date(booking.check_in + 'T00:00:00');
+    this.currentDate.set(
+      this.viewMode() === 'month' ? new Date(checkIn.getFullYear(), checkIn.getMonth(), 1) : checkIn
+    );
+    this.loadCalendarBookings();
+  }
+
+  // Resuelve (con debounce) las reservas que coinciden con el texto buscado
+  // —huésped, nº de reserva o ID— consultando el backend en TODA la base de
+  // datos (no solo el mes visible). Si no hay coincidencias, no aparece nada.
+  private scheduleSearchLookup(): void {
+    if (this.searchLookupTimer) {
+      clearTimeout(this.searchLookupTimer);
+      this.searchLookupTimer = null;
+    }
+
+    const query = this.searchQuery().trim();
+    if (!query) {
+      this.searchLookupRequestId += 1;
+      this.searchMatches.set([]);
+      return;
+    }
+
+    const requestId = ++this.searchLookupRequestId;
+    this.searchLookupTimer = setTimeout(() => {
+      this.bookingService.searchBookings({ search: query, limit: 50 }).subscribe({
+        next: bookings => {
+          if (requestId === this.searchLookupRequestId) this.searchMatches.set(bookings);
+        },
+        error: () => {
+          if (requestId === this.searchLookupRequestId) this.searchMatches.set([]);
+        },
+      });
+    }, 250);
+  }
+
+  // Cancela cualquier búsqueda pendiente y descarta las coincidencias.
+  private resetSearchLookup(): void {
+    if (this.searchLookupTimer) {
+      clearTimeout(this.searchLookupTimer);
+      this.searchLookupTimer = null;
+    }
+    this.searchLookupRequestId += 1;
+    this.searchMatches.set([]);
   }
 
   // ─── Modal de detalle de reserva ─────────────────────────────────────────────
