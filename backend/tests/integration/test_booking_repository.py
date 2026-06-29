@@ -205,6 +205,49 @@ class TestSearchBookings:
 
         assert len(results) == 3
 
+    def test_search_matches_by_record_id_substring(self, sqlite_session):
+        repo = SQLAlchemyBookingRepository(sqlite_session)
+        orms = [_insert_orm(sqlite_session) for _ in range(12)]
+        record_ids = [o.record_id for o in orms]
+        digit = str(record_ids[0])[0]  # primer dígito de un ID existente
+
+        results = repo.search_bookings(search=digit)
+
+        returned = sorted(r.record_id for r in results)
+        expected = sorted(rid for rid in record_ids if digit in str(rid))
+        assert returned == expected
+        assert returned  # al menos una coincidencia
+
+    def test_search_matches_by_guest_name(self, sqlite_session):
+        repo = SQLAlchemyBookingRepository(sqlite_session)
+        target = _insert_orm(sqlite_session, apartment_id="MATCH", guest_name="María López")
+        _insert_orm(sqlite_session, apartment_id="NOPE", guest_name="Pedro Ruiz")
+
+        results = repo.search_bookings(search="lópez")  # case-insensitive
+
+        apartment_ids = [r.apartment_id for r in results]
+        assert apartment_ids == ["MATCH"]
+        assert results[0].record_id == target.record_id
+
+    def test_search_matches_by_booking_number(self, sqlite_session):
+        repo = SQLAlchemyBookingRepository(sqlite_session)
+        _insert_orm(sqlite_session, apartment_id="MATCH", booking_number="BK-2026-777")
+        _insert_orm(sqlite_session, apartment_id="NOPE", booking_number="BK-2026-123")
+
+        results = repo.search_bookings(search="777")
+
+        apartment_ids = [r.apartment_id for r in results]
+        assert "MATCH" in apartment_ids
+
+    def test_blank_search_is_ignored(self, sqlite_session):
+        repo = SQLAlchemyBookingRepository(sqlite_session)
+        _insert_orm(sqlite_session, apartment_id="B1")
+        _insert_orm(sqlite_session, apartment_id="B2")
+
+        results = repo.search_bookings(search="   ")
+
+        assert len(results) == 2
+
 
 # ---------------------------------------------------------------------------
 # find_overlapping_active

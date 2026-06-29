@@ -4,7 +4,7 @@ Implementación de IBookingRepository usando SQLAlchemy.
 
 from datetime import date
 
-from sqlalchemy import and_, func, or_
+from sqlalchemy import String, and_, cast, func, or_
 from sqlalchemy.orm import Session
 
 from domain.bookings.entity import NON_BLOCKING_STATUSES, Booking
@@ -45,6 +45,7 @@ class SQLAlchemyBookingRepository(IBookingRepository):
         status: str | None = None,
         guest_name: str | None = None,
         booking_number: str | None = None,
+        search: str | None = None,
     ) -> list[Booking]:
         query = self._db.query(BookingORM)
 
@@ -63,6 +64,16 @@ class SQLAlchemyBookingRepository(IBookingRepository):
 
         if apartment_id is not None:
             query = query.filter(BookingORM.apartment_id == apartment_id)
+
+        if search is not None and search.strip():
+            pattern = f"%{_escape_like(search.strip().lower())}%"
+            query = query.filter(
+                or_(
+                    func.lower(BookingORM.guest_name).like(pattern, escape="\\"),
+                    func.lower(BookingORM.booking_number).like(pattern, escape="\\"),
+                    cast(BookingORM.record_id, String).like(pattern, escape="\\"),
+                )
+            )
 
         if status is not None:
             statuses = [s.strip().lower() for s in status.split(",") if s.strip()]

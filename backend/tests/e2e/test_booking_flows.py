@@ -93,6 +93,66 @@ class TestActiveBookingsFlow:
 
 
 # ---------------------------------------------------------------------------
+# Búsqueda global (huésped, nº de reserva o ID) — coincidencia parcial
+# ---------------------------------------------------------------------------
+
+
+class TestGlobalSearchFlow:
+    def test_search_finds_guest_in_any_month(self, e2e_client, admin_auth_headers):
+        # Reserva lejana (diciembre) y otra cercana, para comprobar que la
+        # búsqueda no se limita al periodo visible del calendario.
+        e2e_client.post(
+            "/api/v1/bookings/",
+            json={
+                **_BASE_PAYLOAD,
+                "apartment_id": "DIC",
+                "guest_name": "Huésped Diciembre",
+                "check_in": "2026-12-10",
+                "check_out": "2026-12-15",
+                "nights": 5,
+            },
+            headers=admin_auth_headers,
+        )
+        e2e_client.post(
+            "/api/v1/bookings/",
+            json={**_BASE_PAYLOAD, "apartment_id": "JUN", "guest_name": "Otro Huésped"},
+            headers=admin_auth_headers,
+        )
+
+        r = e2e_client.get("/api/v1/bookings/?search=diciembre", headers=admin_auth_headers)
+
+        assert r.status_code == 200
+        apartment_ids = [b["apartment_id"] for b in r.json()]
+        assert apartment_ids == ["DIC"]
+
+    def test_search_matches_record_id_substring(self, e2e_client, admin_auth_headers):
+        created_ids = []
+        for i in range(15):
+            payload = {
+                **_BASE_PAYLOAD,
+                "apartment_id": f"RID-{i}",
+                "check_in": (date(2026, 8, 1) + timedelta(days=i)).isoformat(),
+                "check_out": (date(2026, 8, 3) + timedelta(days=i)).isoformat(),
+            }
+            r = e2e_client.post("/api/v1/bookings/", json=payload, headers=admin_auth_headers)
+            assert r.status_code == 201
+            created_ids.append(r.json()["record_id"])
+
+        digit = str(created_ids[0])[0]
+
+        r = e2e_client.get(
+            f"/api/v1/bookings/?search={digit}&limit=50",
+            headers=admin_auth_headers,
+        )
+
+        assert r.status_code == 200
+        returned = sorted(b["record_id"] for b in r.json())
+        expected = sorted(rid for rid in created_ids if digit in str(rid))
+        assert returned == expected
+        assert len(returned) > 1
+
+
+# ---------------------------------------------------------------------------
 # Flujo de calendario
 # ---------------------------------------------------------------------------
 
