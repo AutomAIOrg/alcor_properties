@@ -2,9 +2,11 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { of, throwError } from 'rxjs';
 
 import { AdminComponent } from './admin.component';
+import { AuthService } from '../../auth/auth.service';
 import { Role } from '../../models/user.model';
 import { ApartmentResponse, ApartmentService } from '../../services/apartment.service';
 import { AdminUserResponse, AdminUserService } from '../../services/admin-user.service';
+import { BillService } from '../../services/bill.service';
 
 function makeUser(overrides: Partial<AdminUserResponse> = {}): AdminUserResponse {
   return {
@@ -40,6 +42,8 @@ describe('AdminComponent', () => {
   let component: AdminComponent;
   let adminUserServiceSpy: jest.Mocked<AdminUserService>;
   let apartmentServiceSpy: jest.Mocked<ApartmentService>;
+  let billServiceSpy: jest.Mocked<BillService>;
+  let authServiceSpy: jest.Mocked<AuthService>;
 
   async function setup(
     users: AdminUserResponse[] = [makeUser()],
@@ -67,11 +71,27 @@ describe('AdminComponent', () => {
         .mockReturnValue(of({ message: 'Apartamento eliminado correctamente' })),
     } as unknown as jest.Mocked<ApartmentService>;
 
+    billServiceSpy = {
+      getCleaningRate: jest.fn().mockReturnValue(of({ cleaning_hourly_rate: 15 })),
+      updateCleaningRate: jest.fn().mockReturnValue(of({ cleaning_hourly_rate: 18 })),
+      listBills: jest.fn(),
+      createBill: jest.fn(),
+      updateBillState: jest.fn(),
+    } as unknown as jest.Mocked<BillService>;
+
+    authServiceSpy = {
+      hasPermission: jest
+        .fn()
+        .mockImplementation((permission: string) => permission === 'settings:manage'),
+    } as unknown as jest.Mocked<AuthService>;
+
     await TestBed.configureTestingModule({
       imports: [AdminComponent],
       providers: [
         { provide: AdminUserService, useValue: adminUserServiceSpy },
         { provide: ApartmentService, useValue: apartmentServiceSpy },
+        { provide: BillService, useValue: billServiceSpy },
+        { provide: AuthService, useValue: authServiceSpy },
       ],
     }).compileComponents();
 
@@ -368,6 +388,48 @@ describe('AdminComponent', () => {
       expect(component.propertyPendingDeletion()).toBeNull();
       expect(component.editingPropertyReference()).toBeNull();
       expect(component.isPropertyFormModalOpen()).toBe(false);
+    });
+  });
+
+  describe('F — tarifa de limpieza', () => {
+    it('carga la tarifa al abrir la sección', async () => {
+      await setup();
+
+      component.toggleBillingSection();
+      fixture.detectChanges();
+
+      expect(billServiceSpy.getCleaningRate).toHaveBeenCalledTimes(1);
+      expect(component.cleaningRate()).toBe(15);
+      expect(fixture.nativeElement.textContent).toContain('Tarifa de limpieza');
+    });
+
+    it('guarda la tarifa actualizada', async () => {
+      await setup();
+
+      component.toggleBillingSection();
+      fixture.detectChanges();
+      component.updateCleaningRateDraft('18');
+      component.saveCleaningRate();
+      fixture.detectChanges();
+
+      expect(billServiceSpy.updateCleaningRate).toHaveBeenCalledWith(18);
+      expect(component.cleaningRate()).toBe(18);
+      expect(fixture.nativeElement.textContent).toContain('Tarifa de limpieza actualizada');
+    });
+
+    it('muestra error si falla al guardar la tarifa', async () => {
+      await setup();
+      billServiceSpy.updateCleaningRate.mockReturnValueOnce(
+        throwError(() => ({ status: 422, error: { detail: 'Tarifa inválida' } }))
+      );
+
+      component.toggleBillingSection();
+      fixture.detectChanges();
+      component.updateCleaningRateDraft('18');
+      component.saveCleaningRate();
+      fixture.detectChanges();
+
+      expect(fixture.nativeElement.textContent).toContain('No se ha podido guardar la tarifa');
     });
   });
 });

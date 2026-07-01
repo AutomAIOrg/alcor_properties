@@ -218,6 +218,63 @@
     }
   </article>
 
+  @if (authService.hasPermission('settings:manage')) {
+    <article class="accordion-card">
+      <button
+        class="accordion-trigger"
+        type="button"
+        [attr.aria-expanded]="isBillingSectionOpen()"
+        (click)="toggleBillingSection()"
+      >
+        <span>
+          <strong>Tarifa de limpieza</strong>
+          <small>Precio por hora aplicado al calcular nuevas facturas de limpieza.</small>
+        </span>
+        <span class="accordion-icon" [class.open]="isBillingSectionOpen()">▾</span>
+      </button>
+
+      @if (isBillingSectionOpen()) {
+        <div class="accordion-content">
+          <article class="admin-card billing-card">
+            @if (cleaningRateError()) {
+              <div class="notice error-notice">
+                <span>{{ cleaningRateError() }}</span>
+                <button class="secondary-btn" type="button" (click)="loadCleaningRate()">
+                  Reintentar
+                </button>
+              </div>
+            }
+
+            @if (isLoadingCleaningRate()) {
+              <p class="state-cell">Cargando tarifa...</p>
+            } @else {
+              <form class="admin-form billing-form" (ngSubmit)="saveCleaningRate()">
+                <label>
+                  Tarifa actual (€/h)
+                  <input
+                    type="number"
+                    name="cleaningRate"
+                    min="0"
+                    step="0.01"
+                    [ngModel]="cleaningRateDraft()"
+                    (ngModelChange)="updateCleaningRateDraft($event)"
+                    required
+                  />
+                </label>
+
+                <div class="section-actions">
+                  <button class="primary-btn" type="submit" [disabled]="isSavingCleaningRate()">
+                    {{ isSavingCleaningRate() ? 'Guardando...' : 'Guardar tarifa' }}
+                  </button>
+                </div>
+              </form>
+            }
+          </article>
+        </div>
+      }
+    </article>
+  }
+
   @if (isUserFormModalOpen()) {
     <div class="modal-backdrop" role="presentation">
       <section
