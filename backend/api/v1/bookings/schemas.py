@@ -106,3 +106,6 @@ class CleaningOpportunityResponse(BaseModel):
     available_from: date
     available_until: date | None = None
     comments: str = ""
+    can_bill: bool = False
+    has_bill: bool = False
+    bill_state: str | None = None
