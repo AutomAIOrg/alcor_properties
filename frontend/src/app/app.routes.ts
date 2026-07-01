@@ -22,6 +22,11 @@ export const routes: Routes = [
     canActivate: [authGuard, permissionGuard('cleaning:access')],
   },
   {
+    path: 'bills',
+    loadComponent: () => import('./pages/bills/bills.component').then(m => m.BillsComponent),
+    canActivate: [authGuard, permissionGuard('bills:read')],
+  },
+  {
     path: 'searches',
     loadComponent: () =>
       import('./pages/searches/searches.component').then(m => m.SearchesComponent),

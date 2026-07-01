@@ -426,6 +426,32 @@ describe('AuthService', () => {
       expect(service.hasPermission('calendar:access')).toBe(false);
       expect(service.hasPermission('admin:access')).toBe(false);
     });
+
+    it('asigna permisos de facturas y lectura de tarifa a limpiadora', () => {
+      setup({
+        tokenValid: true,
+        decodedUser: makeUser({ role: 'limpiadora' }),
+      });
+
+      expect(service.hasPermission('bills:read')).toBe(true);
+      expect(service.hasPermission('bills:create')).toBe(true);
+      expect(service.hasPermission('bills:update')).toBe(true);
+      expect(service.hasPermission('settings:read')).toBe(true);
+      expect(service.hasPermission('settings:manage')).toBe(false);
+    });
+
+    it('asigna permisos de facturas y configuración a admin', () => {
+      setup({
+        tokenValid: true,
+        decodedUser: makeUser({ role: 'admin' }),
+      });
+
+      expect(service.hasPermission('bills:read')).toBe(true);
+      expect(service.hasPermission('bills:create')).toBe(true);
+      expect(service.hasPermission('bills:update')).toBe(true);
+      expect(service.hasPermission('settings:read')).toBe(true);
+      expect(service.hasPermission('settings:manage')).toBe(true);
+    });
   });
 
   // ── E2: Ruta por defecto ───────────────────────────────────────────────────
