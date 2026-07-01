@@ -378,7 +378,7 @@ def _build_cleaning_opportunities(
                     apartment_id=booking.apartment_id,
                     available_from=booking.check_out,
                     available_until=next_booking.check_in if next_booking else None,
-                    comments=(booking.notes or "").strip(),
+                    comments=(booking.notes_cleaning or "").strip(),
                     has_bill=booking.record_id in billed,
                     can_bill=booking.is_cleanable(now),
                     bill_state=bill_st,
