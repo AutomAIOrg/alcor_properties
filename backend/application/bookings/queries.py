@@ -2,7 +2,7 @@
 Casos de uso de lectura (consultas) para el dominio de Reservas.
 """
 
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from typing import Any
 
 from application.bookings.helpers import (
@@ -11,6 +11,7 @@ from application.bookings.helpers import (
     compute_stats,
     count_days_without_bookings,
 )
+from domain.bills.repository import IBillRepository
 from domain.bookings.entity import Booking, CleaningOpportunity
 from domain.bookings.repository import IBookingRepository
 
@@ -340,8 +341,16 @@ class GetCalendarEventsQuery:
         return events
 
 
-def _build_cleaning_opportunities(bookings: list[Booking]) -> list[CleaningOpportunity]:
+def _build_cleaning_opportunities(
+    bookings: list[Booking],
+    billed_booking_ids: set[int] | None = None,
+    reference_datetime: datetime | None = None,
+    bill_states_by_booking: dict[int, str] | None = None,
+) -> list[CleaningOpportunity]:
     """Calcula ventanas de limpieza a partir de reservas activas agrupadas por apartamento."""
+    billed = billed_booking_ids or set()
+    bill_states = bill_states_by_booking or {}
+    now = reference_datetime or datetime.now()
     active_bookings = [
         booking
         for booking in bookings
@@ -362,13 +371,17 @@ def _build_cleaning_opportunities(bookings: list[Booking]) -> list[CleaningOppor
             next_booking = (
                 apartment_bookings[index + 1] if index + 1 < len(apartment_bookings) else None
             )
+            bill_st = bill_states.get(booking.record_id)
             opportunities.append(
                 CleaningOpportunity(
                     source_booking_record_id=booking.record_id,
                     apartment_id=booking.apartment_id,
                     available_from=booking.check_out,
                     available_until=next_booking.check_in if next_booking else None,
-                    comments=(booking.notes_cleaning or "").strip(),
+                    comments=(booking.notes or "").strip(),
+                    has_bill=booking.record_id in billed,
+                    can_bill=booking.is_cleanable(now),
+                    bill_state=bill_st,
                 )
             )
 
@@ -386,16 +399,33 @@ def _build_cleaning_opportunities(bookings: list[Booking]) -> list[CleaningOppor
 class GetCleaningOpportunitiesUseCase:
     """Obtiene ventanas de limpieza del rango operativo (semana actual + 3 siguientes)."""
 
-    def __init__(self, repository: IBookingRepository) -> None:
+    def __init__(
+        self,
+        repository: IBookingRepository,
+        bill_repository: IBillRepository | None = None,
+    ) -> None:
         self._repo = repository
+        self._bills = bill_repository
 
     def execute(self, reference_date: date | None = None) -> list[CleaningOpportunity]:
-        range_start, range_end = _cleaning_operational_range(reference_date)
+        reference_datetime = (
+            datetime.combine(reference_date, datetime.min.time()) if reference_date else None
+        )
+        return self.execute_at(reference_datetime)
+
+    def execute_at(self, reference_datetime: datetime | None = None) -> list[CleaningOpportunity]:
+        """Igual que :meth:`execute` pero con un instante exacto (para calcular ``can_bill``)."""
+        now = reference_datetime or datetime.now()
+        range_start, range_end = _cleaning_operational_range(now.date())
         bookings = self._repo.search_bookings(
             start_date=range_start - timedelta(days=_CLEANING_BOOKING_LOOKBACK_DAYS),
             end_date=range_end + timedelta(days=_CLEANING_BOOKING_LOOKAHEAD_DAYS),
         )
-        opportunities = _build_cleaning_opportunities(bookings)
+        billed_ids = self._bills.list_billed_booking_ids() if self._bills else set()
+        bill_states = self._bills.get_bill_states_by_booking() if self._bills else {}
+        opportunities = _build_cleaning_opportunities(
+            bookings, billed_ids, reference_datetime=now, bill_states_by_booking=bill_states
+        )
         return [
             opportunity
             for opportunity in opportunities
