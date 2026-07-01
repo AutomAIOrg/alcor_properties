@@ -253,6 +253,9 @@ class TestSpecialCollectionEndpoints:
                 "available_from": "2026-06-05",
                 "available_until": "2026-06-10",
                 "comments": "",
+                "can_bill": False,
+                "has_bill": False,
+                "bill_state": None,
             }
         ]
         mock_use_cases.get_cleaning_opportunities_query.execute.assert_called_once_with()
