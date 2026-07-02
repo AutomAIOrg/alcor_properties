@@ -44,3 +44,8 @@ class BillORM(Base):
 
     # Fecha de pago (solo cuando el estado es "Pagada")
     paid_at: Mapped[date | None] = mapped_column("Paid At", Date, nullable=True)
+
+    # Nota explicativa (solo cuando el estado es "Cancelada")
+    cancellation_note: Mapped[str | None] = mapped_column(
+        "Cancellation Note", String(500), nullable=True
+    )
