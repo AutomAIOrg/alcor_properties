@@ -21,6 +21,7 @@ function makeBill(overrides: Partial<Bill> = {}): Bill {
     hourly_rate: 15,
     state: 'Creada',
     paid_at: null,
+    cancellation_note: null,
     previously_cancelled: false,
     ...overrides,
   };
@@ -112,6 +113,37 @@ describe('BillsComponent', () => {
     expect(component.bills()[0].state).toBe('Pagada');
   });
 
+  it('cancela una factura con nota explicativa desde el modal', () => {
+    billServiceSpy.updateBillState.mockReturnValue(
+      of(makeBill({ state: 'Cancelada', cancellation_note: 'Reserva duplicada' }))
+    );
+
+    component.requestTransition(makeBill(), 'Cancelada');
+    fixture.detectChanges();
+
+    component.cancelNote.set('Reserva duplicada');
+    component.confirmCancel();
+    fixture.detectChanges();
+
+    expect(billServiceSpy.updateBillState).toHaveBeenCalledWith(1, {
+      state: 'Cancelada',
+      cancellation_note: 'Reserva duplicada',
+    });
+    expect(component.bills()[0].state).toBe('Cancelada');
+    expect(component.bills()[0].cancellation_note).toBe('Reserva duplicada');
+  });
+
+  it('cancela sin nota cuando el campo se deja vacío', () => {
+    billServiceSpy.updateBillState.mockReturnValue(of(makeBill({ state: 'Cancelada' })));
+
+    component.requestTransition(makeBill(), 'Cancelada');
+    fixture.detectChanges();
+    component.confirmCancel();
+    fixture.detectChanges();
+
+    expect(billServiceSpy.updateBillState).toHaveBeenCalledWith(1, { state: 'Cancelada' });
+  });
+
   it('muestra toast de error si falla la actualización de estado', () => {
     billServiceSpy.updateBillState.mockReturnValue(
       throwError(
@@ -121,7 +153,7 @@ describe('BillsComponent', () => {
 
     component.requestTransition(makeBill(), 'Cancelada');
     fixture.detectChanges();
-    component.confirmPendingTransition();
+    component.confirmCancel();
     fixture.detectChanges();
 
     expect(fixture.nativeElement.textContent).toContain('Transición inválida');

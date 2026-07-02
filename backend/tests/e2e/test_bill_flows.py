@@ -121,6 +121,29 @@ class TestBillStateLifecycle:
         assert r.status_code == 200
         assert r.json()["state"] == "Creada"
 
+    def test_cancel_with_note_stores_and_clears_on_reactivation(
+        self, e2e_client, admin_auth_headers
+    ):
+        bill_id = _create_booking_and_bill(e2e_client, admin_auth_headers, "STATE-NOTE-001")
+
+        r = e2e_client.put(
+            f"/api/v1/bills/{bill_id}",
+            json={"state": "Cancelada", "cancellation_note": "Reserva duplicada"},
+            headers=admin_auth_headers,
+        )
+        assert r.status_code == 200
+        assert r.json()["state"] == "Cancelada"
+        assert r.json()["cancellation_note"] == "Reserva duplicada"
+
+        # Al reactivar la factura, la nota se limpia.
+        r = e2e_client.put(
+            f"/api/v1/bills/{bill_id}",
+            json={"state": "Creada"},
+            headers=admin_auth_headers,
+        )
+        assert r.status_code == 200
+        assert r.json()["cancellation_note"] is None
+
     def test_invalid_transition_returns_422(self, e2e_client, admin_auth_headers):
         bill_id = _create_booking_and_bill(e2e_client, admin_auth_headers, "STATE-002")
 

@@ -63,7 +63,25 @@ class TestUpdateBillState:
         assert response.status_code == 200
         assert response.json()["state"] == "Pagada"
         mock_update_bill_state_use_case.execute.assert_called_once_with(
-            1, "Pagada", paid_at=date(2026, 6, 1)
+            1, "Pagada", paid_at=date(2026, 6, 1), cancellation_note=None
+        )
+
+    def test_cancel_with_note_passes_note_to_use_case(
+        self, bills_api_client, mock_update_bill_state_use_case
+    ):
+        mock_update_bill_state_use_case.execute.return_value = make_bill(
+            bill_id=1, state="Cancelada", cancellation_note="Reserva duplicada"
+        )
+
+        response = bills_api_client.put(
+            "/api/v1/bills/1",
+            json={"state": "Cancelada", "cancellation_note": "Reserva duplicada"},
+        )
+
+        assert response.status_code == 200
+        assert response.json()["cancellation_note"] == "Reserva duplicada"
+        mock_update_bill_state_use_case.execute.assert_called_once_with(
+            1, "Cancelada", paid_at=None, cancellation_note="Reserva duplicada"
         )
 
     def test_invalid_transition_returns_422(
