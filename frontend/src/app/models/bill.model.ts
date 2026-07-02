@@ -10,6 +10,7 @@ export interface Bill {
   hourly_rate: number | null;
   state: BillState;
   paid_at: string | null;
+  cancellation_note: string | null;
   previously_cancelled: boolean;
 }
 
@@ -37,4 +38,5 @@ export interface BillListFilters {
 export interface BillUpdateStateRequest {
   state: BillState;
   paid_at?: string;
+  cancellation_note?: string;
 }

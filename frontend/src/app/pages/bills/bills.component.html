@@ -160,6 +160,11 @@
                       Refacturación
                     </span>
                   }
+                  @if (bill.state === 'Cancelada' && bill.cancellation_note) {
+                    <p class="cancellation-note" [title]="bill.cancellation_note">
+                      {{ bill.cancellation_note }}
+                    </p>
+                  }
                 </td>
                 <td>{{ formatDate(bill.paid_at) }}</td>
                 <td class="actions-cell">
@@ -229,6 +234,55 @@
             (click)="closeMarkPaidModal()"
           >
             Cancelar
+          </button>
+        </div>
+      </section>
+    </div>
+  }
+
+  @if (cancelBill()) {
+    <div class="modal-backdrop" role="presentation" (click)="closeCancelModal()">
+      <section
+        class="confirm-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="cancel-bill-title"
+        (click)="$event.stopPropagation()"
+      >
+        <h2 id="cancel-bill-title">Cancelar factura</h2>
+        <p>
+          ¿Seguro que deseas cancelar la factura <strong>#{{ cancelBill()!.bill_id }}</strong> ·
+          Piso <strong>{{ cancelBill()!.apartment_id }}</strong
+          >?
+        </p>
+
+        <label class="dialog-field">
+          Nota explicativa (opcional)
+          <textarea
+            rows="3"
+            maxlength="500"
+            placeholder="Motivo de la cancelación..."
+            [value]="cancelNote()"
+            (input)="updateCancelNote($event)"
+          ></textarea>
+        </label>
+
+        <div class="dialog-actions">
+          <button
+            class="primary-btn danger"
+            type="button"
+            [disabled]="isUpdating()"
+            (click)="confirmCancel()"
+          >
+            {{ isUpdating() ? 'Cancelando...' : 'Cancelar factura' }}
+          </button>
+          <button
+            class="secondary-btn"
+            type="button"
+            [disabled]="isUpdating()"
+            (click)="closeCancelModal()"
+          >
+            Volver
           </button>
         </div>
       </section>
