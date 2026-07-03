@@ -20,12 +20,25 @@ _BOOKING_PAYLOAD = {
 }
 
 
-def _bill_payload(record_id: int, cleaning_date: str = "2026-06-02") -> dict:
+def _create_cleaning_type(
+    e2e_client, admin_auth_headers, name: str = "Limpieza normal", rate: str = "18.00"
+) -> int:
+    r = e2e_client.post(
+        "/api/v1/cleaning-types/",
+        json={"name": name, "hourly_rate": rate},
+        headers=admin_auth_headers,
+    )
+    assert r.status_code == 201, r.text
+    return r.json()["cleaning_type_id"]
+
+
+def _bill_payload(record_id: int, cleaning_type_id: int, cleaning_date: str = "2026-06-02") -> dict:
     return {
         "record_id": record_id,
         "cleaning_date": cleaning_date,
         "start_time": "10:00",
         "end_time": "12:00",
+        "cleaning_type_id": cleaning_type_id,
     }
 
 
@@ -36,24 +49,23 @@ def _create_booking_and_bill(e2e_client, admin_auth_headers, apartment_suffix: s
     r = e2e_client.post("/api/v1/bookings/", json=payload, headers=admin_auth_headers)
     assert r.status_code == 201
     record_id = r.json()["record_id"]
+    cleaning_type_id = _create_cleaning_type(
+        e2e_client, admin_auth_headers, name=f"Tipo {apartment_suffix or 'base'}"
+    )
     r = e2e_client.post(
         "/api/v1/bills/",
-        json=_bill_payload(record_id),
+        json=_bill_payload(record_id, cleaning_type_id),
         headers=admin_auth_headers,
     )
     assert r.status_code == 201
     return r.json()["bill_id"]
 
 
-class TestSettingsDrivenBillCreation:
-    def test_admin_updates_rate_and_bill_uses_persisted_rate(self, e2e_client, admin_auth_headers):
-        r = e2e_client.put(
-            "/api/v1/settings/cleaning-rate",
-            json={"cleaning_hourly_rate": "18.00"},
-            headers=admin_auth_headers,
+class TestCleaningTypeDrivenBillCreation:
+    def test_bill_uses_selected_cleaning_type_rate(self, e2e_client, admin_auth_headers):
+        cleaning_type_id = _create_cleaning_type(
+            e2e_client, admin_auth_headers, name="Limpieza fin de semana", rate="18.00"
         )
-        assert r.status_code == 200
-        assert r.json()["cleaning_hourly_rate"] == 18.0
 
         r = e2e_client.post(
             "/api/v1/bookings/",
@@ -65,7 +77,7 @@ class TestSettingsDrivenBillCreation:
 
         r = e2e_client.post(
             "/api/v1/bills/",
-            json=_bill_payload(record_id),
+            json=_bill_payload(record_id, cleaning_type_id),
             headers=admin_auth_headers,
         )
 
@@ -74,14 +86,9 @@ class TestSettingsDrivenBillCreation:
         assert data["hourly_rate"] == 18.0
         assert data["clean_hours"] == 2.0
         assert data["cost"] == 36.0
+        assert data["cleaning_type_id"] == cleaning_type_id
+        assert data["cleaning_type_name"] == "Limpieza fin de semana"
         assert data["state"] == "Creada"
-
-        r = e2e_client.get(
-            "/api/v1/settings/cleaning-rate",
-            headers=admin_auth_headers,
-        )
-        assert r.status_code == 200
-        assert r.json()["cleaning_hourly_rate"] == 18.0
 
 
 class TestBillStateLifecycle:
@@ -147,17 +154,18 @@ class TestDuplicateBillFlow:
         )
         assert r.status_code == 201
         record_id = r.json()["record_id"]
+        cleaning_type_id = _create_cleaning_type(e2e_client, admin_auth_headers, name="Tipo dup")
 
         r = e2e_client.post(
             "/api/v1/bills/",
-            json=_bill_payload(record_id),
+            json=_bill_payload(record_id, cleaning_type_id),
             headers=admin_auth_headers,
         )
         assert r.status_code == 201
 
         r = e2e_client.post(
             "/api/v1/bills/",
-            json=_bill_payload(record_id),
+            json=_bill_payload(record_id, cleaning_type_id),
             headers=admin_auth_headers,
         )
         assert r.status_code == 409
@@ -172,6 +180,7 @@ class TestTimeValidationFlow:
         )
         assert r.status_code == 201
         record_id = r.json()["record_id"]
+        cleaning_type_id = _create_cleaning_type(e2e_client, admin_auth_headers, name="Tipo time")
 
         r = e2e_client.post(
             "/api/v1/bills/",
@@ -180,6 +189,7 @@ class TestTimeValidationFlow:
                 "cleaning_date": "2026-06-02",
                 "start_time": "14:00",
                 "end_time": "10:00",
+                "cleaning_type_id": cleaning_type_id,
             },
             headers=admin_auth_headers,
         )
@@ -195,6 +205,7 @@ class TestBillabilityValidation:
         )
         assert r.status_code == 201
         record_id = r.json()["record_id"]
+        cleaning_type_id = _create_cleaning_type(e2e_client, admin_auth_headers, name="Tipo cancel")
 
         r = e2e_client.put(
             f"/api/v1/bookings/{record_id}",
@@ -205,7 +216,7 @@ class TestBillabilityValidation:
 
         r = e2e_client.post(
             "/api/v1/bills/",
-            json=_bill_payload(record_id),
+            json=_bill_payload(record_id, cleaning_type_id),
             headers=admin_auth_headers,
         )
         assert r.status_code == 422
@@ -225,10 +236,11 @@ class TestBillabilityValidation:
         )
         assert r.status_code == 201
         record_id = r.json()["record_id"]
+        cleaning_type_id = _create_cleaning_type(e2e_client, admin_auth_headers, name="Tipo future")
 
         r = e2e_client.post(
             "/api/v1/bills/",
-            json=_bill_payload(record_id, cleaning_date="2026-07-15"),
+            json=_bill_payload(record_id, cleaning_type_id, cleaning_date="2026-07-15"),
             headers=admin_auth_headers,
         )
         assert r.status_code == 422
