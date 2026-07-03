@@ -132,3 +132,19 @@ class BillAlreadyExistsError(DomainException):
     def __init__(self, record_id: int) -> None:
         self.record_id = record_id
         super().__init__(f"Ya existe una factura para la reserva {record_id}")
+
+
+class CleaningTypeNotFoundError(DomainException):
+    """Se lanza cuando no se puede encontrar un tipo de limpieza por su identificador."""
+
+    def __init__(self, cleaning_type_id: int) -> None:
+        self.cleaning_type_id = cleaning_type_id
+        super().__init__(f"Tipo de limpieza con ID {cleaning_type_id} no encontrado")
+
+
+class CleaningTypeAlreadyExistsError(DomainException):
+    """Se lanza cuando ya existe un tipo de limpieza con el mismo nombre."""
+
+    def __init__(self, name: str) -> None:
+        self.name = name
+        super().__init__(f"El tipo de limpieza '{name}' ya existe")
