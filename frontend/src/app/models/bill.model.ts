@@ -8,6 +8,8 @@ export interface Bill {
   clean_hours: number;
   cost: number | null;
   hourly_rate: number | null;
+  cleaning_type_id: number | null;
+  cleaning_type_name: string | null;
   state: BillState;
   paid_at: string | null;
   previously_cancelled: boolean;
@@ -18,11 +20,7 @@ export interface BillCreateRequest {
   cleaning_date: string;
   start_time: string;
   end_time: string;
-  hourly_rate?: number;
-}
-
-export interface CleaningRateResponse {
-  cleaning_hourly_rate: number;
+  cleaning_type_id: number;
 }
 
 export interface BillListFilters {
