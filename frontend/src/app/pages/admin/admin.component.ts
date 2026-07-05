@@ -14,11 +14,7 @@ import {
   AdminUserSaveRequest,
   AdminUserService,
 } from '../../services/admin-user.service';
-import {
-  CleaningType,
-  CleaningTypeCreateRequest,
-  CleaningTypeService,
-} from '../../services/cleaning-type.service';
+import { BillService } from '../../services/bill.service';
 
 type ToastType = 'success' | 'error';
 
@@ -65,12 +61,6 @@ interface AdminPropertyDraft {
   phone: string;
 }
 
-interface AdminCleaningTypeDraft {
-  name: string;
-  hourly_rate: number | string;
-  active: boolean;
-}
-
 @Component({
   selector: 'app-admin',
   standalone: true,
@@ -82,7 +72,7 @@ export class AdminComponent implements OnInit, OnDestroy {
   readonly authService = inject(AuthService);
   private adminUserService = inject(AdminUserService);
   private apartmentService = inject(ApartmentService);
-  private cleaningTypeService = inject(CleaningTypeService);
+  private billService = inject(BillService);
   private toastTimeout: ReturnType<typeof setTimeout> | null = null;
 
   readonly roleOptions: Role[] = ['admin', 'limpiadora'];
@@ -109,17 +99,13 @@ export class AdminComponent implements OnInit, OnDestroy {
 
   isUsersSectionOpen = signal(false);
   isPropertiesSectionOpen = signal(false);
-  isCleaningTypesSectionOpen = signal(false);
+  isBillingSectionOpen = signal(false);
 
-  cleaningTypes = signal<CleaningType[]>([]);
-  isLoadingCleaningTypes = signal(false);
-  cleaningTypesError = signal<string | null>(null);
-  isCleaningTypeFormModalOpen = signal(false);
-  isSavingCleaningType = signal(false);
-  isDeletingCleaningType = signal(false);
-  editingCleaningTypeId = signal<number | null>(null);
-  cleaningTypePendingDeletion = signal<CleaningType | null>(null);
-  newCleaningType = signal<AdminCleaningTypeDraft>(this.createEmptyCleaningTypeDraft());
+  cleaningRate = signal<number | null>(null);
+  cleaningRateDraft = signal('');
+  isLoadingCleaningRate = signal(false);
+  isSavingCleaningRate = signal(false);
+  cleaningRateError = signal<string | null>(null);
 
   newUser = signal<AdminUserDraft>({
     username: '',
@@ -179,145 +165,59 @@ export class AdminComponent implements OnInit, OnDestroy {
     this.isPropertiesSectionOpen.update(isOpen => !isOpen);
   }
 
-  toggleCleaningTypesSection(): void {
-    const willOpen = !this.isCleaningTypesSectionOpen();
-    this.isCleaningTypesSectionOpen.set(willOpen);
-    if (willOpen && !this.cleaningTypes().length) {
-      this.loadCleaningTypes();
+  toggleBillingSection(): void {
+    const willOpen = !this.isBillingSectionOpen();
+    this.isBillingSectionOpen.set(willOpen);
+    if (willOpen) {
+      this.loadCleaningRate();
     }
   }
 
-  loadCleaningTypes(): void {
-    this.isLoadingCleaningTypes.set(true);
-    this.cleaningTypesError.set(null);
+  loadCleaningRate(): void {
+    this.isLoadingCleaningRate.set(true);
+    this.cleaningRateError.set(null);
 
-    this.cleaningTypeService.list().subscribe({
-      next: cleaningTypes => {
-        this.cleaningTypes.set(cleaningTypes);
-        this.isLoadingCleaningTypes.set(false);
+    this.billService.getCleaningRate().subscribe({
+      next: response => {
+        this.cleaningRate.set(response.cleaning_hourly_rate);
+        this.cleaningRateDraft.set(String(response.cleaning_hourly_rate));
+        this.isLoadingCleaningRate.set(false);
       },
       error: () => {
-        this.cleaningTypes.set([]);
-        this.cleaningTypesError.set('No se han podido cargar los tipos de limpieza.');
-        this.isLoadingCleaningTypes.set(false);
+        this.cleaningRate.set(null);
+        this.cleaningRateDraft.set('');
+        this.cleaningRateError.set('No se ha podido cargar la tarifa de limpieza.');
+        this.isLoadingCleaningRate.set(false);
       },
     });
   }
 
-  updateNewCleaningTypeName(name: string): void {
-    this.newCleaningType.update(draft => ({ ...draft, name }));
+  updateCleaningRateDraft(value: string): void {
+    this.cleaningRateDraft.set(value);
   }
 
-  updateNewCleaningTypeHourlyRate(hourlyRate: number | string): void {
-    this.newCleaningType.update(draft => ({ ...draft, hourly_rate: hourlyRate }));
-  }
-
-  updateNewCleaningTypeActive(active: boolean): void {
-    this.newCleaningType.update(draft => ({ ...draft, active }));
-  }
-
-  openCreateCleaningTypeDialog(): void {
-    this.resetCleaningTypeForm();
-    this.cleaningTypesError.set(null);
-    this.isCleaningTypeFormModalOpen.set(true);
-  }
-
-  startEditingCleaningType(cleaningType: CleaningType): void {
-    this.editingCleaningTypeId.set(cleaningType.cleaning_type_id);
-    this.newCleaningType.set({
-      name: cleaningType.name,
-      hourly_rate: cleaningType.hourly_rate,
-      active: cleaningType.active,
-    });
-    this.isCleaningTypeFormModalOpen.set(true);
-  }
-
-  closeCleaningTypeFormDialog(): void {
-    if (this.isSavingCleaningType()) return;
-    this.resetCleaningTypeForm();
-    this.isCleaningTypeFormModalOpen.set(false);
-  }
-
-  saveCleaningType(): void {
-    const draft = this.newCleaningType();
-    const name = draft.name.trim();
-    const rate = Number(draft.hourly_rate);
-
-    if (!name || !Number.isFinite(rate) || rate < 0) {
-      this.showToast('error', 'Introduce un nombre y una tarifa válida (≥ 0).');
+  saveCleaningRate(): void {
+    const parsed = Number(this.cleaningRateDraft());
+    if (!Number.isFinite(parsed) || parsed < 0 || this.isSavingCleaningRate()) {
+      this.showToast('error', 'Introduce una tarifa válida (≥ 0).');
       return;
     }
 
-    const payload: CleaningTypeCreateRequest = {
-      name,
-      hourly_rate: rate,
-      active: draft.active,
-    };
+    this.isSavingCleaningRate.set(true);
+    this.cleaningRateError.set(null);
 
-    this.isSavingCleaningType.set(true);
-    this.cleaningTypesError.set(null);
-
-    const editingId = this.editingCleaningTypeId();
-    const request$ =
-      editingId === null
-        ? this.cleaningTypeService.create(payload)
-        : this.cleaningTypeService.update(editingId, payload);
-
-    request$.subscribe({
-      next: () => {
-        this.resetCleaningTypeForm();
-        this.isCleaningTypeFormModalOpen.set(false);
-        this.isSavingCleaningType.set(false);
-        this.showToast(
-          'success',
-          editingId === null ? 'Tipo de limpieza creado.' : 'Tipo de limpieza actualizado.'
-        );
-        this.loadCleaningTypes();
+    this.billService.updateCleaningRate(parsed).subscribe({
+      next: response => {
+        this.cleaningRate.set(response.cleaning_hourly_rate);
+        this.cleaningRateDraft.set(String(response.cleaning_hourly_rate));
+        this.isSavingCleaningRate.set(false);
+        this.showToast('success', 'Tarifa de limpieza actualizada.');
       },
       error: (error: HttpErrorResponse) => {
-        this.isSavingCleaningType.set(false);
+        this.isSavingCleaningRate.set(false);
         this.showToast(
           'error',
-          editingId === null
-            ? 'Error al crear el tipo de limpieza.'
-            : 'Error al actualizar el tipo de limpieza.',
-          this.getApiErrorMessage(error)
-        );
-      },
-    });
-  }
-
-  openDeleteCleaningTypeDialog(cleaningType: CleaningType): void {
-    this.cleaningTypePendingDeletion.set(cleaningType);
-  }
-
-  closeDeleteCleaningTypeDialog(): void {
-    if (this.isDeletingCleaningType()) return;
-    this.cleaningTypePendingDeletion.set(null);
-  }
-
-  confirmDeleteCleaningType(): void {
-    const cleaningType = this.cleaningTypePendingDeletion();
-    if (!cleaningType) return;
-
-    this.isDeletingCleaningType.set(true);
-
-    this.cleaningTypeService.delete(cleaningType.cleaning_type_id).subscribe({
-      next: () => {
-        if (this.editingCleaningTypeId() === cleaningType.cleaning_type_id) {
-          this.resetCleaningTypeForm();
-          this.isCleaningTypeFormModalOpen.set(false);
-        }
-        this.cleaningTypePendingDeletion.set(null);
-        this.isDeletingCleaningType.set(false);
-        this.showToast('success', 'Tipo de limpieza eliminado.');
-        this.loadCleaningTypes();
-      },
-      error: (error: HttpErrorResponse) => {
-        this.isDeletingCleaningType.set(false);
-        this.showToast(
-          'error',
-          'Error al eliminar el tipo de limpieza.',
+          'No se ha podido guardar la tarifa.',
           this.getApiErrorMessage(error)
         );
       },
@@ -694,19 +594,6 @@ export class AdminComponent implements OnInit, OnDestroy {
   private resetPropertyForm(): void {
     this.editingPropertyReference.set(null);
     this.newProperty.set(this.createEmptyPropertyDraft());
-  }
-
-  private createEmptyCleaningTypeDraft(): AdminCleaningTypeDraft {
-    return {
-      name: '',
-      hourly_rate: '',
-      active: true,
-    };
-  }
-
-  private resetCleaningTypeForm(): void {
-    this.editingCleaningTypeId.set(null);
-    this.newCleaningType.set(this.createEmptyCleaningTypeDraft());
   }
 
   ngOnDestroy(): void {

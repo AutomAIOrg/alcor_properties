@@ -34,20 +34,6 @@ class BillORM(Base):
         "Hourly Rate", Numeric(10, 2), nullable=True
     )
 
-    # Tipo de limpieza aplicado (catálogo). El nombre se congela como snapshot para
-    # preservar el histórico aunque el tipo se edite o elimine posteriormente. Por eso
-    # la FK usa ON DELETE SET NULL: al borrar un tipo la factura conserva el nombre
-    # congelado y solo pierde la referencia viva.
-    cleaning_type_id: Mapped[int | None] = mapped_column(
-        "Cleaning Type ID",
-        Integer,
-        ForeignKey("cleaning_types.ID", ondelete="SET NULL"),
-        nullable=True,
-    )
-    cleaning_type_name: Mapped[str | None] = mapped_column(
-        "Cleaning Type Name", String(100), nullable=True
-    )
-
     # Apartamento limpiado
     apartment_id: Mapped[str] = mapped_column(
         "Apartment ID", String(255), ForeignKey("Apartamentos.Booking ID"), nullable=False

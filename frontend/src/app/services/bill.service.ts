@@ -7,6 +7,7 @@ import {
   BillCreateRequest,
   BillListFilters,
   BillUpdateStateRequest,
+  CleaningRateResponse,
 } from '../models/bill.model';
 
 export type {
@@ -14,6 +15,7 @@ export type {
   BillCreateRequest,
   BillListFilters,
   BillUpdateStateRequest,
+  CleaningRateResponse,
 } from '../models/bill.model';
 
 @Injectable({ providedIn: 'root' })
@@ -21,6 +23,16 @@ export class BillService {
   private readonly API = `${environment.apiUrl}/api/v1`;
 
   constructor(private http: HttpClient) {}
+
+  getCleaningRate(): Observable<CleaningRateResponse> {
+    return this.http.get<CleaningRateResponse>(`${this.API}/settings/cleaning-rate`);
+  }
+
+  updateCleaningRate(rate: number): Observable<CleaningRateResponse> {
+    return this.http.put<CleaningRateResponse>(`${this.API}/settings/cleaning-rate`, {
+      cleaning_hourly_rate: rate,
+    });
+  }
 
   listBills(filters: BillListFilters = {}): Observable<Bill[]> {
     let params = new HttpParams();

@@ -100,7 +100,6 @@
           <tr>
             <th>ID</th>
             <th>Piso</th>
-            <th>Tipo</th>
             <th>Fecha limpieza</th>
             <th>Horas</th>
             <th>Tarifa</th>
@@ -113,13 +112,11 @@
         <tbody>
           @if (isLoading()) {
             <tr>
-              <td colspan="10" class="state-cell">Cargando facturas...</td>
+              <td colspan="9" class="state-cell">Cargando facturas...</td>
             </tr>
           } @else if (!bills().length) {
             <tr>
-              <td colspan="10" class="state-cell">
-                No hay facturas que coincidan con los filtros.
-              </td>
+              <td colspan="9" class="state-cell">No hay facturas que coincidan con los filtros.</td>
             </tr>
           } @else {
             @for (bill of bills(); track bill.bill_id ?? bill.record_id) {
@@ -133,7 +130,6 @@
                     {{ bill.apartment_id }}
                   </span>
                 </td>
-                <td>{{ bill.cleaning_type_name ?? '—' }}</td>
                 <td>{{ formatDate(bill.cleaning_date) }}</td>
                 <td>{{ bill.clean_hours }}</td>
                 <td>
