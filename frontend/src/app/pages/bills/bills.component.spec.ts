@@ -19,6 +19,8 @@ function makeBill(overrides: Partial<Bill> = {}): Bill {
     clean_hours: 2,
     cost: 30,
     hourly_rate: 15,
+    cleaning_type_id: 1,
+    cleaning_type_name: 'Limpieza normal',
     state: 'Creada',
     paid_at: null,
     cancellation_note: null,
@@ -37,9 +39,7 @@ describe('BillsComponent', () => {
     billServiceSpy = {
       listBills: jest.fn().mockReturnValue(of([makeBill()])),
       updateBillState: jest.fn(),
-      getCleaningRate: jest.fn(),
       createBill: jest.fn(),
-      updateCleaningRate: jest.fn(),
     } as unknown as jest.Mocked<BillService>;
 
     authServiceSpy = {

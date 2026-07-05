@@ -4,7 +4,6 @@ Contenedor de inyección de dependencias para FastAPI.
 
 import logging
 from dataclasses import dataclass
-from decimal import Decimal
 
 from fastapi import Depends, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -40,9 +39,11 @@ from application.bookings.queries import (
     GetUpcomingCheckoutsQuery,
     ListBookingsQuery,
 )
-from application.settings.use_cases import (
-    GetCleaningHourlyRateUseCase,
-    UpdateCleaningHourlyRateUseCase,
+from application.cleaning_types.use_cases import (
+    CreateCleaningTypeUseCase,
+    DeleteCleaningTypeUseCase,
+    ListCleaningTypesUseCase,
+    UpdateCleaningTypeUseCase,
 )
 from application.shared.password_manager_interface import IPasswordManager
 from application.shared.user_repository_interface import IUserRepository
@@ -55,8 +56,8 @@ from domain.apartments.repository import IApartmentRepository
 from domain.auth.user_entity import Role, User
 from domain.bills.repository import IBillRepository
 from domain.bookings.repository import IBookingRepository
+from domain.cleaning_types.repository import ICleaningTypeRepository
 from domain.exceptions import InvalidToken
-from domain.settings.repository import ISettingsRepository
 from infrastructure.database.session import get_db
 from infrastructure.repositories.sqlalchemy_apartment_repository import (
     SQLAlchemyApartmentRepository,
@@ -65,7 +66,9 @@ from infrastructure.repositories.sqlalchemy_bill_repository import SQLAlchemyBil
 from infrastructure.repositories.sqlalchemy_booking_repository import (
     SQLAlchemyBookingRepository,
 )
-from infrastructure.repositories.sqlalchemy_settings_repository import SQLAlchemySettingsRepository
+from infrastructure.repositories.sqlalchemy_cleaning_type_repository import (
+    SQLAlchemyCleaningTypeRepository,
+)
 from infrastructure.repositories.sqlalchemy_user_repository import SQLAlchemyUserRepository
 from infrastructure.security.jwt_token_manager import JwtTokenManager
 from infrastructure.security.passlib_password_manager import PasslibPasswordManager
@@ -159,9 +162,9 @@ def get_bill_repository(db: Session = Depends(get_db)) -> IBillRepository:
     return SQLAlchemyBillRepository(db)
 
 
-def get_settings_repository(db: Session = Depends(get_db)) -> ISettingsRepository:
-    """Repositorio de configuración (clave-valor)."""
-    return SQLAlchemySettingsRepository(db)
+def get_cleaning_type_repository(db: Session = Depends(get_db)) -> ICleaningTypeRepository:
+    """Repositorio de tipos de limpieza."""
+    return SQLAlchemyCleaningTypeRepository(db)
 
 
 # ---------------------------------------------------------------------------
@@ -307,26 +310,13 @@ def get_apartment_stats_use_case(
     )
 
 
-def get_cleaning_hourly_rate_use_case(
-    settings_repo: ISettingsRepository = Depends(get_settings_repository),
-) -> GetCleaningHourlyRateUseCase:
-    """Caso de uso de lectura del precio por hora de limpieza (con valor por defecto del entorno)."""
-    return GetCleaningHourlyRateUseCase(settings_repo, settings.CLEANING_HOURLY_RATE)
-
-
-def get_cleaning_hourly_rate(
-    rate_use_case: GetCleaningHourlyRateUseCase = Depends(get_cleaning_hourly_rate_use_case),
-) -> Decimal:
-    return rate_use_case.execute()
-
-
 def get_create_bill_use_case(
     bill_repository: IBillRepository = Depends(get_bill_repository),
     booking_repository: IBookingRepository = Depends(get_booking_repository),
-    cleaning_hourly_rate: Decimal = Depends(get_cleaning_hourly_rate),
+    cleaning_type_repository: ICleaningTypeRepository = Depends(get_cleaning_type_repository),
 ) -> CreateBillUseCase:
     """Inyección de dependencias para el caso de uso de crear una factura."""
-    return CreateBillUseCase(bill_repository, booking_repository, cleaning_hourly_rate)
+    return CreateBillUseCase(bill_repository, booking_repository, cleaning_type_repository)
 
 
 def get_update_bill_state_use_case(
@@ -351,15 +341,29 @@ def get_list_pending_bills_use_case(
     return ListPendingBillsUseCase(booking_repository, bill_repository)
 
 
-def get_cleaning_rate_use_case(
-    settings_repo: ISettingsRepository = Depends(get_settings_repository),
-) -> GetCleaningHourlyRateUseCase:
-    """Caso de uso de lectura del precio por hora de limpieza (con valor por defecto del entorno)."""
-    return GetCleaningHourlyRateUseCase(settings_repo, settings.CLEANING_HOURLY_RATE)
+def get_list_cleaning_types_use_case(
+    repository: ICleaningTypeRepository = Depends(get_cleaning_type_repository),
+) -> ListCleaningTypesUseCase:
+    """Inyección de dependencias para listar los tipos de limpieza."""
+    return ListCleaningTypesUseCase(repository)
 
 
-def get_update_cleaning_rate_use_case(
-    settings_repo: ISettingsRepository = Depends(get_settings_repository),
-) -> UpdateCleaningHourlyRateUseCase:
-    """Caso de uso para actualizar el precio por hora de limpieza."""
-    return UpdateCleaningHourlyRateUseCase(settings_repo)
+def get_create_cleaning_type_use_case(
+    repository: ICleaningTypeRepository = Depends(get_cleaning_type_repository),
+) -> CreateCleaningTypeUseCase:
+    """Inyección de dependencias para crear un tipo de limpieza."""
+    return CreateCleaningTypeUseCase(repository)
+
+
+def get_update_cleaning_type_use_case(
+    repository: ICleaningTypeRepository = Depends(get_cleaning_type_repository),
+) -> UpdateCleaningTypeUseCase:
+    """Inyección de dependencias para actualizar un tipo de limpieza."""
+    return UpdateCleaningTypeUseCase(repository)
+
+
+def get_delete_cleaning_type_use_case(
+    repository: ICleaningTypeRepository = Depends(get_cleaning_type_repository),
+) -> DeleteCleaningTypeUseCase:
+    """Inyección de dependencias para eliminar un tipo de limpieza."""
+    return DeleteCleaningTypeUseCase(repository)
