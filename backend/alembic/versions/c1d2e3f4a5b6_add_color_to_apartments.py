@@ -1,7 +1,7 @@
 """add_color_to_apartments
 
-Revision ID: f1a2b3c4d5e6
-Revises: b7c8d9e0f1a2
+Revision ID: c1d2e3f4a5b6
+Revises: b2d4f6a8c0e1
 Create Date: 2026-06-28 12:00:00.000000
 
 """
@@ -13,8 +13,8 @@ import sqlalchemy as sa
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision: str = "f1a2b3c4d5e6"
-down_revision: str | Sequence[str] | None = "b7c8d9e0f1a2"
+revision: str = "c1d2e3f4a5b6"
+down_revision: str | Sequence[str] | None = "b2d4f6a8c0e1"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
