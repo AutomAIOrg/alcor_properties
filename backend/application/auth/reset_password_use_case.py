@@ -2,8 +2,8 @@
 Caso de uso para restablecer la contraseña.
 
 A partir de un token de restablecimiento válido, fija la nueva contraseña del
-usuario. No emite tokens de sesión: tras el cambio, el usuario debe iniciar sesión
-con su nueva contraseña.
+usuario e invalida sus sesiones activas (access/refresh previos). No emite tokens
+de sesión: tras el cambio, el usuario debe iniciar sesión con su nueva contraseña.
 """
 
 import logging
@@ -68,4 +68,6 @@ class ResetPasswordUseCase:
 
         user.password = self._password_manager.hash(command.new_password)
         self._user_repository.update_user(user)
+        # Invalida cualquier access/refresh token previo: un token robado deja de servir.
+        self._user_repository.bump_token_version(user_id)
         logger.info("Contraseña restablecida correctamente")

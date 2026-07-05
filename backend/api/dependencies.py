@@ -132,6 +132,9 @@ def get_current_user(
     user = user_repository.get_by_id(user_id)
     if user is None:
         raise InvalidToken("Usuario del token no encontrado.")
+
+    if (token.token_version or 0) != user.token_version:
+        raise InvalidToken("Token de sesión revocado.")
     return user
 
 

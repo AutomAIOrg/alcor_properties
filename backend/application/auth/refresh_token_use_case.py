@@ -46,11 +46,15 @@ class RefreshTokenUseCase:
         if user is None:
             raise InvalidToken("Usuario del token no encontrado")
 
+        if (token_payload.token_version or 0) != user.token_version:
+            raise InvalidToken("Token de sesión revocado")
+
         access_token = self._token_manager.create_access_token(
             subject=str(user.id),
             claims={
                 "username": user.username,
                 "role": user.role,
+                "ver": user.token_version,
             },
         )
         return RefreshTokenResult(access_token=access_token)
