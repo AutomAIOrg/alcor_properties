@@ -162,3 +162,56 @@ class TestDeleteUser:
 
         with pytest.raises(UserNotFound):
             repository.delete_user(9999)
+
+
+class TestPasswordResetJti:
+    def test_set_and_consume_password_reset_jti(self, sqlite_session):
+        orm = _insert_user_orm(sqlite_session)
+        repository = SQLAlchemyUserRepository(sqlite_session)
+
+        repository.set_password_reset_jti(orm.id, "jti-abc")
+
+        assert repository.consume_password_reset_jti(orm.id, "jti-abc") is True
+        assert repository.consume_password_reset_jti(orm.id, "jti-abc") is False
+
+    def test_consume_password_reset_jti_returns_false_for_wrong_jti(self, sqlite_session):
+        orm = _insert_user_orm(sqlite_session)
+        repository = SQLAlchemyUserRepository(sqlite_session)
+
+        repository.set_password_reset_jti(orm.id, "jti-abc")
+
+        assert repository.consume_password_reset_jti(orm.id, "jti-other") is False
+
+    def test_set_password_reset_jti_raises_user_not_found_for_missing_id(self, sqlite_session):
+        repository = SQLAlchemyUserRepository(sqlite_session)
+
+        with pytest.raises(UserNotFound):
+            repository.set_password_reset_jti(9999, "jti-abc")
+
+
+class TestTokenVersion:
+    def test_new_user_starts_with_token_version_zero(self, sqlite_session):
+        orm = _insert_user_orm(sqlite_session)
+        repository = SQLAlchemyUserRepository(sqlite_session)
+
+        stored = repository.get_by_id(orm.id)
+
+        assert stored is not None
+        assert stored.token_version == 0
+
+    def test_bump_token_version_increments_value(self, sqlite_session):
+        orm = _insert_user_orm(sqlite_session)
+        repository = SQLAlchemyUserRepository(sqlite_session)
+
+        repository.bump_token_version(orm.id)
+        repository.bump_token_version(orm.id)
+
+        stored = repository.get_by_id(orm.id)
+        assert stored is not None
+        assert stored.token_version == 2
+
+    def test_bump_token_version_raises_user_not_found_for_missing_id(self, sqlite_session):
+        repository = SQLAlchemyUserRepository(sqlite_session)
+
+        with pytest.raises(UserNotFound):
+            repository.bump_token_version(9999)

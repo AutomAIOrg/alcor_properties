@@ -8,6 +8,11 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/logging/logging.component').then(m => m.LoggingComponent),
   },
   {
+    path: 'reset-password',
+    loadComponent: () =>
+      import('./pages/reset-password/reset-password.component').then(m => m.ResetPasswordComponent),
+  },
+  {
     path: 'calendar',
     loadComponent: () =>
       import('./pages/calendar/calendar.component').then(m => m.CalendarComponent),

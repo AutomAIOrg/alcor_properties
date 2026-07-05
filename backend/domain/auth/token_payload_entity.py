@@ -17,3 +17,5 @@ class TokenPayload:
     issued_at: datetime | None = None
     username: str | None = None
     role: Role | None = None
+    jti: str | None = None
+    token_version: int | None = None

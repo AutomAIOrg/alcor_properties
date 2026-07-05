@@ -28,15 +28,26 @@ def mock_refresh_token_use_case() -> MagicMock:
 
 
 @pytest.fixture
+def mock_forgot_password_use_case() -> MagicMock:
+    return MagicMock()
+
+
+@pytest.fixture
 def auth_api_client(
     mock_login_use_case: MagicMock,
     mock_refresh_token_use_case: MagicMock,
+    mock_forgot_password_use_case: MagicMock,
 ) -> Iterator[TestClient]:
-    from api.dependencies import get_login_use_case, get_refresh_token_use_case
+    from api.dependencies import (
+        get_forgot_password_use_case,
+        get_login_use_case,
+        get_refresh_token_use_case,
+    )
     from main import app
 
     app.dependency_overrides[get_login_use_case] = lambda: mock_login_use_case
     app.dependency_overrides[get_refresh_token_use_case] = lambda: mock_refresh_token_use_case
+    app.dependency_overrides[get_forgot_password_use_case] = lambda: mock_forgot_password_use_case
 
     try:
         with TestClient(app, raise_server_exceptions=True) as client:
@@ -44,6 +55,7 @@ def auth_api_client(
     finally:
         app.dependency_overrides.pop(get_login_use_case, None)
         app.dependency_overrides.pop(get_refresh_token_use_case, None)
+        app.dependency_overrides.pop(get_forgot_password_use_case, None)
 
 
 class TestLoginEndpoint:
@@ -135,3 +147,36 @@ class TestRefreshEndpoint:
         response = auth_api_client.post("/api/v1/auth/refresh", json={})
 
         assert response.status_code == 422
+
+
+class TestForgotPasswordEndpoint:
+    def test_forgot_password_returns_uniform_message_and_normalizes_email(
+        self,
+        auth_api_client,
+        mock_forgot_password_use_case,
+    ):
+        response = auth_api_client.post(
+            "/api/v1/auth/forgot-password",
+            json={"email": "  Admin@Example.COM  "},
+        )
+
+        assert response.status_code == 200
+        assert response.json() == {
+            "message": (
+                "Si el email está registrado, recibirás un enlace para restablecer tu contraseña."
+            )
+        }
+        mock_forgot_password_use_case.execute.assert_called_once_with("admin@example.com")
+
+    def test_forgot_password_invalid_email_returns_422(
+        self,
+        auth_api_client,
+        mock_forgot_password_use_case,
+    ):
+        response = auth_api_client.post(
+            "/api/v1/auth/forgot-password",
+            json={"email": "not-an-email"},
+        )
+
+        assert response.status_code == 422
+        mock_forgot_password_use_case.execute.assert_not_called()

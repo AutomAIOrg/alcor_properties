@@ -47,12 +47,13 @@ class TestJwtTokenManager:
             refresh_token_expire_days=7,
         )
 
-        token = manager.create_refresh_token(subject="1")
+        token = manager.create_refresh_token(subject="1", token_version=3)
 
         payload = manager.decode_refresh_token(token)
         assert payload.subject == "1"
         assert payload.username is None
         assert payload.role is None
+        assert payload.token_version == 3
         assert payload.issued_at is not None
         assert payload.expires_at > payload.issued_at
 
@@ -109,3 +110,20 @@ class TestJwtTokenManager:
 
         with pytest.raises(InvalidToken, match="rol inválido"):
             JwtTokenManager(secret_key=_SECRET, algorithm=_ALGORITHM).decode_access_token(token)
+
+    def test_create_and_decode_reset_token_includes_jti(self):
+        manager = JwtTokenManager(
+            secret_key=_SECRET,
+            algorithm=_ALGORITHM,
+            reset_token_expire_minutes=15,
+        )
+
+        issued = manager.create_reset_token(subject="1")
+
+        assert issued.token
+        assert issued.jti
+
+        payload = manager.decode_reset_token(issued.token)
+        assert payload.subject == "1"
+        assert payload.jti == issued.jti
+        assert payload.expires_at > payload.issued_at

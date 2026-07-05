@@ -75,6 +75,32 @@ class TestProtectedBookings:
         assert response.status_code == 401
         assert response.headers["WWW-Authenticate"] == "Bearer"
 
+    def test_bookings_with_revoked_token_version_returns_401(self, protected_api_client):
+        from api.dependencies import get_user_repository
+        from main import app
+        from tests.helpers import make_user
+
+        mock_user_repository = MagicMock()
+        mock_user_repository.get_by_id.return_value = make_user(
+            id=1, role=Role.ADMIN, token_version=5
+        )
+        app.dependency_overrides[get_user_repository] = lambda: mock_user_repository
+
+        try:
+            token = JwtTokenManager(secret_key=_SECRET).create_access_token(
+                subject="1",
+                claims={"username": "user", "role": Role.ADMIN, "ver": 4},
+            )
+            response = protected_api_client.get(
+                "/api/v1/bookings/",
+                headers={"Authorization": f"Bearer {token}"},
+            )
+        finally:
+            app.dependency_overrides.pop(get_user_repository, None)
+
+        assert response.status_code == 401
+        assert response.headers["WWW-Authenticate"] == "Bearer"
+
 
 class TestCleaningOpportunitiesAuth:
     def test_cleaning_opportunities_without_token_returns_401(self, protected_api_client):

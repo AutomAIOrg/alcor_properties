@@ -2,7 +2,7 @@
 DTOs (Data Transfer Objects) para la API de login.
 """
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 
 class LoginRequest(BaseModel):
@@ -20,6 +20,32 @@ class LoginResponse(BaseModel):
     access_token: str
     refresh_token: str
     token_type: str = "bearer"
+
+
+class ForgotPasswordRequest(BaseModel):
+    """DTO de entrada para POST /forgot-password."""
+
+    email: EmailStr = Field(..., description="Email del usuario que olvidó la contraseña")
+
+    @field_validator("email", mode="before")
+    @classmethod
+    def normalize_email(cls, value: object) -> object:
+        if isinstance(value, str):
+            return value.strip().lower()
+        return value
+
+
+class MessageResponse(BaseModel):
+    """DTO de salida genérico con un mensaje informativo."""
+
+    message: str
+
+
+class ResetPasswordRequest(BaseModel):
+    """DTO de entrada para POST /reset-password."""
+
+    reset_token: str = Field(..., description="Token de restablecimiento")
+    new_password: str = Field(..., description="Nueva contraseña")
 
 
 class RefreshTokenRequest(BaseModel):

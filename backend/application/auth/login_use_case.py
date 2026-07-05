@@ -56,11 +56,15 @@ class LoginUseCase:
         claims = {
             "username": user.username,
             "role": user.role,
+            "ver": user.token_version,
         }
         access_token = self._token_manager.create_access_token(
             subject=str(user.id),
             claims=claims,
         )
-        refresh_token = self._token_manager.create_refresh_token(subject=str(user.id))
+        refresh_token = self._token_manager.create_refresh_token(
+            subject=str(user.id),
+            token_version=user.token_version,
+        )
 
         return LoginResult(access_token=access_token, refresh_token=refresh_token)

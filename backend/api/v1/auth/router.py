@@ -7,15 +7,25 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends
 
-from api.dependencies import get_login_use_case, get_refresh_token_use_case
+from api.dependencies import (
+    get_forgot_password_use_case,
+    get_login_use_case,
+    get_refresh_token_use_case,
+    get_reset_password_use_case,
+)
 from api.v1.auth.schemas import (
     AccessTokenResponse,
+    ForgotPasswordRequest,
     LoginRequest,
     LoginResponse,
+    MessageResponse,
     RefreshTokenRequest,
+    ResetPasswordRequest,
 )
+from application.auth.forgot_password_use_case import ForgotPasswordUseCase
 from application.auth.login_use_case import LoginCredentials, LoginUseCase
 from application.auth.refresh_token_use_case import RefreshTokenCommand, RefreshTokenUseCase
+from application.auth.reset_password_use_case import ResetPasswordCommand, ResetPasswordUseCase
 
 logger = logging.getLogger(__name__)
 
@@ -36,6 +46,38 @@ async def user_login(
         access_token=token.access_token,
         refresh_token=token.refresh_token,
     )
+
+
+@router.post("/forgot-password", response_model=MessageResponse)
+async def forgot_password(
+    request: ForgotPasswordRequest,
+    forgot_password_use_case: Annotated[
+        ForgotPasswordUseCase, Depends(get_forgot_password_use_case)
+    ],
+):
+    """Si el email está registrado, envía un enlace para restablecer la contraseña."""
+    logger.info("Solicitud de restablecimiento de contraseña")
+    forgot_password_use_case.execute(request.email)
+    # Respuesta uniforme: nunca se revela si el email existe.
+    return MessageResponse(
+        message="Si el email está registrado, recibirás un enlace para restablecer tu contraseña."
+    )
+
+
+@router.post("/reset-password", response_model=MessageResponse)
+async def reset_password(
+    request: ResetPasswordRequest,
+    reset_password_use_case: Annotated[ResetPasswordUseCase, Depends(get_reset_password_use_case)],
+):
+    """Fija la nueva contraseña a partir del token recibido por email."""
+    logger.info("Restablecimiento de contraseña")
+    reset_password_use_case.execute(
+        ResetPasswordCommand(
+            reset_token=request.reset_token,
+            new_password=request.new_password,
+        )
+    )
+    return MessageResponse(message="Contraseña actualizada. Ya puedes iniciar sesión.")
 
 
 @router.post("/refresh", response_model=AccessTokenResponse)

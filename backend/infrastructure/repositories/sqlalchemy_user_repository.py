@@ -105,6 +105,41 @@ class SQLAlchemyUserRepository(IUserRepository):
             logger.exception(f"Error al actualizar el usuario: {e}")
             raise UserDatabaseError("Error al actualizar el usuario.") from e
 
+    def set_password_reset_jti(self, user_id: int, jti: str) -> None:
+        """Registra el jti del token de restablecimiento activo para el usuario."""
+        orm = self._db.query(UserORM).filter(UserORM.id == user_id).first()
+        if orm is None:
+            raise UserNotFound()
+        orm.password_reset_jti = jti
+        try:
+            self._db.commit()
+        except Exception as e:
+            self._db.rollback()
+            logger.exception(f"Error al registrar el token de restablecimiento: {e}")
+            raise UserDatabaseError("Error al registrar el token de restablecimiento.") from e
+
+    def consume_password_reset_jti(self, user_id: int, jti: str) -> bool:
+        """Consume el jti de forma atómica. Devuelve True si era válido y no estaba usado."""
+        rows = (
+            self._db.query(UserORM)
+            .filter(UserORM.id == user_id, UserORM.password_reset_jti == jti)
+            .update({UserORM.password_reset_jti: None}, synchronize_session=False)
+        )
+        return rows == 1
+
+    def bump_token_version(self, user_id: int) -> None:
+        """Incrementa la versión de token del usuario, invalidando sus sesiones activas."""
+        orm = self._db.query(UserORM).filter(UserORM.id == user_id).first()
+        if orm is None:
+            raise UserNotFound()
+        orm.token_version = orm.token_version + 1
+        try:
+            self._db.commit()
+        except Exception as e:
+            self._db.rollback()
+            logger.exception(f"Error al invalidar las sesiones del usuario: {e}")
+            raise UserDatabaseError("Error al invalidar las sesiones del usuario.") from e
+
     # ------------------------------------------------------------------ #
     # Helpers privados de conversión                                     #
     # ------------------------------------------------------------------ #
@@ -120,4 +155,5 @@ class SQLAlchemyUserRepository(IUserRepository):
             lastname=orm.lastname,
             email=orm.email,
             role=Role(orm.role),
+            token_version=orm.token_version,
         )
