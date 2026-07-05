@@ -44,3 +44,13 @@ class IUserRepository(ABC):
     def get_all_users(self) -> list[User]:
         """Devuelve todos los usuarios."""
         pass
+
+    @abstractmethod
+    def set_password_reset_jti(self, user_id: int, jti: str) -> None:
+        """Registra el jti del token de restablecimiento activo para el usuario."""
+        pass
+
+    @abstractmethod
+    def consume_password_reset_jti(self, user_id: int, jti: str) -> bool:
+        """Consume el jti de forma atómica. Devuelve True si era válido y no estaba usado."""
+        pass

@@ -25,3 +25,8 @@ class UserORM(Base):
 
     # Rol
     role: Mapped[str] = mapped_column("Role", String(100), nullable=False)
+
+    # Token de restablecimiento de contraseña activo (jti del JWT, un solo uso).
+    password_reset_jti: Mapped[str | None] = mapped_column(
+        "PasswordResetJti", String(36), nullable=True
+    )
