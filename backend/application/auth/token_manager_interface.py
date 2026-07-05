@@ -28,7 +28,7 @@ class ITokenManager(ABC):
         pass
 
     @abstractmethod
-    def create_refresh_token(self, subject: str) -> str:
+    def create_refresh_token(self, subject: str, token_version: int = 0) -> str:
         """Crea un token de refresh para un sujeto autenticado."""
         pass
 

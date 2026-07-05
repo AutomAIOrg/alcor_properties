@@ -63,12 +63,13 @@ class JwtTokenManager(ITokenManager):
         """Valida un token de acceso y devuelve sus claims normalizados."""
         return self._decode_token(token, expected_type="access")
 
-    def create_refresh_token(self, subject: str) -> str:
+    def create_refresh_token(self, subject: str, token_version: int = 0) -> str:
         """Crea un token de refresh para un sujeto autenticado."""
         return self._create_token(
             subject=subject,
             token_type="refresh",
             expires_delta=timedelta(days=self._refresh_token_expire_days),
+            claims={"ver": token_version},
         )
 
     def decode_refresh_token(self, token: str) -> TokenPayload:
@@ -143,4 +144,5 @@ class JwtTokenManager(ITokenManager):
             username=payload.get("username"),
             role=role,
             jti=payload.get("jti"),
+            token_version=payload.get("ver"),
         )
