@@ -30,3 +30,8 @@ class UserORM(Base):
     password_reset_jti: Mapped[str | None] = mapped_column(
         "PasswordResetJti", String(36), nullable=True
     )
+
+    # Versión de token de sesión. Al incrementarse invalida los access/refresh previos.
+    token_version: Mapped[int] = mapped_column(
+        "TokenVersion", Integer, nullable=False, default=0, server_default="0"
+    )

@@ -54,3 +54,8 @@ class IUserRepository(ABC):
     def consume_password_reset_jti(self, user_id: int, jti: str) -> bool:
         """Consume el jti de forma atómica. Devuelve True si era válido y no estaba usado."""
         pass
+
+    @abstractmethod
+    def bump_token_version(self, user_id: int) -> None:
+        """Incrementa la versión de token del usuario, invalidando sus sesiones activas."""
+        pass

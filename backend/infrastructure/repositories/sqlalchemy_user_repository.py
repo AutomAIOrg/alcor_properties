@@ -127,6 +127,19 @@ class SQLAlchemyUserRepository(IUserRepository):
         )
         return rows == 1
 
+    def bump_token_version(self, user_id: int) -> None:
+        """Incrementa la versión de token del usuario, invalidando sus sesiones activas."""
+        orm = self._db.query(UserORM).filter(UserORM.id == user_id).first()
+        if orm is None:
+            raise UserNotFound()
+        orm.token_version = orm.token_version + 1
+        try:
+            self._db.commit()
+        except Exception as e:
+            self._db.rollback()
+            logger.exception(f"Error al invalidar las sesiones del usuario: {e}")
+            raise UserDatabaseError("Error al invalidar las sesiones del usuario.") from e
+
     # ------------------------------------------------------------------ #
     # Helpers privados de conversión                                     #
     # ------------------------------------------------------------------ #
@@ -142,4 +155,5 @@ class SQLAlchemyUserRepository(IUserRepository):
             lastname=orm.lastname,
             email=orm.email,
             role=Role(orm.role),
+            token_version=orm.token_version,
         )
