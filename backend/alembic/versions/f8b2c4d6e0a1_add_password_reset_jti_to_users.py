@@ -1,7 +1,7 @@
 """add_password_reset_jti_to_users
 
 Revision ID: f8b2c4d6e0a1
-Revises: e7a1b2c3d4f5
+Revises: b2d4f6a8c0e1
 Create Date: 2026-07-05 18:00:00.000000
 
 """
@@ -14,7 +14,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "f8b2c4d6e0a1"
-down_revision: str | Sequence[str] | None = "e7a1b2c3d4f5"
+down_revision: str | Sequence[str] | None = "b2d4f6a8c0e1"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
