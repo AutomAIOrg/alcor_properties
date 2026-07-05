@@ -156,7 +156,36 @@
                   </div>
                 </td>
                 <td>
-                  <button class="invoice-btn" type="button" disabled>Generar factura</button>
+                  @if (canGenerateInvoice(opportunity)) {
+                    @if (canCreateBill()) {
+                      <button
+                        class="invoice-btn"
+                        type="button"
+                        (click)="openInvoiceModal(opportunity)"
+                      >
+                        @if (opportunity.billState === 'Cancelada') {
+                          Refacturar
+                        } @else {
+                          Generar factura
+                        }
+                      </button>
+                    } @else {
+                      <span class="muted-text">Sin permiso</span>
+                    }
+                  } @else if (opportunity.hasBill) {
+                    <span class="bill-state-chip" [class.paid]="opportunity.billState === 'Pagada'">
+                      {{ opportunity.billState || 'Creada' }}
+                    </span>
+                  } @else {
+                    <button
+                      class="invoice-btn"
+                      type="button"
+                      disabled
+                      title="Disponible tras el check-out (11:00)"
+                    >
+                      Generar factura
+                    </button>
+                  }
                 </td>
               </tr>
             }
@@ -165,6 +194,120 @@
       </table>
     </div>
   </section>
+
+  @if (selectedInvoiceOpportunity()) {
+    <div class="modal-backdrop" role="presentation" (click)="closeInvoiceModal()">
+      <section
+        class="comment-dialog invoice-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="invoice-dialog-title"
+        (click)="$event.stopPropagation()"
+      >
+        <h2 id="invoice-dialog-title">Generar factura</h2>
+        <p>
+          Piso <strong>{{ selectedInvoiceOpportunity()!.apartmentId }}</strong> · Salida
+          {{ formatDate(selectedInvoiceOpportunity()!.availableFromDate) }}
+          @if (selectedInvoiceOpportunity()!.availableUntilDate) {
+            · Próxima entrada
+            {{ formatDate(selectedInvoiceOpportunity()!.availableUntilDate) }}
+          }
+        </p>
+
+        @if (selectedInvoiceOpportunity()!.billState === 'Cancelada') {
+          <div class="notice warning-notice">
+            Esta limpieza tuvo una factura cancelada. Se generará una nueva factura.
+          </div>
+        }
+
+        @if (selectedInvoiceOpportunity()!.comments) {
+          <p class="invoice-comments">
+            <strong>Comentarios:</strong> {{ selectedInvoiceOpportunity()!.comments }}
+          </p>
+        }
+
+        <label class="comment-field cleaning-type-field">
+          Tipo de limpieza
+          <select
+            class="type-select"
+            [value]="selectedCleaningTypeId() ?? ''"
+            required
+            [disabled]="isLoadingCleaningTypes() || !cleaningTypes().length"
+            (change)="updateSelectedCleaningType($event)"
+          >
+            <option value="" disabled>
+              {{
+                isLoadingCleaningTypes() ? 'Cargando tipos...' : 'Selecciona un tipo de limpieza'
+              }}
+            </option>
+            @for (cleaningType of cleaningTypes(); track cleaningType.cleaning_type_id) {
+              <option [value]="cleaningType.cleaning_type_id">
+                {{ cleaningType.name }} ·
+                {{ cleaningType.hourly_rate | currency: 'EUR' : 'symbol' : '1.2-2' }}/h
+              </option>
+            }
+          </select>
+        </label>
+
+        <div class="invoice-form-grid">
+          <label class="comment-field">
+            Fecha de limpieza
+            <input
+              type="date"
+              [value]="cleaningDate()"
+              [min]="selectedInvoiceOpportunity()!.availableFromDate"
+              (input)="updateCleaningDate($event)"
+            />
+          </label>
+
+          <label class="comment-field">
+            Hora inicio
+            <input type="time" [value]="startTime()" required (input)="updateStartTime($event)" />
+          </label>
+
+          <label class="comment-field">
+            Hora fin
+            <input type="time" [value]="endTime()" required (input)="updateEndTime($event)" />
+          </label>
+        </div>
+
+        @if (invoiceFormError()) {
+          <div class="notice error-notice">{{ invoiceFormError() }}</div>
+        }
+
+        <div class="invoice-summary">
+          @if (selectedCleaningType() !== null) {
+            <p>
+              <strong>Tarifa:</strong> {{ selectedCleaningType()!.hourly_rate }} €/h
+              @if (previewHours() !== null) {
+                · <strong>Horas:</strong> {{ previewHours() }} · <strong>Total:</strong>
+                {{ previewCost() }} €
+              }
+            </p>
+          }
+        </div>
+
+        <div class="dialog-actions">
+          <button
+            class="primary-btn"
+            type="button"
+            [disabled]="isCreatingBill() || !isInvoiceFormValid()"
+            (click)="submitInvoice()"
+          >
+            {{ isCreatingBill() ? 'Generando...' : 'Generar factura' }}
+          </button>
+          <button
+            class="secondary-btn"
+            type="button"
+            [disabled]="isCreatingBill()"
+            (click)="closeInvoiceModal()"
+          >
+            Cancelar
+          </button>
+        </div>
+      </section>
+    </div>
+  }
 
   @if (selectedCommentOpportunity()) {
     <div class="modal-backdrop" role="presentation" (click)="closeCommentModal()">

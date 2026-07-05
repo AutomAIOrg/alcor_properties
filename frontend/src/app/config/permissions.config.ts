@@ -12,6 +12,18 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'admin:access',
     'users:manage',
     'properties:manage',
+    'bills:read',
+    'bills:create',
+    'bills:update',
+    'settings:read',
+    'settings:manage',
   ],
-  limpiadora: ['cleaning:access', 'bookings:read'], //Revisar permisos
+  limpiadora: [
+    'cleaning:access',
+    'bookings:read',
+    'bills:read',
+    'bills:create',
+    'bills:update',
+    'settings:read',
+  ],
 };

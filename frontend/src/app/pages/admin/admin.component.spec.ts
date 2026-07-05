@@ -2,9 +2,11 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { of, throwError } from 'rxjs';
 
 import { AdminComponent } from './admin.component';
+import { AuthService } from '../../auth/auth.service';
 import { Role } from '../../models/user.model';
 import { ApartmentResponse, ApartmentService } from '../../services/apartment.service';
 import { AdminUserResponse, AdminUserService } from '../../services/admin-user.service';
+import { CleaningType, CleaningTypeService } from '../../services/cleaning-type.service';
 
 function makeUser(overrides: Partial<AdminUserResponse> = {}): AdminUserResponse {
   return {
@@ -36,15 +38,28 @@ function makeApartment(overrides: Partial<ApartmentResponse> = {}): ApartmentRes
   };
 }
 
+function makeCleaningType(overrides: Partial<CleaningType> = {}): CleaningType {
+  return {
+    cleaning_type_id: 1,
+    name: 'Limpieza normal',
+    hourly_rate: 15,
+    active: true,
+    ...overrides,
+  };
+}
+
 describe('AdminComponent', () => {
   let fixture: ComponentFixture<AdminComponent>;
   let component: AdminComponent;
   let adminUserServiceSpy: jest.Mocked<AdminUserService>;
   let apartmentServiceSpy: jest.Mocked<ApartmentService>;
+  let cleaningTypeServiceSpy: jest.Mocked<CleaningTypeService>;
+  let authServiceSpy: jest.Mocked<AuthService>;
 
   async function setup(
     users: AdminUserResponse[] = [makeUser()],
-    apartments: ApartmentResponse[] = [makeApartment()]
+    apartments: ApartmentResponse[] = [makeApartment()],
+    cleaningTypes: CleaningType[] = [makeCleaningType()]
   ): Promise<void> {
     jest.useFakeTimers();
 
@@ -68,11 +83,26 @@ describe('AdminComponent', () => {
         .mockReturnValue(of({ message: 'Apartamento eliminado correctamente' })),
     } as unknown as jest.Mocked<ApartmentService>;
 
+    cleaningTypeServiceSpy = {
+      list: jest.fn().mockReturnValue(of(cleaningTypes)),
+      create: jest.fn().mockReturnValue(of(cleaningTypes[0])),
+      update: jest.fn().mockReturnValue(of(cleaningTypes[0])),
+      delete: jest.fn().mockReturnValue(of(void 0)),
+    } as unknown as jest.Mocked<CleaningTypeService>;
+
+    authServiceSpy = {
+      hasPermission: jest
+        .fn()
+        .mockImplementation((permission: string) => permission === 'settings:manage'),
+    } as unknown as jest.Mocked<AuthService>;
+
     await TestBed.configureTestingModule({
       imports: [AdminComponent],
       providers: [
         { provide: AdminUserService, useValue: adminUserServiceSpy },
         { provide: ApartmentService, useValue: apartmentServiceSpy },
+        { provide: CleaningTypeService, useValue: cleaningTypeServiceSpy },
+        { provide: AuthService, useValue: authServiceSpy },
       ],
     }).compileComponents();
 
@@ -372,6 +402,87 @@ describe('AdminComponent', () => {
       expect(component.propertyPendingDeletion()).toBeNull();
       expect(component.editingPropertyReference()).toBeNull();
       expect(component.isPropertyFormModalOpen()).toBe(false);
+    });
+  });
+
+  describe('F — tipos de limpieza', () => {
+    it('carga los tipos al abrir la sección', async () => {
+      await setup();
+
+      component.toggleCleaningTypesSection();
+      fixture.detectChanges();
+
+      expect(cleaningTypeServiceSpy.list).toHaveBeenCalledTimes(1);
+      expect(component.cleaningTypes().length).toBe(1);
+      expect(fixture.nativeElement.textContent).toContain('Tipos de limpieza');
+      expect(fixture.nativeElement.textContent).toContain('Limpieza normal');
+    });
+
+    it('crea un tipo de limpieza con nombre y tarifa', async () => {
+      await setup();
+
+      component.openCreateCleaningTypeDialog();
+      component.newCleaningType.set({ name: '  Fin de semana  ', hourly_rate: '20', active: true });
+      component.saveCleaningType();
+      fixture.detectChanges();
+
+      expect(cleaningTypeServiceSpy.create).toHaveBeenCalledWith({
+        name: 'Fin de semana',
+        hourly_rate: 20,
+        active: true,
+      });
+      expect(fixture.nativeElement.textContent).toContain('Tipo de limpieza creado');
+    });
+
+    it('actualiza un tipo existente', async () => {
+      await setup();
+
+      component.startEditingCleaningType(makeCleaningType({ cleaning_type_id: 3, name: 'Normal' }));
+      component.newCleaningType.set({ name: 'Renombrada', hourly_rate: '22', active: false });
+      component.saveCleaningType();
+      fixture.detectChanges();
+
+      expect(cleaningTypeServiceSpy.update).toHaveBeenCalledWith(3, {
+        name: 'Renombrada',
+        hourly_rate: 22,
+        active: false,
+      });
+      expect(fixture.nativeElement.textContent).toContain('Tipo de limpieza actualizado');
+    });
+
+    it('rechaza una tarifa inválida sin llamar al servicio', async () => {
+      await setup();
+
+      component.openCreateCleaningTypeDialog();
+      component.newCleaningType.set({ name: 'X', hourly_rate: '-1', active: true });
+      component.saveCleaningType();
+
+      expect(cleaningTypeServiceSpy.create).not.toHaveBeenCalled();
+    });
+
+    it('elimina un tipo tras confirmar', async () => {
+      await setup();
+
+      component.openDeleteCleaningTypeDialog(makeCleaningType({ cleaning_type_id: 7 }));
+      component.confirmDeleteCleaningType();
+      fixture.detectChanges();
+
+      expect(cleaningTypeServiceSpy.delete).toHaveBeenCalledWith(7);
+      expect(fixture.nativeElement.textContent).toContain('Tipo de limpieza eliminado');
+    });
+
+    it('muestra error si falla al guardar', async () => {
+      await setup();
+      cleaningTypeServiceSpy.create.mockReturnValueOnce(
+        throwError(() => ({ status: 409, error: { detail: 'El tipo ya existe' } }))
+      );
+
+      component.openCreateCleaningTypeDialog();
+      component.newCleaningType.set({ name: 'Duplicado', hourly_rate: '10', active: true });
+      component.saveCleaningType();
+      fixture.detectChanges();
+
+      expect(fixture.nativeElement.textContent).toContain('Error al crear el tipo de limpieza');
     });
   });
 });

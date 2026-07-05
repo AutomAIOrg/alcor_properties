@@ -1,9 +1,14 @@
+import { CurrencyPipe } from '@angular/common';
+import { HttpErrorResponse } from '@angular/common/http';
 import { Component, computed, inject, OnDestroy, OnInit, signal } from '@angular/core';
 import { AuthService } from '../../auth/auth.service';
 import { CleaningOpportunity as CleaningOpportunityDto } from '../../models/booking.model';
+import { CleaningType } from '../../models/cleaning-type.model';
 import { ApartmentColorService } from '../../services/apartment-color.service';
+import { BillService } from '../../services/bill.service';
 import { BookingService } from '../../services/booking.service';
 import { CalendarLayoutService } from '../../services/calendar-layout.service';
+import { CleaningTypeService } from '../../services/cleaning-type.service';
 
 interface CleaningWindow {
   apartmentId: string;
@@ -13,6 +18,9 @@ interface CleaningWindow {
   availableUntilTime: string;
   comments: string;
   sourceBookingRecordId: number;
+  canBill: boolean;
+  hasBill: boolean;
+  billState: string | null;
 }
 
 interface CleaningWeekDay {
@@ -44,11 +52,14 @@ interface ToastMessage {
 @Component({
   selector: 'app-cleaning-organization',
   standalone: true,
+  imports: [CurrencyPipe],
   templateUrl: './cleaning-organization.component.html',
   styleUrl: './cleaning-organization.component.scss',
 })
 export class CleaningOrganizationComponent implements OnInit, OnDestroy {
   private bookingService = inject(BookingService);
+  private billService = inject(BillService);
+  private cleaningTypeService = inject(CleaningTypeService);
   private authService = inject(AuthService);
   private layout = inject(CalendarLayoutService);
   private apartmentColor = inject(ApartmentColorService);
@@ -69,8 +80,44 @@ export class CleaningOrganizationComponent implements OnInit, OnDestroy {
   selectedCommentOpportunity = signal<CleaningWindow | null>(null);
   commentDraft = signal('');
   isSavingComment = signal(false);
+  selectedInvoiceOpportunity = signal<CleaningWindow | null>(null);
+  cleaningDate = signal('');
+  startTime = signal('');
+  endTime = signal('');
+  cleaningTypes = signal<CleaningType[]>([]);
+  selectedCleaningTypeId = signal<number | null>(null);
+  isLoadingCleaningTypes = signal(false);
+  isCreatingBill = signal(false);
+  invoiceFormError = signal<string | null>(null);
   toast = signal<ToastMessage | null>(null);
   isAdmin = computed(() => this.authService.hasRole('admin'));
+  canCreateBill = computed(() => this.authService.hasPermission('bills:create'));
+
+  selectedCleaningType = computed<CleaningType | null>(() => {
+    const id = this.selectedCleaningTypeId();
+    if (id === null) return null;
+    return this.cleaningTypes().find(type => type.cleaning_type_id === id) ?? null;
+  });
+
+  previewHours = computed(() =>
+    this.computeHours(this.cleaningDate(), this.startTime(), this.endTime())
+  );
+
+  previewCost = computed(() => {
+    const hours = this.previewHours();
+    const cleaningType = this.selectedCleaningType();
+    if (hours === null || cleaningType === null) return null;
+    return Math.round(hours * cleaningType.hourly_rate * 100) / 100;
+  });
+
+  isInvoiceFormValid = computed(
+    () =>
+      !!this.cleaningDate() &&
+      !!this.startTime() &&
+      !!this.endTime() &&
+      this.previewHours() !== null &&
+      this.selectedCleaningType() !== null
+  );
 
   weekDays = computed<CleaningWeekDay[]>(() => {
     const monday = this.getWeekStart(this.currentDate());
@@ -121,6 +168,9 @@ export class CleaningOrganizationComponent implements OnInit, OnDestroy {
         availableUntilTime: this.pendingTime,
         comments: opportunity.comments,
         sourceBookingRecordId: opportunity.source_booking_record_id,
+        canBill: opportunity.can_bill,
+        hasBill: opportunity.has_bill,
+        billState: opportunity.bill_state,
       }))
   );
 
@@ -225,6 +275,236 @@ export class CleaningOrganizationComponent implements OnInit, OnDestroy {
     return this.apartmentColor.resolve(apartmentId);
   }
 
+  canGenerateInvoice(opportunity: CleaningWindow): boolean {
+    return opportunity.canBill && !opportunity.hasBill;
+  }
+
+  openInvoiceModal(opportunity: CleaningWindow): void {
+    if (!this.canGenerateInvoice(opportunity)) return;
+
+    this.selectedInvoiceOpportunity.set(opportunity);
+    this.cleaningDate.set(this.layout.toIso(new Date()));
+    this.startTime.set('');
+    this.endTime.set('');
+    this.selectedCleaningTypeId.set(null);
+    this.invoiceFormError.set(null);
+    this.isLoadingCleaningTypes.set(true);
+
+    this.cleaningTypeService.list(true).subscribe({
+      next: cleaningTypes => {
+        this.cleaningTypes.set(cleaningTypes);
+        this.isLoadingCleaningTypes.set(false);
+        if (!cleaningTypes.length) {
+          this.invoiceFormError.set(
+            'No hay tipos de limpieza disponibles. Créalos en el panel de administrador.'
+          );
+        }
+      },
+      error: () => {
+        this.cleaningTypes.set([]);
+        this.isLoadingCleaningTypes.set(false);
+        this.invoiceFormError.set('No se han podido cargar los tipos de limpieza.');
+      },
+    });
+  }
+
+  updateSelectedCleaningType(event: Event): void {
+    const value = (event.target as HTMLSelectElement).value;
+    this.selectedCleaningTypeId.set(value ? Number(value) : null);
+    this.invoiceFormError.set(null);
+  }
+
+  closeInvoiceModal(): void {
+    if (this.isCreatingBill()) return;
+
+    this.selectedInvoiceOpportunity.set(null);
+    this.cleaningDate.set('');
+    this.startTime.set('');
+    this.endTime.set('');
+    this.cleaningTypes.set([]);
+    this.selectedCleaningTypeId.set(null);
+    this.invoiceFormError.set(null);
+  }
+
+  updateCleaningDate(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    this.cleaningDate.set(input.value);
+    this.invoiceFormError.set(null);
+  }
+
+  updateStartTime(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    this.startTime.set(input.value);
+    this.invoiceFormError.set(null);
+  }
+
+  updateEndTime(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    this.endTime.set(input.value);
+    this.invoiceFormError.set(null);
+  }
+
+  submitInvoice(): void {
+    const opportunity = this.selectedInvoiceOpportunity();
+    const cleaningType = this.selectedCleaningType();
+    if (!opportunity || !cleaningType || this.isCreatingBill() || !this.isInvoiceFormValid())
+      return;
+
+    if (this.previewHours() === null) {
+      this.invoiceFormError.set('La hora de fin debe ser posterior a la hora de inicio.');
+      return;
+    }
+
+    this.isCreatingBill.set(true);
+    this.invoiceFormError.set(null);
+
+    this.billService
+      .createBill({
+        record_id: opportunity.sourceBookingRecordId,
+        cleaning_date: this.cleaningDate(),
+        start_time: this.startTime(),
+        end_time: this.endTime(),
+        cleaning_type_id: cleaningType.cleaning_type_id,
+      })
+      .subscribe({
+        next: bill => {
+          this.apiCleaningOpportunities.update(opportunities =>
+            opportunities.map(item =>
+              item.source_booking_record_id === opportunity.sourceBookingRecordId
+                ? { ...item, has_bill: true, bill_state: bill.state }
+                : item
+            )
+          );
+          this.isCreatingBill.set(false);
+          this.selectedInvoiceOpportunity.set(null);
+          this.showToast(
+            'success',
+            `Factura creada (${bill.cleaning_type_name}): ${bill.clean_hours} h × ` +
+              `${bill.hourly_rate} €/h = ${bill.cost} €`
+          );
+        },
+        error: (error: HttpErrorResponse) => {
+          this.isCreatingBill.set(false);
+          this.showToast('error', this.resolveInvoiceErrorMessage(error));
+        },
+      });
+  }
+
+  canGenerateInvoice(opportunity: CleaningWindow): boolean {
+    return opportunity.canBill && !opportunity.hasBill;
+  }
+
+  openInvoiceModal(opportunity: CleaningWindow): void {
+    if (!this.canGenerateInvoice(opportunity)) return;
+
+    this.selectedInvoiceOpportunity.set(opportunity);
+    this.cleaningDate.set(this.layout.toIso(new Date()));
+    this.startTime.set('');
+    this.endTime.set('');
+    this.selectedCleaningTypeId.set(null);
+    this.invoiceFormError.set(null);
+    this.isLoadingCleaningTypes.set(true);
+
+    this.cleaningTypeService.list(true).subscribe({
+      next: cleaningTypes => {
+        this.cleaningTypes.set(cleaningTypes);
+        this.isLoadingCleaningTypes.set(false);
+        if (!cleaningTypes.length) {
+          this.invoiceFormError.set(
+            'No hay tipos de limpieza disponibles. Créalos en el panel de administrador.'
+          );
+        }
+      },
+      error: () => {
+        this.cleaningTypes.set([]);
+        this.isLoadingCleaningTypes.set(false);
+        this.invoiceFormError.set('No se han podido cargar los tipos de limpieza.');
+      },
+    });
+  }
+
+  updateSelectedCleaningType(event: Event): void {
+    const value = (event.target as HTMLSelectElement).value;
+    this.selectedCleaningTypeId.set(value ? Number(value) : null);
+    this.invoiceFormError.set(null);
+  }
+
+  closeInvoiceModal(): void {
+    if (this.isCreatingBill()) return;
+
+    this.selectedInvoiceOpportunity.set(null);
+    this.cleaningDate.set('');
+    this.startTime.set('');
+    this.endTime.set('');
+    this.cleaningTypes.set([]);
+    this.selectedCleaningTypeId.set(null);
+    this.invoiceFormError.set(null);
+  }
+
+  updateCleaningDate(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    this.cleaningDate.set(input.value);
+    this.invoiceFormError.set(null);
+  }
+
+  updateStartTime(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    this.startTime.set(input.value);
+    this.invoiceFormError.set(null);
+  }
+
+  updateEndTime(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    this.endTime.set(input.value);
+    this.invoiceFormError.set(null);
+  }
+
+  submitInvoice(): void {
+    const opportunity = this.selectedInvoiceOpportunity();
+    const cleaningType = this.selectedCleaningType();
+    if (!opportunity || !cleaningType || this.isCreatingBill() || !this.isInvoiceFormValid())
+      return;
+
+    if (this.previewHours() === null) {
+      this.invoiceFormError.set('La hora de fin debe ser posterior a la hora de inicio.');
+      return;
+    }
+
+    this.isCreatingBill.set(true);
+    this.invoiceFormError.set(null);
+
+    this.billService
+      .createBill({
+        record_id: opportunity.sourceBookingRecordId,
+        cleaning_date: this.cleaningDate(),
+        start_time: this.startTime(),
+        end_time: this.endTime(),
+        cleaning_type_id: cleaningType.cleaning_type_id,
+      })
+      .subscribe({
+        next: bill => {
+          this.apiCleaningOpportunities.update(opportunities =>
+            opportunities.map(item =>
+              item.source_booking_record_id === opportunity.sourceBookingRecordId
+                ? { ...item, has_bill: true, bill_state: bill.state }
+                : item
+            )
+          );
+          this.isCreatingBill.set(false);
+          this.selectedInvoiceOpportunity.set(null);
+          this.showToast(
+            'success',
+            `Factura creada (${bill.cleaning_type_name}): ${bill.clean_hours} h × ` +
+              `${bill.hourly_rate} €/h = ${bill.cost} €`
+          );
+        },
+        error: (error: HttpErrorResponse) => {
+          this.isCreatingBill.set(false);
+          this.showToast('error', this.resolveInvoiceErrorMessage(error));
+        },
+      });
+  }
+
   openCommentModal(opportunity: CleaningWindow): void {
     if (!this.isAdmin()) return;
 
@@ -273,6 +553,29 @@ export class CleaningOrganizationComponent implements OnInit, OnDestroy {
           this.showToast('error', 'Ha fallado al guardar el comentario');
         },
       });
+  }
+
+  private resolveInvoiceErrorMessage(error: HttpErrorResponse): string {
+    if (error.status === 409) {
+      return 'Ya existe una factura para esta reserva.';
+    }
+    if (error.status === 422) {
+      const detail = error.error?.detail;
+      if (typeof detail === 'string') return detail;
+      return 'Datos de factura inválidos.';
+    }
+    return 'No se ha podido crear la factura.';
+  }
+
+  private computeHours(cleaningDate: string, startTime: string, endTime: string): number | null {
+    if (!cleaningDate || !startTime || !endTime) return null;
+
+    const start = new Date(`${cleaningDate}T${startTime}`);
+    const end = new Date(`${cleaningDate}T${endTime}`);
+    if (end <= start) return null;
+
+    const seconds = (end.getTime() - start.getTime()) / 1000;
+    return Math.round((seconds / 3600) * 100) / 100;
   }
 
   private getWeekStart(date: Date): Date {
