@@ -2,6 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { of, throwError } from 'rxjs';
 import { BookingModalComponent } from './booking-modal.component';
 import { BookingService } from '../../../services/booking.service';
+import { ApartmentColorService } from '../../../services/apartment-color.service';
 import { AuthService } from '../../../auth/auth.service';
 import { Booking, BASE_STATUSES } from '../../../models/booking.model';
 
@@ -55,6 +56,7 @@ describe('BookingModalComponent', () => {
       providers: [
         { provide: BookingService, useValue: bookingServiceSpy },
         { provide: AuthService, useValue: authServiceMock },
+        { provide: ApartmentColorService, useValue: { resolve: () => '#000000' } },
       ],
     }).compileComponents();
 

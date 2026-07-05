@@ -2,7 +2,12 @@
 Entidad de dominio de apartamento
 """
 
+import re
+
 from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+# Color personalizado del calendario: hexadecimal #RRGGBB.
+HEX_COLOR_PATTERN = re.compile(r"^#[0-9A-Fa-f]{6}$")
 
 
 class Apartment(BaseModel):
@@ -38,6 +43,11 @@ class Apartment(BaseModel):
         default=None, description="Correo electrónico del propietario del apartamento"
     )
     phone: str | None = Field(default=None, description="Teléfono del propietario del apartamento")
+    color: str | None = Field(
+        default=None,
+        description="Color personalizado del apartamento en el calendario (hexadecimal #RRGGBB). "
+        "Si es None se usa el color automático.",
+    )
 
     # ------------------------------------------------------------------ #
     # Validadores                                                        #
@@ -48,3 +58,14 @@ class Apartment(BaseModel):
         if not v.strip():
             raise ValueError("apartment_id no puede estar vacío")
         return v.strip()
+
+    @field_validator("color")
+    def validate_color(cls, v: str | None) -> str | None:
+        if v is None:
+            return None
+        v = v.strip()
+        if not v:
+            return None
+        if not HEX_COLOR_PATTERN.match(v):
+            raise ValueError("color debe tener formato hexadecimal #RRGGBB")
+        return v

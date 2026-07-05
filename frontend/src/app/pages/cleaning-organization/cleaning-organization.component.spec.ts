@@ -8,6 +8,7 @@ import { Bill } from '../../models/bill.model';
 import { Booking, CleaningOpportunity as CleaningOpportunityDto } from '../../models/booking.model';
 import { CleaningType } from '../../models/cleaning-type.model';
 import { BillService } from '../../services/bill.service';
+import { ApartmentService } from '../../services/apartment.service';
 import { BookingService } from '../../services/booking.service';
 import { CalendarLayoutService } from '../../services/calendar-layout.service';
 import { CleaningTypeService } from '../../services/cleaning-type.service';
@@ -122,6 +123,10 @@ describe('CleaningOrganizationComponent', () => {
         { provide: BillService, useValue: billServiceSpy },
         { provide: CleaningTypeService, useValue: cleaningTypeServiceSpy },
         { provide: AuthService, useValue: authServiceSpy },
+        {
+          provide: ApartmentService,
+          useValue: { getAllApartments: jest.fn().mockReturnValue(of([])) },
+        },
         CalendarLayoutService,
       ],
     });
@@ -758,6 +763,10 @@ describe('CleaningOrganizationComponent', () => {
         { provide: BillService, useValue: billServiceSpy },
         { provide: CleaningTypeService, useValue: cleaningTypeServiceSpy },
         { provide: AuthService, useValue: authServiceSpy },
+        {
+          provide: ApartmentService,
+          useValue: { getAllApartments: jest.fn().mockReturnValue(of([])) },
+        },
         CalendarLayoutService,
       ],
     });

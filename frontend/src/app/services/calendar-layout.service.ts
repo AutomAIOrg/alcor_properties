@@ -1,7 +1,10 @@
 import { Injectable } from '@angular/core';
 import { Booking } from '../models/booking.model';
 import { CalendarDay, CalendarWeek, WeekBar } from '../models/calendar.model';
-import { BookingColorPipe } from '../pipes/booking-color.pipe';
+import { autoApartmentColor } from './apartment-color.service';
+
+/** Resuelve el color de un apartamento a partir de su apartment_id. */
+export type ApartmentColorResolver = (apartmentId: string) => string;
 
 /**
  * Servicio de layout del calendario.
@@ -17,8 +20,6 @@ export class CalendarLayoutService {
   readonly BAR_GAP = 2; // px entre carriles
   readonly DAY_HEADER_H = 30; // px del número de día
   readonly BAR_TOP_PAD = 4; // px de padding superior sobre las barras
-
-  private readonly colorPipe = new BookingColorPipe();
 
   /**
    * Altura mínima de una fila semanal según el número de carriles activos.
@@ -63,7 +64,8 @@ export class CalendarLayoutService {
     month: number,
     bookings: Booking[],
     todayStr: string,
-    assignment: Map<number, number>
+    assignment: Map<number, number>,
+    resolveColor: ApartmentColorResolver = autoApartmentColor
   ): CalendarWeek[] {
     const calDates = this.buildCalendarDates(year, month);
     const result: CalendarWeek[] = [];
@@ -86,7 +88,7 @@ export class CalendarLayoutService {
       const rawBars: WeekBar[] = [];
 
       for (const b of overlapping) {
-        const bar = this.buildBar(b, weekDates, weekStartStr, weekEndStr, assignment);
+        const bar = this.buildBar(b, weekDates, weekStartStr, weekEndStr, assignment, resolveColor);
         if (bar) rawBars.push(bar);
       }
 
@@ -142,7 +144,8 @@ export class CalendarLayoutService {
     weekDates: { date: Date; currentMonth: boolean; iso: string }[],
     weekStartStr: string,
     weekEndStr: string,
-    assignment: Map<number, number>
+    assignment: Map<number, number>,
+    resolveColor: ApartmentColorResolver
   ): WeekBar | null {
     const laneIndex = assignment.get(b.record_id) ?? 0;
     const isCheckin = b.check_in >= weekStartStr && b.check_in <= weekEndStr;
@@ -162,19 +165,18 @@ export class CalendarLayoutService {
 
     if (widthPct <= 0) return null;
 
-    const background = this.buildBackground(b.apartment_id, isCheckin, isCheckout, widthPct);
+    const color = resolveColor(b.apartment_id);
+    const background = this.buildBackground(color, isCheckin, isCheckout, widthPct);
 
     return { booking: b, laneIndex, leftPct, widthPct, isCheckin, isCheckout, background };
   }
 
   private buildBackground(
-    bookingId: string,
+    color: string,
     isCheckin: boolean,
     isCheckout: boolean,
     widthPct: number
   ): string {
-    const color = this.colorPipe.transform(bookingId);
-
     // Indicador de tamaño fijo: 10% de 1/3 de celda, expresado como % de la barra
     const indicatorPct = 1000 / 10 / widthPct;
     const g = indicatorPct.toFixed(3);

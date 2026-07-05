@@ -19,6 +19,7 @@ function makeApartment(overrides: Partial<Apartment> = {}): Apartment {
     owner_name: 'Ana',
     email: null,
     phone: null,
+    color: null,
     ...overrides,
   };
 }
@@ -92,6 +93,7 @@ describe('ApartmentService', () => {
         owner_name: 'Juan Pérez',
         email: 'juan@example.com',
         phone: '+34600000000',
+        color: null,
       };
       let result: { message: string } | undefined;
 
