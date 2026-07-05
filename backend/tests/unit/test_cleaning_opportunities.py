@@ -246,18 +246,18 @@ class TestCleaningWindowOverlapsRange:
 
 class TestGetCleaningOpportunitiesUseCase:
     def test_delegates_to_repository_with_operational_date_range(self, mock_repo):
-        mock_repo.list.return_value = []
+        mock_repo.search_bookings.return_value = []
         use_case = GetCleaningOpportunitiesUseCase(mock_repo)
         reference_date = date(2026, 6, 18)
 
         assert use_case.execute(reference_date=reference_date) == []
-        mock_repo.list.assert_called_once_with(
+        mock_repo.search_bookings.assert_called_once_with(
             start_date=date(2026, 5, 18),
             end_date=date(2026, 10, 10),
         )
 
     def test_excludes_windows_outside_operational_range(self, mock_repo):
-        mock_repo.list.return_value = [
+        mock_repo.search_bookings.return_value = [
             make_booking(
                 record_id=1,
                 apartment_id="R180",
@@ -291,7 +291,7 @@ class TestGetCleaningOpportunitiesUseCase:
             def __init__(self, bookings):
                 self._bookings = bookings
 
-            def list(self, start_date=None, end_date=None, **_):
+            def search_bookings(self, start_date=None, end_date=None, **_):
                 return [
                     b
                     for b in self._bookings

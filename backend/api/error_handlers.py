@@ -65,3 +65,33 @@ async def user_not_found_handler(request: Request, exc: Exception) -> JSONRespon
 async def user_database_error_handler(request: Request, exc: Exception) -> JSONResponse:
     """Devuelve un error 500 cuando ocurre un error al interactuar con la base de datos de usuarios."""
     return JSONResponse(status_code=500, content={"detail": str(exc)})
+
+
+async def apartment_already_exists_error_handler(request: Request, exc: Exception) -> JSONResponse:
+    """Devuelve un error 409 cuando el apartamento ya existe."""
+    return JSONResponse(status_code=409, content={"detail": str(exc)})
+
+
+async def apartment_database_error_handler(request: Request, exc: Exception) -> JSONResponse:
+    """Devuelve un error 500 cuando ocurre un error al interactuar con la base de datos de apartamentos."""
+    return JSONResponse(status_code=500, content={"detail": str(exc)})
+
+
+async def apartment_not_found_error_handler(request: Request, exc: Exception) -> JSONResponse:
+    """Devuelve un error 404 cuando el apartamento no existe."""
+    return JSONResponse(status_code=404, content={"detail": str(exc)})
+
+
+async def apartment_has_bookings_error_handler(request: Request, exc: Exception) -> JSONResponse:
+    """Devuelve un error 409 cuando el apartamento tiene reservas."""
+    return JSONResponse(status_code=409, content={"detail": str(exc)})
+
+
+async def bill_not_found_error_handler(request: Request, exc: Exception) -> JSONResponse:
+    """Devuelve un error 404 cuando no se encuentra la factura."""
+    return JSONResponse(status_code=404, content={"detail": str(exc)})
+
+
+async def bill_already_exists_error_handler(request: Request, exc: Exception) -> JSONResponse:
+    """Devuelve un error 409 cuando la factura ya existe."""
+    return JSONResponse(status_code=409, content={"detail": str(exc)})

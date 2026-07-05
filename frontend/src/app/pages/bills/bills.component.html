@@ -1,0 +1,331 @@
+<section class="bills-page">
+  <header class="bills-header">
+    <div>
+      <span class="eyebrow">Facturación</span>
+      <h1>Gestión de facturas</h1>
+      <p>Consulta y gestiona las facturas de limpieza.</p>
+    </div>
+  </header>
+
+  <section class="filter-card" aria-labelledby="bills-filters-title">
+    <h2 id="bills-filters-title">Filtros</h2>
+
+    <div class="filter-grid">
+      <app-date-range-picker
+        [from]="filterDateFrom()"
+        [to]="filterDateTo()"
+        fromLabel="Limpieza desde"
+        toLabel="Limpieza hasta"
+        [allowPartialRange]="true"
+        (rangeChange)="setDateRange($event)"
+      />
+
+      <label class="filter-field">
+        Piso
+        <input
+          type="text"
+          list="bills-apartment-ids"
+          placeholder="R180..."
+          [value]="filterApartmentId()"
+          (input)="updateFilterApartmentId($event)"
+        />
+        <datalist id="bills-apartment-ids">
+          @for (id of apartmentIds(); track id) {
+            <option [value]="id"></option>
+          }
+        </datalist>
+      </label>
+
+      <label class="filter-field">
+        Estado
+        <select [value]="filterState()" (change)="updateFilterState($event)">
+          @for (option of stateOptions; track option.value) {
+            <option [value]="option.value">{{ option.label }}</option>
+          }
+        </select>
+      </label>
+
+      <label class="filter-field">
+        Coste mín. (€)
+        <input
+          type="number"
+          min="0"
+          step="0.01"
+          placeholder="0"
+          [value]="filterCostMin()"
+          (input)="updateFilterCostMin($event)"
+        />
+      </label>
+
+      <label class="filter-field">
+        Coste máx. (€)
+        <input
+          type="number"
+          min="0"
+          step="0.01"
+          placeholder="0"
+          [value]="filterCostMax()"
+          (input)="updateFilterCostMax($event)"
+        />
+      </label>
+    </div>
+
+    <div class="filter-actions">
+      <button class="secondary-btn" type="button" (click)="clearFilters()">Limpiar</button>
+      <button class="primary-btn" type="button" [disabled]="isLoading()" (click)="searchBills()">
+        {{ isLoading() ? 'Buscando...' : 'Buscar' }}
+      </button>
+    </div>
+  </section>
+
+  <section class="detail-card" aria-labelledby="bills-table-title">
+    <div class="section-title-row">
+      <div>
+        <h2 id="bills-table-title">Resultados</h2>
+        <p>{{ bills().length }} facturas encontradas</p>
+      </div>
+
+      @if (loadError()) {
+        <button class="secondary-btn" type="button" (click)="searchBills()">Reintentar</button>
+      }
+    </div>
+
+    @if (loadError()) {
+      <div class="notice error-notice">{{ loadError() }}</div>
+    }
+
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Piso</th>
+            <th>Fecha limpieza</th>
+            <th>Horas</th>
+            <th>Tarifa</th>
+            <th>Coste</th>
+            <th>Estado</th>
+            <th>Fecha pago</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          @if (isLoading()) {
+            <tr>
+              <td colspan="9" class="state-cell">Cargando facturas...</td>
+            </tr>
+          } @else if (!bills().length) {
+            <tr>
+              <td colspan="9" class="state-cell">No hay facturas que coincidan con los filtros.</td>
+            </tr>
+          } @else {
+            @for (bill of bills(); track bill.bill_id ?? bill.record_id) {
+              <tr [class.pending-row]="isPendingBill(bill)">
+                <td>{{ bill.bill_id ?? '—' }}</td>
+                <td>
+                  <span
+                    class="reference-chip"
+                    [style.background]="getApartmentColor(bill.apartment_id)"
+                  >
+                    {{ bill.apartment_id }}
+                  </span>
+                </td>
+                <td>{{ formatDate(bill.cleaning_date) }}</td>
+                <td>{{ bill.clean_hours }}</td>
+                <td>
+                  @if (bill.hourly_rate !== null) {
+                    {{ bill.hourly_rate | currency: 'EUR' : 'symbol' : '1.2-2' }}/h
+                  } @else {
+                    —
+                  }
+                </td>
+                <td>
+                  @if (bill.cost !== null) {
+                    {{ bill.cost | currency: 'EUR' : 'symbol' : '1.2-2' }}
+                  } @else {
+                    —
+                  }
+                </td>
+                <td>
+                  <span
+                    class="bill-state-chip"
+                    [class.paid]="bill.state === 'Pagada'"
+                    [class.cancelled]="bill.state === 'Cancelada'"
+                    [class.pending]="bill.state === 'Pendiente'"
+                  >
+                    {{ bill.state }}
+                  </span>
+                  @if (bill.previously_cancelled) {
+                    <span class="refactored-badge" title="Factura cancelada anteriormente">
+                      Refacturación
+                    </span>
+                  }
+                  @if (bill.state === 'Cancelada' && bill.cancellation_note) {
+                    <p class="cancellation-note" [title]="bill.cancellation_note">
+                      {{ bill.cancellation_note }}
+                    </p>
+                  }
+                </td>
+                <td>{{ formatDate(bill.paid_at) }}</td>
+                <td class="actions-cell">
+                  @if (isPendingBill(bill)) {
+                    <span class="pending-hint">
+                      <a routerLink="/cleaning-organization">Generar desde Org. Limpiezas</a>
+                    </span>
+                  } @else if (canUpdateBill(bill)) {
+                    <div class="row-actions">
+                      @for (targetState of allowedBillTransitions(bill.state); track targetState) {
+                        <button
+                          class="action-btn"
+                          type="button"
+                          [class.danger]="targetState === 'Cancelada'"
+                          [disabled]="isUpdating()"
+                          (click)="requestTransition(bill, targetState)"
+                        >
+                          {{ billTransitionLabel(bill.state, targetState) }}
+                        </button>
+                      }
+                    </div>
+                  } @else {
+                    <span class="muted-text">—</span>
+                  }
+                </td>
+              </tr>
+            }
+          }
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  @if (markPaidBill()) {
+    <div class="modal-backdrop" role="presentation" (click)="closeMarkPaidModal()">
+      <section
+        class="confirm-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="mark-paid-title"
+        (click)="$event.stopPropagation()"
+      >
+        <h2 id="mark-paid-title">Marcar como pagada</h2>
+        <p>
+          Factura <strong>#{{ markPaidBill()!.bill_id }}</strong> · Piso
+          <strong>{{ markPaidBill()!.apartment_id }}</strong>
+        </p>
+
+        <label class="dialog-field">
+          Fecha de pago
+          <input type="date" [value]="paidAtDate()" (input)="updatePaidAtDate($event)" />
+        </label>
+
+        <div class="dialog-actions">
+          <button
+            class="primary-btn"
+            type="button"
+            [disabled]="isUpdating() || !paidAtDate()"
+            (click)="confirmMarkPaid()"
+          >
+            {{ isUpdating() ? 'Guardando...' : 'Confirmar' }}
+          </button>
+          <button
+            class="secondary-btn"
+            type="button"
+            [disabled]="isUpdating()"
+            (click)="closeMarkPaidModal()"
+          >
+            Cancelar
+          </button>
+        </div>
+      </section>
+    </div>
+  }
+
+  @if (cancelBill()) {
+    <div class="modal-backdrop" role="presentation" (click)="closeCancelModal()">
+      <section
+        class="confirm-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="cancel-bill-title"
+        (click)="$event.stopPropagation()"
+      >
+        <h2 id="cancel-bill-title">Cancelar factura</h2>
+        <p>
+          ¿Seguro que deseas cancelar la factura <strong>#{{ cancelBill()!.bill_id }}</strong> ·
+          Piso <strong>{{ cancelBill()!.apartment_id }}</strong
+          >?
+        </p>
+
+        <label class="dialog-field">
+          Nota explicativa (opcional)
+          <textarea
+            rows="3"
+            maxlength="500"
+            placeholder="Motivo de la cancelación..."
+            [value]="cancelNote()"
+            (input)="updateCancelNote($event)"
+          ></textarea>
+        </label>
+
+        <div class="dialog-actions">
+          <button
+            class="primary-btn danger"
+            type="button"
+            [disabled]="isUpdating()"
+            (click)="confirmCancel()"
+          >
+            {{ isUpdating() ? 'Cancelando...' : 'Cancelar factura' }}
+          </button>
+          <button
+            class="secondary-btn"
+            type="button"
+            [disabled]="isUpdating()"
+            (click)="closeCancelModal()"
+          >
+            Volver
+          </button>
+        </div>
+      </section>
+    </div>
+  }
+
+  @if (pendingTransition()) {
+    <div class="modal-backdrop" role="presentation" (click)="closeConfirmDialog()">
+      <section
+        class="confirm-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="confirm-transition-title"
+        (click)="$event.stopPropagation()"
+      >
+        <h2 id="confirm-transition-title">Confirmar cambio</h2>
+        <p>{{ confirmationMessage(pendingTransition()!) }}</p>
+
+        <div class="dialog-actions">
+          <button
+            class="primary-btn"
+            type="button"
+            [disabled]="isUpdating()"
+            (click)="confirmPendingTransition()"
+          >
+            {{ isUpdating() ? 'Guardando...' : 'Confirmar' }}
+          </button>
+          <button
+            class="secondary-btn"
+            type="button"
+            [disabled]="isUpdating()"
+            (click)="closeConfirmDialog()"
+          >
+            Cancelar
+          </button>
+        </div>
+      </section>
+    </div>
+  }
+
+  @if (toast()) {
+    <div class="toast" [class.error]="toast()!.type === 'error'" role="status">
+      {{ toast()!.text }}
+    </div>
+  }
+</section>

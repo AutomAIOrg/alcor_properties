@@ -4,21 +4,29 @@ Contenedor de inyección de dependencias para FastAPI.
 
 import logging
 from dataclasses import dataclass
+from decimal import Decimal
 
 from fastapi import Depends, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
 from application.apartments.use_cases import (
+    CreateApartmentUseCase,
+    DeleteApartmentUseCase,
+    GetAllApartmentsUseCase,
     GetApartmentByIdUseCase,
     GetApartmentStatsUseCase,
     SearchApartmentsUseCase,
+    UpdateApartmentUseCase,
 )
 from application.auth.forgot_password_use_case import ForgotPasswordUseCase
 from application.auth.login_use_case import LoginUseCase
 from application.auth.refresh_token_use_case import RefreshTokenUseCase
 from application.auth.reset_password_use_case import ResetPasswordUseCase
 from application.auth.token_manager_interface import ITokenManager
+from application.bills.create_bill_use_case import CreateBillUseCase
+from application.bills.list_bills_use_cases import ListBillsUseCase, ListPendingBillsUseCase
+from application.bills.update_bill_use_case import UpdateBillStateUseCase
 from application.bookings.commands import (
     CreateBookingUseCase,
     DeleteBookingUseCase,
@@ -35,6 +43,10 @@ from application.bookings.queries import (
     ListBookingsQuery,
 )
 from application.shared.email_sender_interface import IEmailSender
+from application.settings.use_cases import (
+    GetCleaningHourlyRateUseCase,
+    UpdateCleaningHourlyRateUseCase,
+)
 from application.shared.password_manager_interface import IPasswordManager
 from application.shared.user_repository_interface import IUserRepository
 from application.users.create_user_use_case import CreateUserUseCase
@@ -44,16 +56,20 @@ from application.users.update_user_use_case import UpdateUserUseCase
 from config import settings
 from domain.apartments.repository import IApartmentRepository
 from domain.auth.user_entity import Role, User
+from domain.bills.repository import IBillRepository
 from domain.bookings.repository import IBookingRepository
 from domain.exceptions import InvalidToken
+from domain.settings.repository import ISettingsRepository
 from infrastructure.database.session import get_db
 from infrastructure.email.smtp_email_sender import ConsoleEmailSender, SMTPEmailSender
 from infrastructure.repositories.sqlalchemy_apartment_repository import (
     SQLAlchemyApartmentRepository,
 )
+from infrastructure.repositories.sqlalchemy_bill_repository import SQLAlchemyBillRepository
 from infrastructure.repositories.sqlalchemy_booking_repository import (
     SQLAlchemyBookingRepository,
 )
+from infrastructure.repositories.sqlalchemy_settings_repository import SQLAlchemySettingsRepository
 from infrastructure.repositories.sqlalchemy_user_repository import SQLAlchemyUserRepository
 from infrastructure.security.jwt_token_manager import JwtTokenManager
 from infrastructure.security.passlib_password_manager import PasslibPasswordManager
@@ -156,6 +172,16 @@ def get_apartment_repository(db: Session = Depends(get_db)) -> IApartmentReposit
     return SQLAlchemyApartmentRepository(db)
 
 
+def get_bill_repository(db: Session = Depends(get_db)) -> IBillRepository:
+    """Repositorio de facturas."""
+    return SQLAlchemyBillRepository(db)
+
+
+def get_settings_repository(db: Session = Depends(get_db)) -> ISettingsRepository:
+    """Repositorio de configuración (clave-valor)."""
+    return SQLAlchemySettingsRepository(db)
+
+
 # ---------------------------------------------------------------------------
 # Casos de uso
 # ---------------------------------------------------------------------------
@@ -246,6 +272,7 @@ class BookingUseCases:
 
 def get_booking_use_cases(
     repo: IBookingRepository = Depends(get_booking_repository),
+    bill_repository: IBillRepository = Depends(get_bill_repository),
     electric_ids: set[str] = Depends(get_electric_ids),
 ) -> BookingUseCases:
     """Inyección de dependencias para los casos de uso de reservas."""
@@ -256,12 +283,34 @@ def get_booking_use_cases(
         upcoming_checkins_query=GetUpcomingCheckinsQuery(repo, electric_ids),
         upcoming_checkouts_query=GetUpcomingCheckoutsQuery(repo, electric_ids),
         calendar_events_query=GetCalendarEventsQuery(repo, electric_ids),
-        get_cleaning_opportunities_query=GetCleaningOpportunitiesUseCase(repo),
+        get_cleaning_opportunities_query=GetCleaningOpportunitiesUseCase(repo, bill_repository),
         stats_query=GetBookingStatsQuery(repo, electric_ids),
         create_command=CreateBookingUseCase(repo, electric_ids),
         update_command=UpdateBookingUseCase(repo, electric_ids),
         delete_command=DeleteBookingUseCase(repo),
     )
+
+
+def get_create_apartment_use_case(
+    repository: IApartmentRepository = Depends(get_apartment_repository),
+) -> CreateApartmentUseCase:
+    """Inyección de dependencias para el caso de uso de crear un apartamento."""
+    return CreateApartmentUseCase(repository)
+
+
+def get_delete_apartment_use_case(
+    apartment_repository: IApartmentRepository = Depends(get_apartment_repository),
+    booking_repository: IBookingRepository = Depends(get_booking_repository),
+) -> DeleteApartmentUseCase:
+    """Inyección de dependencias para el caso de uso de eliminar un apartamento."""
+    return DeleteApartmentUseCase(apartment_repository, booking_repository)
+
+
+def get_update_apartment_use_case(
+    repository: IApartmentRepository = Depends(get_apartment_repository),
+) -> UpdateApartmentUseCase:
+    """Inyección de dependencias para el caso de uso de actualizar un apartamento."""
+    return UpdateApartmentUseCase(repository)
 
 
 def get_apartment_by_id_use_case(
@@ -278,6 +327,13 @@ def get_search_apartments_use_case(
     return SearchApartmentsUseCase(repository)
 
 
+def get_get_all_apartments_use_case(
+    repository: IApartmentRepository = Depends(get_apartment_repository),
+) -> GetAllApartmentsUseCase:
+    """Inyección de dependencias para el caso de uso de obtener todos los apartamentos."""
+    return GetAllApartmentsUseCase(repository)
+
+
 def get_apartment_stats_use_case(
     apartment_repository: IApartmentRepository = Depends(get_apartment_repository),
     booking_repository: IBookingRepository = Depends(get_booking_repository),
@@ -287,3 +343,61 @@ def get_apartment_stats_use_case(
     return GetApartmentStatsUseCase(
         apartment_repository, booking_repository, electric_apartment_ids
     )
+
+
+def get_cleaning_hourly_rate_use_case(
+    settings_repo: ISettingsRepository = Depends(get_settings_repository),
+) -> GetCleaningHourlyRateUseCase:
+    """Caso de uso de lectura del precio por hora de limpieza (con valor por defecto del entorno)."""
+    return GetCleaningHourlyRateUseCase(settings_repo, settings.CLEANING_HOURLY_RATE)
+
+
+def get_cleaning_hourly_rate(
+    rate_use_case: GetCleaningHourlyRateUseCase = Depends(get_cleaning_hourly_rate_use_case),
+) -> Decimal:
+    return rate_use_case.execute()
+
+
+def get_create_bill_use_case(
+    bill_repository: IBillRepository = Depends(get_bill_repository),
+    booking_repository: IBookingRepository = Depends(get_booking_repository),
+    cleaning_hourly_rate: Decimal = Depends(get_cleaning_hourly_rate),
+) -> CreateBillUseCase:
+    """Inyección de dependencias para el caso de uso de crear una factura."""
+    return CreateBillUseCase(bill_repository, booking_repository, cleaning_hourly_rate)
+
+
+def get_update_bill_state_use_case(
+    bill_repository: IBillRepository = Depends(get_bill_repository),
+) -> UpdateBillStateUseCase:
+    """Inyección de dependencias para el caso de uso de actualizar el estado de una factura."""
+    return UpdateBillStateUseCase(bill_repository)
+
+
+def get_list_bills_use_case(
+    bill_repository: IBillRepository = Depends(get_bill_repository),
+) -> ListBillsUseCase:
+    """Inyección de dependencias para el caso de uso de obtener todas las facturas."""
+    return ListBillsUseCase(bill_repository)
+
+
+def get_list_pending_bills_use_case(
+    booking_repository: IBookingRepository = Depends(get_booking_repository),
+    bill_repository: IBillRepository = Depends(get_bill_repository),
+) -> ListPendingBillsUseCase:
+    """Inyección de dependencias para el caso de uso de obtener todas las facturas pendientes."""
+    return ListPendingBillsUseCase(booking_repository, bill_repository)
+
+
+def get_cleaning_rate_use_case(
+    settings_repo: ISettingsRepository = Depends(get_settings_repository),
+) -> GetCleaningHourlyRateUseCase:
+    """Caso de uso de lectura del precio por hora de limpieza (con valor por defecto del entorno)."""
+    return GetCleaningHourlyRateUseCase(settings_repo, settings.CLEANING_HOURLY_RATE)
+
+
+def get_update_cleaning_rate_use_case(
+    settings_repo: ISettingsRepository = Depends(get_settings_repository),
+) -> UpdateCleaningHourlyRateUseCase:
+    """Caso de uso para actualizar el precio por hora de limpieza."""
+    return UpdateCleaningHourlyRateUseCase(settings_repo)

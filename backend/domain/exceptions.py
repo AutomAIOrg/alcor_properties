@@ -39,14 +39,6 @@ class DomainValidationError(DomainException):
         super().__init__(message)
 
 
-class ApartmentNotFound(DomainException):
-    """Se lanza cuando no se puede encontrar un apartamento por su apartment_id."""
-
-    def __init__(self, apartment_id: str) -> None:
-        self.apartment_id = apartment_id
-        super().__init__(f"Apartamento '{apartment_id}' no encontrado")
-
-
 class InvalidToken(DomainException):
     """Se lanza cuando un token de acceso no es válido."""
 
@@ -94,3 +86,49 @@ class UserDatabaseError(DomainException):
 
     def __init__(self, message: str) -> None:
         super().__init__(message)
+
+
+class ApartmentAlreadyExistsError(DomainException):
+    """Se lanza cuando un apartamento ya existe."""
+
+    def __init__(self, apartment_id: str) -> None:
+        super().__init__(f"El apartamento {apartment_id} ya existe")
+
+
+class ApartmentDatabaseError(DomainException):
+    """Se lanza cuando ocurre un error al interactuar con la base de datos de apartamentos."""
+
+    def __init__(self, message: str) -> None:
+        super().__init__(message)
+
+
+class ApartmentNotFoundError(DomainException):
+    """Se lanza cuando un apartamento no existe."""
+
+    def __init__(self, apartment_id: str) -> None:
+        super().__init__(f"El apartamento {apartment_id} no existe")
+
+
+class ApartmentHasBookingsError(DomainException):
+    """Se lanza cuando un apartamento tiene reservas."""
+
+    def __init__(self, apartment_id: str) -> None:
+        super().__init__(
+            f"El apartamento {apartment_id} no puede ser eliminado porque tiene reservas"
+        )
+
+
+class BillNotFoundError(DomainException):
+    """Se lanza cuando no se puede encontrar una factura por su identificador."""
+
+    def __init__(self, bill_id: int) -> None:
+        self.bill_id = bill_id
+        super().__init__(f"Factura con ID {bill_id} no encontrada")
+
+
+class BillAlreadyExistsError(DomainException):
+    """Se lanza cuando ya existe una factura para la reserva (limpieza) indicada."""
+
+    def __init__(self, record_id: int) -> None:
+        self.record_id = record_id
+        super().__init__(f"Ya existe una factura para la reserva {record_id}")

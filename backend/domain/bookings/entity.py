@@ -2,7 +2,7 @@
 Entidad de dominio Booking.
 """
 
-from datetime import date, timedelta
+from datetime import date, datetime, time, timedelta
 from decimal import Decimal
 from typing import Any
 
@@ -12,6 +12,11 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validat
 # Una reserva en cualquiera de estos estados se considera inactiva y no impide
 # que el apartamento sea reservado en el mismo período.
 NON_BLOCKING_STATUSES: frozenset[str] = frozenset({"cancelled"})
+
+# Hora de salida por defecto. La limpieza (y, por tanto, su facturación) solo es
+# posible a partir de este momento del día de check-out, salvo que la reserva
+# indique una hora de salida concreta.
+DEFAULT_CHECKOUT_TIME: time = time(11, 0)
 
 
 class Booking(BaseModel):
@@ -97,6 +102,13 @@ class Booking(BaseModel):
     def is_cancelled(self) -> bool:
         return self.status.lower() in NON_BLOCKING_STATUSES
 
+    def blocks_apartment_deletion(self, reference_date: date | None = None) -> bool:
+        """Devuelve True si la reserva impide eliminar el apartamento."""
+        if self.is_cancelled():
+            return False
+        today = reference_date or date.today()
+        return self.check_out > today
+
     def has_upcoming_checkin(self, days: int = 7, reference_date: date | None = None) -> bool:
         """Devuelve True si el check-in es en los próximos *days* días."""
         today = reference_date or date.today()
@@ -106,6 +118,18 @@ class Booking(BaseModel):
         """Devuelve True si el check-out es en los próximos *days* días."""
         today = reference_date or date.today()
         return today <= self.check_out <= today + timedelta(days=days)
+
+    def cleaning_available_at(self) -> datetime:
+        """Momento a partir del cual el piso puede limpiarse: check-out + hora de salida."""
+        return datetime.combine(self.check_out, DEFAULT_CHECKOUT_TIME)
+
+    def is_cleanable(self, reference: datetime | None = None) -> bool:
+        """
+        Devuelve True si el check-out ya se ha producido y, por tanto, la limpieza
+        (y su facturación) es posible.
+        """
+        now = reference or datetime.now()
+        return now >= self.cleaning_available_at()
 
 
 class CleaningOpportunity(BaseModel):
@@ -118,3 +142,6 @@ class CleaningOpportunity(BaseModel):
     available_from: date
     available_until: date | None = None
     comments: str = ""
+    can_bill: bool = False
+    has_bill: bool = False
+    bill_state: str | None = None

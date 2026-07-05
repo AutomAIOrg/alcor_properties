@@ -19,12 +19,16 @@ from sqlalchemy.pool import StaticPool
 from starlette.testclient import TestClient
 
 import infrastructure.models.apartment  # noqa: F401 — registra ApartmentORM en Base.metadata
+import infrastructure.models.app_setting  # noqa: F401 — registra AppSettingORM en Base.metadata
+import infrastructure.models.bill  # noqa: F401 — registra BillORM en Base.metadata
 import infrastructure.models.booking  # noqa: F401 — registra BookingORM en Base.metadata
 import infrastructure.models.user  # noqa: F401 — registra UserORM en Base.metadata
 from domain.apartments.repository import IApartmentRepository
 from domain.auth.token_payload_entity import TokenPayload
 from domain.auth.user_entity import Role, User
+from domain.bills.repository import IBillRepository
 from domain.bookings.repository import IBookingRepository
+from domain.settings.repository import ISettingsRepository
 from infrastructure.database.base import Base
 from infrastructure.models.user import UserORM
 
@@ -42,6 +46,18 @@ def mock_repo() -> MagicMock:
 
 
 @pytest.fixture
+def mock_bill_repo() -> MagicMock:
+    """Repositorio mockeado con spec de IBillRepository."""
+    return MagicMock(spec=IBillRepository)
+
+
+@pytest.fixture
+def mock_settings_repo() -> MagicMock:
+    """Repositorio mockeado con spec de ISettingsRepository."""
+    return MagicMock(spec=ISettingsRepository)
+
+
+@pytest.fixture
 def mock_apartment_repo() -> MagicMock:
     """Repositorio mockeado con spec de IApartmentRepository."""
     return MagicMock(spec=IApartmentRepository)
@@ -50,6 +66,30 @@ def mock_apartment_repo() -> MagicMock:
 @pytest.fixture
 def mock_get_apartment_by_id_use_case() -> MagicMock:
     """GetApartmentByIdUseCase mockeado para tests de API."""
+    return MagicMock()
+
+
+@pytest.fixture
+def mock_create_apartment_use_case() -> MagicMock:
+    """CreateApartmentUseCase mockeado para tests de API."""
+    return MagicMock()
+
+
+@pytest.fixture
+def mock_update_apartment_use_case() -> MagicMock:
+    """UpdateApartmentUseCase mockeado para tests de API."""
+    return MagicMock()
+
+
+@pytest.fixture
+def mock_delete_apartment_use_case() -> MagicMock:
+    """DeleteApartmentUseCase mockeado para tests de API."""
+    return MagicMock()
+
+
+@pytest.fixture
+def mock_get_all_apartments_use_case() -> MagicMock:
+    """GetAllApartmentsUseCase mockeado para tests de API."""
     return MagicMock()
 
 
@@ -91,6 +131,131 @@ def sqlite_session(sqlite_engine):
     session = Session()
     yield session
     session.close()
+
+
+# ---------------------------------------------------------------------------
+# Integration — API bills/settings con use cases mockeados
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def mock_create_bill_use_case() -> MagicMock:
+    return MagicMock()
+
+
+@pytest.fixture
+def mock_update_bill_state_use_case() -> MagicMock:
+    return MagicMock()
+
+
+@pytest.fixture
+def mock_list_bills_use_case() -> MagicMock:
+    return MagicMock()
+
+
+@pytest.fixture
+def mock_list_pending_bills_use_case() -> MagicMock:
+    return MagicMock()
+
+
+@pytest.fixture
+def bills_api_client(
+    mock_create_bill_use_case: MagicMock,
+    mock_update_bill_state_use_case: MagicMock,
+    mock_list_bills_use_case: MagicMock,
+    mock_list_pending_bills_use_case: MagicMock,
+) -> Iterator[TestClient]:
+    """
+    TestClient de FastAPI con casos de uso de facturas inyectados como mock.
+
+    Autentica como usuario con rol LIMPIADORA (mínimo requerido por require_cleaning).
+    """
+    from api.dependencies import (
+        get_create_bill_use_case,
+        get_current_user,
+        get_list_bills_use_case,
+        get_list_pending_bills_use_case,
+        get_update_bill_state_use_case,
+    )
+    from main import app
+
+    cleaning_user = User(
+        id=2,
+        username="limpiadora",
+        password="limpiadora-password",
+        name="Limpiadora",
+        lastname="Test",
+        email="limpiadora@example.com",
+        role=Role.LIMPIADORA,
+    )
+
+    app.dependency_overrides[get_create_bill_use_case] = lambda: mock_create_bill_use_case
+    app.dependency_overrides[get_update_bill_state_use_case] = lambda: (
+        mock_update_bill_state_use_case
+    )
+    app.dependency_overrides[get_list_bills_use_case] = lambda: mock_list_bills_use_case
+    app.dependency_overrides[get_list_pending_bills_use_case] = lambda: (
+        mock_list_pending_bills_use_case
+    )
+    app.dependency_overrides[get_current_user] = lambda: cleaning_user
+
+    try:
+        with TestClient(app, raise_server_exceptions=True) as client:
+            yield client
+    finally:
+        app.dependency_overrides.pop(get_create_bill_use_case, None)
+        app.dependency_overrides.pop(get_update_bill_state_use_case, None)
+        app.dependency_overrides.pop(get_list_bills_use_case, None)
+        app.dependency_overrides.pop(get_list_pending_bills_use_case, None)
+        app.dependency_overrides.pop(get_current_user, None)
+
+
+@pytest.fixture
+def mock_get_cleaning_rate_use_case() -> MagicMock:
+    return MagicMock()
+
+
+@pytest.fixture
+def mock_update_cleaning_rate_use_case() -> MagicMock:
+    return MagicMock()
+
+
+@pytest.fixture
+def settings_api_client(
+    mock_get_cleaning_rate_use_case: MagicMock,
+    mock_update_cleaning_rate_use_case: MagicMock,
+) -> Iterator[TestClient]:
+    """TestClient con casos de uso de settings inyectados como mock (usuario limpiadora)."""
+    from api.dependencies import (
+        get_cleaning_rate_use_case,
+        get_current_user,
+        get_update_cleaning_rate_use_case,
+    )
+    from main import app
+
+    cleaning_user = User(
+        id=2,
+        username="limpiadora",
+        password="limpiadora-password",
+        name="Limpiadora",
+        lastname="Test",
+        email="limpiadora@example.com",
+        role=Role.LIMPIADORA,
+    )
+
+    app.dependency_overrides[get_cleaning_rate_use_case] = lambda: mock_get_cleaning_rate_use_case
+    app.dependency_overrides[get_update_cleaning_rate_use_case] = lambda: (
+        mock_update_cleaning_rate_use_case
+    )
+    app.dependency_overrides[get_current_user] = lambda: cleaning_user
+
+    try:
+        with TestClient(app, raise_server_exceptions=True) as client:
+            yield client
+    finally:
+        app.dependency_overrides.pop(get_cleaning_rate_use_case, None)
+        app.dependency_overrides.pop(get_update_cleaning_rate_use_case, None)
+        app.dependency_overrides.pop(get_current_user, None)
 
 
 # ---------------------------------------------------------------------------
@@ -152,13 +317,21 @@ def mock_search_apartments_query() -> MagicMock:
 def apartment_api_client(
     mock_search_apartments_use_case: MagicMock,
     mock_get_apartment_by_id_use_case: MagicMock,
+    mock_create_apartment_use_case: MagicMock,
+    mock_update_apartment_use_case: MagicMock,
+    mock_delete_apartment_use_case: MagicMock,
+    mock_get_all_apartments_use_case: MagicMock,
     mock_get_apartment_stats_use_case: MagicMock,
 ) -> TestClient:
     from api.dependencies import (
         get_apartment_by_id_use_case,
         get_apartment_stats_use_case,
+        get_create_apartment_use_case,
         get_current_user,
+        get_delete_apartment_use_case,
+        get_get_all_apartments_use_case,
         get_search_apartments_use_case,
+        get_update_apartment_use_case,
     )
     from main import app
 
@@ -177,6 +350,12 @@ def apartment_api_client(
     app.dependency_overrides[get_apartment_by_id_use_case] = lambda: (
         mock_get_apartment_by_id_use_case
     )
+    app.dependency_overrides[get_create_apartment_use_case] = lambda: mock_create_apartment_use_case
+    app.dependency_overrides[get_update_apartment_use_case] = lambda: mock_update_apartment_use_case
+    app.dependency_overrides[get_delete_apartment_use_case] = lambda: mock_delete_apartment_use_case
+    app.dependency_overrides[get_get_all_apartments_use_case] = lambda: (
+        mock_get_all_apartments_use_case
+    )
     app.dependency_overrides[get_apartment_stats_use_case] = lambda: (
         mock_get_apartment_stats_use_case
     )
@@ -188,6 +367,10 @@ def apartment_api_client(
     finally:
         app.dependency_overrides.pop(get_search_apartments_use_case, None)
         app.dependency_overrides.pop(get_apartment_by_id_use_case, None)
+        app.dependency_overrides.pop(get_create_apartment_use_case, None)
+        app.dependency_overrides.pop(get_update_apartment_use_case, None)
+        app.dependency_overrides.pop(get_delete_apartment_use_case, None)
+        app.dependency_overrides.pop(get_get_all_apartments_use_case, None)
         app.dependency_overrides.pop(get_apartment_stats_use_case, None)
         app.dependency_overrides.pop(get_current_user, None)
 
@@ -244,6 +427,30 @@ def admin_auth_headers(sqlite_session, e2e_client) -> dict[str, str]:
     response = e2e_client.post(
         "/api/v1/auth/login",
         json={"username": "admin", "password": "admin-password"},
+    )
+    assert response.status_code == 200
+    token = response.json()["access_token"]
+    return {"Authorization": f"Bearer {token}"}
+
+
+@pytest.fixture
+def cleaner_auth_headers(sqlite_session, e2e_client) -> dict[str, str]:
+    """Crea una limpiadora real en SQLite y devuelve headers Bearer obtenidos por login."""
+    pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+    user = UserORM(
+        username="limpiadora",
+        password=pwd_context.hash("cleaner-password"),
+        name="Limpiadora",
+        lastname="Test",
+        email="limpiadora@example.com",
+        role=Role.LIMPIADORA.value,
+    )
+    sqlite_session.add(user)
+    sqlite_session.commit()
+
+    response = e2e_client.post(
+        "/api/v1/auth/login",
+        json={"username": "limpiadora", "password": "cleaner-password"},
     )
     assert response.status_code == 200
     token = response.json()["access_token"]

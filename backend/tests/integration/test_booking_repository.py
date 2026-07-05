@@ -70,16 +70,16 @@ class TestGetById:
 
 
 # ---------------------------------------------------------------------------
-# list
+# search_bookings
 # ---------------------------------------------------------------------------
 
 
-class TestList:
+class TestSearchBookings:
     def test_returns_all_bookings_without_filters(self, sqlite_session):
         _insert_orm(sqlite_session, apartment_id="B1")
         _insert_orm(sqlite_session, apartment_id="B2")
 
-        results = SQLAlchemyBookingRepository(sqlite_session).list()
+        results = SQLAlchemyBookingRepository(sqlite_session).search_bookings()
 
         assert len(results) == 2
 
@@ -99,7 +99,7 @@ class TestList:
             nights=4,
         )
 
-        results = SQLAlchemyBookingRepository(sqlite_session).list(
+        results = SQLAlchemyBookingRepository(sqlite_session).search_bookings(
             start_date=date(2026, 6, 1), end_date=date(2026, 6, 30)
         )
 
@@ -130,7 +130,7 @@ class TestList:
             nights=3,
         )
 
-        results = SQLAlchemyBookingRepository(sqlite_session).list(
+        results = SQLAlchemyBookingRepository(sqlite_session).search_bookings(
             start_date=date(2026, 6, 1), end_date=date(2026, 6, 30)
         )
 
@@ -160,7 +160,9 @@ class TestList:
             nights=4,
         )
 
-        results = SQLAlchemyBookingRepository(sqlite_session).list(start_date=date(2026, 6, 1))
+        results = SQLAlchemyBookingRepository(sqlite_session).search_bookings(
+            start_date=date(2026, 6, 1)
+        )
 
         apartment_ids = [r.apartment_id for r in results]
         assert apartment_ids == ["CHECKIN_AT_START", "CHECKIN_AFTER"]
@@ -188,7 +190,9 @@ class TestList:
             nights=4,
         )
 
-        results = SQLAlchemyBookingRepository(sqlite_session).list(end_date=date(2026, 6, 30))
+        results = SQLAlchemyBookingRepository(sqlite_session).search_bookings(
+            end_date=date(2026, 6, 30)
+        )
 
         apartment_ids = [r.apartment_id for r in results]
         assert apartment_ids == ["CHECKIN_BEFORE_END", "CHECKIN_AT_END"]
@@ -197,7 +201,7 @@ class TestList:
         for i in range(5):
             _insert_orm(sqlite_session, apartment_id=f"B{i}")
 
-        results = SQLAlchemyBookingRepository(sqlite_session).list(limit=3)
+        results = SQLAlchemyBookingRepository(sqlite_session).search_bookings(limit=3)
 
         assert len(results) == 3
 

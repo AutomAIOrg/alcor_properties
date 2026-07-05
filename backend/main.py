@@ -10,7 +10,12 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.exc import SQLAlchemyError
 
 from api.error_handlers import (
-    apartment_not_found_handler,
+    apartment_already_exists_error_handler,
+    apartment_database_error_handler,
+    apartment_has_bookings_error_handler,
+    apartment_not_found_error_handler,
+    bill_already_exists_error_handler,
+    bill_not_found_error_handler,
     booking_conflict_handler,
     booking_not_found_handler,
     domain_validation_error_handler,
@@ -25,7 +30,12 @@ from api.error_handlers import (
 from api.v1.router import router as v1_router
 from config import settings
 from domain.exceptions import (
-    ApartmentNotFound,
+    ApartmentAlreadyExistsError,
+    ApartmentDatabaseError,
+    ApartmentHasBookingsError,
+    ApartmentNotFoundError,
+    BillAlreadyExistsError,
+    BillNotFoundError,
     BookingConflict,
     BookingNotFound,
     DomainValidationError,
@@ -68,7 +78,6 @@ app.add_middleware(
 )
 
 # Excepción de dominio → Respuesta HTTP
-app.add_exception_handler(ApartmentNotFound, apartment_not_found_handler)
 app.add_exception_handler(BookingNotFound, booking_not_found_handler)
 app.add_exception_handler(BookingConflict, booking_conflict_handler)
 app.add_exception_handler(DomainValidationError, domain_validation_error_handler)
@@ -79,6 +88,12 @@ app.add_exception_handler(UserAlreadyExists, user_already_exists_handler)
 app.add_exception_handler(IntegrityError, integrity_error_handler)
 app.add_exception_handler(UserNotFound, user_not_found_handler)
 app.add_exception_handler(UserDatabaseError, user_database_error_handler)
+app.add_exception_handler(ApartmentAlreadyExistsError, apartment_already_exists_error_handler)
+app.add_exception_handler(ApartmentDatabaseError, apartment_database_error_handler)
+app.add_exception_handler(ApartmentNotFoundError, apartment_not_found_error_handler)
+app.add_exception_handler(ApartmentHasBookingsError, apartment_has_bookings_error_handler)
+app.add_exception_handler(BillNotFoundError, bill_not_found_error_handler)
+app.add_exception_handler(BillAlreadyExistsError, bill_already_exists_error_handler)
 
 # Rutas de la API
 app.include_router(v1_router)

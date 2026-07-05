@@ -5,24 +5,81 @@ Enrutador para los apartamentos.
 from datetime import date
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Body, Depends, HTTPException, Query
 
 from api.dependencies import (
     get_apartment_by_id_use_case,
     get_apartment_stats_use_case,
+    get_create_apartment_use_case,
+    get_delete_apartment_use_case,
+    get_get_all_apartments_use_case,
     get_search_apartments_use_case,
+    get_update_apartment_use_case,
     require_admin,
 )
-from api.v1.apartments.schemas import ApartmentResponse, ApartmentStatsResponse
+from api.v1.apartments.schemas import (
+    ApartmentResponse,
+    ApartmentStatsResponse,
+    CreateApartmentRequest,
+    UpdateApartmentRequest,
+)
 from application.apartments.use_cases import (
+    CreateApartmentUseCase,
+    DeleteApartmentUseCase,
+    GetAllApartmentsUseCase,
     GetApartmentByIdUseCase,
     GetApartmentStatsUseCase,
     SearchApartmentsUseCase,
+    UpdateApartmentUseCase,
 )
+from domain.apartments.entity import Apartment
 from domain.apartments.filters import ApartmentSearchFilters
-from domain.exceptions import ApartmentNotFound
+from domain.exceptions import ApartmentNotFoundError
 
 router = APIRouter(prefix="/apartments", tags=["Apartments"], dependencies=[Depends(require_admin)])
+
+
+@router.post("/")
+def create_apartment(
+    new_apartment: Annotated[CreateApartmentRequest, Body(...)],
+    create_apartment_use_case: CreateApartmentUseCase = Depends(get_create_apartment_use_case),
+):
+    """
+    Crea un nuevo apartamento.
+    """
+
+    create_apartment_use_case.execute(Apartment(**new_apartment.model_dump()))
+
+    return {"message": "Apartamento creado correctamente"}
+
+
+@router.delete("/{apartment_id}")
+def delete_apartment(
+    apartment_id: str,
+    delete_apartment_use_case: DeleteApartmentUseCase = Depends(get_delete_apartment_use_case),
+):
+    """
+    Elimina un apartamento.
+    """
+    delete_apartment_use_case.execute(apartment_id)
+
+    return {"message": "Apartamento eliminado correctamente"}
+
+
+@router.put("/{apartment_id}")
+def update_apartment(
+    apartment_id: str,
+    updated_apartment: Annotated[UpdateApartmentRequest, Body(...)],
+    update_apartment_use_case: UpdateApartmentUseCase = Depends(get_update_apartment_use_case),
+):
+    """
+    Actualiza un apartamento.
+    """
+    update_apartment_use_case.execute(
+        Apartment(apartment_id=apartment_id, **updated_apartment.model_dump())
+    )
+
+    return {"message": "Apartamento actualizado correctamente"}
 
 
 @router.get("/search", response_model=list[ApartmentResponse])
@@ -36,6 +93,17 @@ def search_apartments(
 
     apartments = search_apartments_use_case.execute(filters)
 
+    return [ApartmentResponse.model_validate(apartment.model_dump()) for apartment in apartments]
+
+
+@router.get("/", response_model=list[ApartmentResponse])
+def get_all_apartments(
+    get_all_apartments_use_case: GetAllApartmentsUseCase = Depends(get_get_all_apartments_use_case),
+) -> list[ApartmentResponse]:
+    """
+    Obtiene todos los apartamentos para mostrar en el panel de administración.
+    """
+    apartments = get_all_apartments_use_case.execute()
     return [ApartmentResponse.model_validate(apartment.model_dump()) for apartment in apartments]
 
 
@@ -92,7 +160,7 @@ def get_apartment_stats(
         )
     except ValueError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
-    except ApartmentNotFound as error:
+    except ApartmentNotFoundError as error:
         raise HTTPException(status_code=404, detail=str(error)) from error
 
     return ApartmentStatsResponse.model_validate(stats)

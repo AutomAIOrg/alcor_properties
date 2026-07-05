@@ -30,12 +30,12 @@ pytestmark = pytest.mark.unit
 
 class TestListBookingsQuery:
     def test_with_start_and_end_date_delegates_range_to_repo(self, mock_repo):
-        mock_repo.list.return_value = []
+        mock_repo.search_bookings.return_value = []
         start, end = date(2026, 6, 1), date(2026, 6, 30)
 
         ListBookingsQuery(mock_repo, set()).execute(start_date=start, end_date=end)
 
-        mock_repo.list.assert_called_once_with(
+        mock_repo.search_bookings.assert_called_once_with(
             start_date=start,
             end_date=end,
             apartment_id=None,
@@ -45,12 +45,12 @@ class TestListBookingsQuery:
         )
 
     def test_with_start_date_only_delegates_open_range_to_repo(self, mock_repo):
-        mock_repo.list.return_value = []
+        mock_repo.search_bookings.return_value = []
         start = date(2026, 6, 1)
 
         ListBookingsQuery(mock_repo, set()).execute(start_date=start)
 
-        mock_repo.list.assert_called_once_with(
+        mock_repo.search_bookings.assert_called_once_with(
             start_date=start,
             end_date=None,
             apartment_id=None,
@@ -60,12 +60,12 @@ class TestListBookingsQuery:
         )
 
     def test_with_end_date_only_delegates_open_range_to_repo(self, mock_repo):
-        mock_repo.list.return_value = []
+        mock_repo.search_bookings.return_value = []
         end = date(2026, 6, 30)
 
         ListBookingsQuery(mock_repo, set()).execute(end_date=end)
 
-        mock_repo.list.assert_called_once_with(
+        mock_repo.search_bookings.assert_called_once_with(
             start_date=None,
             end_date=end,
             apartment_id=None,
@@ -75,12 +75,12 @@ class TestListBookingsQuery:
         )
 
     def test_with_days_calculates_end_date_from_start(self, mock_repo):
-        mock_repo.list.return_value = []
+        mock_repo.search_bookings.return_value = []
         start = date(2026, 6, 1)
 
         ListBookingsQuery(mock_repo, set()).execute(start_date=start, days=10)
 
-        mock_repo.list.assert_called_once_with(
+        mock_repo.search_bookings.assert_called_once_with(
             start_date=start,
             end_date=start + timedelta(days=10),
             apartment_id=None,
@@ -90,11 +90,11 @@ class TestListBookingsQuery:
         )
 
     def test_without_filters_passes_limit_to_repo(self, mock_repo):
-        mock_repo.list.return_value = []
+        mock_repo.search_bookings.return_value = []
 
         ListBookingsQuery(mock_repo, set()).execute(limit=5)
 
-        mock_repo.list.assert_called_once_with(
+        mock_repo.search_bookings.assert_called_once_with(
             limit=5,
             apartment_id=None,
             status=None,
@@ -110,7 +110,7 @@ class TestListBookingsQuery:
 
 class TestGetBookingStatsQuery:
     def test_without_range_forwards_text_filters_and_has_no_occupancy(self, mock_repo):
-        mock_repo.list.return_value = []
+        mock_repo.search_bookings.return_value = []
 
         result = GetBookingStatsQuery(mock_repo, set()).execute(
             apartment_id="R180",
@@ -119,7 +119,7 @@ class TestGetBookingStatsQuery:
             booking_number="BK-1",
         )
 
-        mock_repo.list.assert_called_once_with(
+        mock_repo.search_bookings.assert_called_once_with(
             apartment_id="R180",
             status="Confirmed",
             guest_name="Ana",
@@ -131,12 +131,12 @@ class TestGetBookingStatsQuery:
         assert result["no_booking_days_pct"] is None
 
     def test_start_date_only_forwards_filter_and_has_no_occupancy(self, mock_repo):
-        mock_repo.list.return_value = []
+        mock_repo.search_bookings.return_value = []
         start = date(2026, 6, 1)
 
         result = GetBookingStatsQuery(mock_repo, set()).execute(start_date=start)
 
-        mock_repo.list.assert_called_once_with(
+        mock_repo.search_bookings.assert_called_once_with(
             start_date=start,
             end_date=None,
             apartment_id=None,
@@ -150,12 +150,12 @@ class TestGetBookingStatsQuery:
         assert result["no_booking_days_pct"] is None
 
     def test_end_date_only_forwards_filter_and_has_no_occupancy(self, mock_repo):
-        mock_repo.list.return_value = []
+        mock_repo.search_bookings.return_value = []
         end = date(2026, 6, 30)
 
         result = GetBookingStatsQuery(mock_repo, set()).execute(end_date=end)
 
-        mock_repo.list.assert_called_once_with(
+        mock_repo.search_bookings.assert_called_once_with(
             start_date=None,
             end_date=end,
             apartment_id=None,
@@ -173,7 +173,7 @@ class TestGetBookingStatsQuery:
             check_in=date(2026, 6, 1),
             check_out=date(2026, 6, 20),
         )
-        mock_repo.list.return_value = [booking]
+        mock_repo.search_bookings.return_value = [booking]
 
         result = GetBookingStatsQuery(mock_repo, set()).execute(
             start_date=date(2026, 6, 10),
@@ -189,7 +189,7 @@ class TestGetBookingStatsQuery:
             check_in=date(2026, 6, 1),
             check_out=date(2026, 6, 20),
         )
-        mock_repo.list.return_value = [booking]
+        mock_repo.search_bookings.return_value = [booking]
 
         result = GetBookingStatsQuery(mock_repo, set()).execute(
             start_date=date(2026, 6, 10),
@@ -212,7 +212,7 @@ class TestGetBookingStatsQuery:
             check_in=date(2026, 6, 2),
             check_out=date(2026, 6, 4),
         )
-        mock_repo.list.return_value = [first, second]
+        mock_repo.search_bookings.return_value = [first, second]
 
         result = GetBookingStatsQuery(mock_repo, set()).execute(
             start_date=date(2026, 6, 1),
@@ -235,7 +235,7 @@ class TestGetBookingStatsQuery:
             check_in=date(2026, 6, 2),
             check_out=date(2026, 6, 4),
         )
-        mock_repo.list.return_value = [first, second]
+        mock_repo.search_bookings.return_value = [first, second]
 
         result = GetBookingStatsQuery(mock_repo, set()).execute(
             start_date=date(2026, 6, 1),
@@ -265,7 +265,7 @@ class TestGetBookingStatsQuery:
             price=900,
             charges=90,
         )
-        mock_repo.list.return_value = [active, cancelled]
+        mock_repo.search_bookings.return_value = [active, cancelled]
 
         result = GetBookingStatsQuery(mock_repo, {"TEST-001"}).execute(
             start_date=date(2026, 6, 1),
@@ -289,11 +289,11 @@ class TestGetBookingStatsQuery:
             check_in=date(2026, 6, 1),
             check_out=date(2026, 6, 20),
         )
-        mock_repo.list.return_value = [booking]
+        mock_repo.search_bookings.return_value = [booking]
 
         result = GetBookingStatsQuery(mock_repo, set()).execute(start_date=start, days=5)
 
-        mock_repo.list.assert_called_once_with(
+        mock_repo.search_bookings.assert_called_once_with(
             start_date=start,
             end_date=start + timedelta(days=5),
             apartment_id=None,
@@ -336,12 +336,12 @@ class TestGetBookingByIdQuery:
 
 class TestGetActiveBookingsQuery:
     def test_prefilters_current_day_as_half_open_range(self, mock_repo):
-        mock_repo.list.return_value = []
+        mock_repo.search_bookings.return_value = []
         today = date.today()
 
         GetActiveBookingsQuery(mock_repo, set()).execute()
 
-        mock_repo.list.assert_called_once_with(
+        mock_repo.search_bookings.assert_called_once_with(
             start_date=today,
             end_date=today + timedelta(days=1),
         )
@@ -365,7 +365,7 @@ class TestGetUpcomingCheckinsQuery:
             check_in=today + timedelta(days=20),
             check_out=today + timedelta(days=24),
         )
-        mock_repo.list.return_value = [soon, far]
+        mock_repo.search_bookings.return_value = [soon, far]
 
         results = GetUpcomingCheckinsQuery(mock_repo, set()).execute(days=7)
 
@@ -384,7 +384,7 @@ class TestGetUpcomingCheckinsQuery:
             check_in=today + timedelta(days=2),
             check_out=today + timedelta(days=6),
         )
-        mock_repo.list.return_value = [b1, b2]
+        mock_repo.search_bookings.return_value = [b1, b2]
 
         results = GetUpcomingCheckinsQuery(mock_repo, set()).execute(days=7)
 
@@ -392,12 +392,12 @@ class TestGetUpcomingCheckinsQuery:
         assert results[1].record_id == 1
 
     def test_prefilter_includes_upper_boundary_day(self, mock_repo):
-        mock_repo.list.return_value = []
+        mock_repo.search_bookings.return_value = []
         today = date.today()
 
         GetUpcomingCheckinsQuery(mock_repo, set()).execute(days=7)
 
-        mock_repo.list.assert_called_once_with(
+        mock_repo.search_bookings.assert_called_once_with(
             start_date=today,
             end_date=today + timedelta(days=8),
         )
@@ -421,7 +421,7 @@ class TestGetUpcomingCheckoutsQuery:
             check_in=today - timedelta(days=2),
             check_out=today + timedelta(days=15),
         )
-        mock_repo.list.return_value = [soon, far]
+        mock_repo.search_bookings.return_value = [soon, far]
 
         results = GetUpcomingCheckoutsQuery(mock_repo, set()).execute(days=7)
 
@@ -429,12 +429,12 @@ class TestGetUpcomingCheckoutsQuery:
         assert results[0].record_id == 1
 
     def test_prefilter_includes_checkout_today(self, mock_repo):
-        mock_repo.list.return_value = []
+        mock_repo.search_bookings.return_value = []
         today = date.today()
 
         GetUpcomingCheckoutsQuery(mock_repo, set()).execute(days=7)
 
-        mock_repo.list.assert_called_once_with(
+        mock_repo.search_bookings.assert_called_once_with(
             start_date=today - timedelta(days=1),
             end_date=today + timedelta(days=8),
         )
@@ -454,7 +454,7 @@ class TestGetCalendarEventsQuery:
             check_in=date(2026, 6, 1),
             check_out=date(2026, 6, 5),
         )
-        mock_repo.list.return_value = [booking]
+        mock_repo.search_bookings.return_value = [booking]
 
         events = GetCalendarEventsQuery(mock_repo, set()).execute(
             start_date=date(2026, 5, 1), days=90
@@ -478,7 +478,7 @@ class TestGetCalendarEventsQuery:
             check_in=today + timedelta(days=1),
             check_out=today + timedelta(days=5),
         )
-        mock_repo.list.return_value = [cancelled_soon]
+        mock_repo.search_bookings.return_value = [cancelled_soon]
 
         events = GetCalendarEventsQuery(mock_repo, set()).execute(start_date=today, days=90)
 
@@ -492,7 +492,7 @@ class TestGetCalendarEventsQuery:
             check_in=today + timedelta(days=10),
             check_out=today + timedelta(days=14),
         )
-        mock_repo.list.return_value = [cancelled_far]
+        mock_repo.search_bookings.return_value = [cancelled_far]
 
         events = GetCalendarEventsQuery(mock_repo, set()).execute(start_date=today, days=90)
 

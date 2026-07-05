@@ -1,10 +1,42 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { map, Observable } from 'rxjs';
-
 import { environment } from '../../environments/environment';
 import { Apartment } from '../models/apartment.model';
 import { ApartmentStatsResponse } from '../models/search.model';
+
+export interface ApartmentResponse {
+  apartment_id: string;
+  community: string | null;
+  apartment_description: string | null;
+  address: string | null;
+  rooms: number;
+  bathrooms: number;
+  parking: string;
+  total_occupants: number;
+  owner_name: string | null;
+  email: string | null;
+  phone: string | null;
+}
+
+export type ApartmentCreateRequest = ApartmentResponse;
+
+export interface ApartmentUpdateRequest {
+  community: string | null;
+  apartment_description: string | null;
+  address: string | null;
+  rooms: number;
+  bathrooms: number;
+  parking: string;
+  total_occupants: number;
+  owner_name: string | null;
+  email: string | null;
+  phone: string | null;
+}
+
+export interface ApartmentMessageResponse {
+  message: string;
+}
 
 type ApartmentSearchParams = {
   q?: string;
@@ -29,6 +61,25 @@ export class ApartmentService {
   private readonly API = `${environment.apiUrl}/api/v1/apartments`;
 
   constructor(private http: HttpClient) {}
+
+  getAllApartments(): Observable<ApartmentResponse[]> {
+    return this.http.get<ApartmentResponse[]>(`${this.API}/`);
+  }
+
+  createApartment(data: ApartmentCreateRequest): Observable<ApartmentMessageResponse> {
+    return this.http.post<ApartmentMessageResponse>(`${this.API}/`, data);
+  }
+
+  updateApartment(
+    apartmentId: string,
+    data: ApartmentUpdateRequest
+  ): Observable<ApartmentMessageResponse> {
+    return this.http.put<ApartmentMessageResponse>(`${this.API}/${apartmentId}`, data);
+  }
+
+  deleteApartment(apartmentId: string): Observable<ApartmentMessageResponse> {
+    return this.http.delete<ApartmentMessageResponse>(`${this.API}/${apartmentId}`);
+  }
 
   searchApartments(filters: ApartmentSearchParams): Observable<Apartment[]> {
     let params = new HttpParams();

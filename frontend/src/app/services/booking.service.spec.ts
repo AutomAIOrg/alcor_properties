@@ -52,6 +52,9 @@ function makeCleaningOpportunity(
     available_from: '2025-06-07',
     available_until: null,
     comments: '',
+    can_bill: false,
+    has_bill: false,
+    bill_state: null,
     ...overrides,
   };
 }

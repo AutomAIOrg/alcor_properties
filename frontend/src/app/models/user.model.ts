@@ -10,7 +10,12 @@ export type Permission =
   | 'searches:access'
   | 'admin:access'
   | 'users:manage'
-  | 'properties:manage';
+  | 'properties:manage'
+  | 'bills:read'
+  | 'bills:create'
+  | 'bills:update'
+  | 'settings:read'
+  | 'settings:manage';
 
 export interface User {
   sub: string;

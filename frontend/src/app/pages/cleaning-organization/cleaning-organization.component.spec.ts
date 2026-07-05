@@ -1,9 +1,12 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { HttpErrorResponse } from '@angular/common/http';
 import { of, throwError } from 'rxjs';
 
 import { CleaningOrganizationComponent } from './cleaning-organization.component';
 import { AuthService } from '../../auth/auth.service';
+import { Bill } from '../../models/bill.model';
 import { Booking, CleaningOpportunity as CleaningOpportunityDto } from '../../models/booking.model';
+import { BillService } from '../../services/bill.service';
 import { BookingService } from '../../services/booking.service';
 import { CalendarLayoutService } from '../../services/calendar-layout.service';
 
@@ -16,6 +19,9 @@ function makeCleaningOpportunity(
     available_from: '2026-06-02',
     available_until: null,
     comments: '',
+    can_bill: false,
+    has_bill: false,
+    bill_state: null,
     ...overrides,
   };
 }
@@ -44,26 +50,58 @@ function makeBooking(overrides: Partial<Booking> = {}): Booking {
   };
 }
 
+function makeBill(overrides: Partial<Bill> = {}): Bill {
+  return {
+    bill_id: 10,
+    record_id: 1,
+    apartment_id: 'R180',
+    cleaning_date: '2026-06-02',
+    clean_hours: 2,
+    cost: 30,
+    hourly_rate: 15,
+    state: 'Creada',
+    paid_at: null,
+    cancellation_note: null,
+    previously_cancelled: false,
+    ...overrides,
+  };
+}
+
 describe('CleaningOrganizationComponent', () => {
   let fixture: ComponentFixture<CleaningOrganizationComponent>;
   let component: CleaningOrganizationComponent;
   let bookingServiceSpy: jest.Mocked<BookingService>;
+  let billServiceSpy: jest.Mocked<BillService>;
   let authServiceSpy: jest.Mocked<AuthService>;
 
-  function setup(opportunities: CleaningOpportunityDto[] = [], isAdmin = false): void {
+  function setup(
+    opportunities: CleaningOpportunityDto[] = [],
+    isAdmin = false,
+    canCreateBill = true
+  ): void {
     bookingServiceSpy = {
       getCleaningOpportunities: jest.fn().mockReturnValue(of(opportunities)),
       updateBooking: jest.fn(),
     } as unknown as jest.Mocked<BookingService>;
 
+    billServiceSpy = {
+      getCleaningRate: jest.fn().mockReturnValue(of({ cleaning_hourly_rate: 15 })),
+      createBill: jest.fn(),
+    } as unknown as jest.Mocked<BillService>;
+
     authServiceSpy = {
       hasRole: jest.fn().mockReturnValue(isAdmin),
+      hasPermission: jest.fn().mockImplementation((permission: string) => {
+        if (permission === 'bills:create') return canCreateBill;
+        return true;
+      }),
     } as unknown as jest.Mocked<AuthService>;
 
     TestBed.configureTestingModule({
       imports: [CleaningOrganizationComponent],
       providers: [
         { provide: BookingService, useValue: bookingServiceSpy },
+        { provide: BillService, useValue: billServiceSpy },
         { provide: AuthService, useValue: authServiceSpy },
         CalendarLayoutService,
       ],
@@ -167,6 +205,9 @@ describe('CleaningOrganizationComponent', () => {
         availableUntilTime: 'Pendiente',
         comments: 'Llevar llaves',
         sourceBookingRecordId: 1,
+        canBill: false,
+        hasBill: false,
+        billState: null,
       },
     ]);
   });
@@ -328,6 +369,212 @@ describe('CleaningOrganizationComponent', () => {
     expect(cleaningBar.style.background).toBeTruthy();
     expect(referenceChip.style.background).toBe(cleaningBar.style.background);
     expect(invoiceButton.disabled).toBe(true);
+    expect(invoiceButton.title).toContain('11:00');
+  });
+
+  it('habilita el botón de factura cuando can_bill es true y no hay factura', () => {
+    setup([
+      makeCleaningOpportunity({
+        available_from: '2026-06-02',
+        available_until: '2026-06-05',
+        can_bill: true,
+        has_bill: false,
+      }),
+    ]);
+
+    component.currentDate.set(new Date(2026, 5, 3));
+    fixture.detectChanges();
+
+    const invoiceButton: HTMLButtonElement = fixture.nativeElement.querySelector('.invoice-btn');
+    expect(invoiceButton.disabled).toBe(false);
+    expect(invoiceButton.textContent).toContain('Generar factura');
+  });
+
+  it('muestra chip de estado cuando ya existe factura', () => {
+    setup([
+      makeCleaningOpportunity({
+        available_from: '2026-06-02',
+        available_until: '2026-06-05',
+        can_bill: true,
+        has_bill: true,
+        bill_state: 'Pagada',
+      }),
+    ]);
+
+    component.currentDate.set(new Date(2026, 5, 3));
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('.invoice-btn')).toBeNull();
+    expect(fixture.nativeElement.textContent).toContain('Pagada');
+    expect(fixture.nativeElement.querySelector('.bill-state-chip.paid')).not.toBeNull();
+  });
+
+  it('abre el modal de factura, crea la factura y actualiza la fila', () => {
+    setup([
+      makeCleaningOpportunity({
+        source_booking_record_id: 1,
+        available_from: '2026-06-02',
+        available_until: '2026-06-05',
+        comments: 'Llevar llaves',
+        can_bill: true,
+        has_bill: false,
+      }),
+    ]);
+    billServiceSpy.createBill.mockReturnValue(of(makeBill()));
+
+    component.currentDate.set(new Date(2026, 5, 3));
+    fixture.detectChanges();
+
+    const invoiceButton: HTMLButtonElement = fixture.nativeElement.querySelector('.invoice-btn');
+    invoiceButton.click();
+    fixture.detectChanges();
+
+    expect(billServiceSpy.getCleaningRate).toHaveBeenCalledTimes(1);
+    expect(fixture.nativeElement.querySelector('.invoice-dialog')).not.toBeNull();
+    expect(fixture.nativeElement.textContent).toContain('15 €/h');
+    expect(fixture.nativeElement.textContent).not.toContain('Total:');
+
+    const submitButton: HTMLButtonElement = fixture.nativeElement.querySelector(
+      '.invoice-dialog .primary-btn'
+    );
+    expect(submitButton.disabled).toBe(true);
+
+    component.startTime.set('10:00');
+    component.endTime.set('12:00');
+    fixture.detectChanges();
+
+    expect(submitButton.disabled).toBe(false);
+    expect(fixture.nativeElement.textContent).toContain('Total: 30 €');
+
+    submitButton.click();
+    fixture.detectChanges();
+
+    expect(billServiceSpy.createBill).toHaveBeenCalledWith({
+      record_id: 1,
+      cleaning_date: expect.any(String),
+      start_time: '10:00',
+      end_time: '12:00',
+    });
+    expect(component.apiCleaningOpportunities()[0].has_bill).toBe(true);
+    expect(component.apiCleaningOpportunities()[0].bill_state).toBe('Creada');
+    expect(fixture.nativeElement.textContent).toContain('Factura creada: 2 h × 15 €/h = 30 €');
+    expect(fixture.nativeElement.querySelector('.invoice-dialog')).toBeNull();
+  });
+
+  it('mantiene bloqueado el botón de generar factura hasta introducir horas', () => {
+    setup([
+      makeCleaningOpportunity({
+        available_from: '2026-06-02',
+        available_until: '2026-06-05',
+        can_bill: true,
+        has_bill: false,
+      }),
+    ]);
+
+    component.currentDate.set(new Date(2026, 5, 3));
+    fixture.detectChanges();
+
+    const invoiceButton: HTMLButtonElement = fixture.nativeElement.querySelector('.invoice-btn');
+    invoiceButton.click();
+    fixture.detectChanges();
+
+    const submitButton: HTMLButtonElement = fixture.nativeElement.querySelector(
+      '.invoice-dialog .primary-btn'
+    );
+    expect(component.startTime()).toBe('');
+    expect(component.endTime()).toBe('');
+    expect(submitButton.disabled).toBe(true);
+
+    component.startTime.set('10:00');
+    fixture.detectChanges();
+    expect(submitButton.disabled).toBe(true);
+
+    component.endTime.set('12:00');
+    fixture.detectChanges();
+    expect(submitButton.disabled).toBe(false);
+  });
+
+  it('muestra toast de error si falla la creación de factura', () => {
+    setup([
+      makeCleaningOpportunity({
+        available_from: '2026-06-02',
+        available_until: '2026-06-05',
+        can_bill: true,
+        has_bill: false,
+      }),
+    ]);
+    billServiceSpy.createBill.mockReturnValue(
+      throwError(() => new HttpErrorResponse({ status: 409, error: { detail: 'Duplicado' } }))
+    );
+
+    component.currentDate.set(new Date(2026, 5, 3));
+    fixture.detectChanges();
+
+    const invoiceButton: HTMLButtonElement = fixture.nativeElement.querySelector('.invoice-btn');
+    invoiceButton.click();
+    fixture.detectChanges();
+
+    component.startTime.set('10:00');
+    component.endTime.set('12:00');
+    fixture.detectChanges();
+
+    const submitButton: HTMLButtonElement = fixture.nativeElement.querySelector(
+      '.invoice-dialog .primary-btn'
+    );
+    submitButton.click();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('Ya existe una factura para esta reserva.');
+    expect(fixture.nativeElement.querySelector('.toast.error')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('.invoice-dialog')).not.toBeNull();
+  });
+
+  it('deshabilita generar factura si la hora fin no es posterior a la de inicio', () => {
+    setup([
+      makeCleaningOpportunity({
+        available_from: '2026-06-02',
+        available_until: '2026-06-05',
+        can_bill: true,
+        has_bill: false,
+      }),
+    ]);
+
+    component.currentDate.set(new Date(2026, 5, 3));
+    fixture.detectChanges();
+
+    const invoiceButton: HTMLButtonElement = fixture.nativeElement.querySelector('.invoice-btn');
+    invoiceButton.click();
+    fixture.detectChanges();
+
+    component.startTime.set('10:00');
+    component.endTime.set('09:00');
+    fixture.detectChanges();
+
+    const submitButton: HTMLButtonElement = fixture.nativeElement.querySelector(
+      '.invoice-dialog .primary-btn'
+    );
+    expect(submitButton.disabled).toBe(true);
+    expect(billServiceSpy.createBill).not.toHaveBeenCalled();
+  });
+
+  it('oculta el botón de generar factura sin permiso bills:create', () => {
+    setup(
+      [
+        makeCleaningOpportunity({
+          available_from: '2026-06-02',
+          available_until: '2026-06-05',
+          can_bill: true,
+          has_bill: false,
+        }),
+      ],
+      false,
+      false
+    );
+
+    component.currentDate.set(new Date(2026, 5, 3));
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('.invoice-btn')).toBeNull();
   });
 
   it('muestra el lápiz de comentarios solo para admin', () => {
@@ -462,14 +709,21 @@ describe('CleaningOrganizationComponent', () => {
       updateBooking: jest.fn(),
     } as unknown as jest.Mocked<BookingService>;
 
+    billServiceSpy = {
+      getCleaningRate: jest.fn(),
+      createBill: jest.fn(),
+    } as unknown as jest.Mocked<BillService>;
+
     authServiceSpy = {
       hasRole: jest.fn().mockReturnValue(false),
+      hasPermission: jest.fn().mockReturnValue(false),
     } as unknown as jest.Mocked<AuthService>;
 
     TestBed.configureTestingModule({
       imports: [CleaningOrganizationComponent],
       providers: [
         { provide: BookingService, useValue: bookingServiceSpy },
+        { provide: BillService, useValue: billServiceSpy },
         { provide: AuthService, useValue: authServiceSpy },
         CalendarLayoutService,
       ],
