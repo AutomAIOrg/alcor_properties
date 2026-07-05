@@ -1,14 +1,11 @@
-import { CurrencyPipe } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, computed, inject, OnDestroy, OnInit, signal } from '@angular/core';
 import { AuthService } from '../../auth/auth.service';
 import { CleaningOpportunity as CleaningOpportunityDto } from '../../models/booking.model';
-import { CleaningType } from '../../models/cleaning-type.model';
 import { BookingColorPipe } from '../../pipes/booking-color.pipe';
 import { BillService } from '../../services/bill.service';
 import { BookingService } from '../../services/booking.service';
 import { CalendarLayoutService } from '../../services/calendar-layout.service';
-import { CleaningTypeService } from '../../services/cleaning-type.service';
 
 interface CleaningWindow {
   apartmentId: string;
@@ -52,14 +49,12 @@ interface ToastMessage {
 @Component({
   selector: 'app-cleaning-organization',
   standalone: true,
-  imports: [CurrencyPipe],
   templateUrl: './cleaning-organization.component.html',
   styleUrl: './cleaning-organization.component.scss',
 })
 export class CleaningOrganizationComponent implements OnInit, OnDestroy {
   private bookingService = inject(BookingService);
   private billService = inject(BillService);
-  private cleaningTypeService = inject(CleaningTypeService);
   private authService = inject(AuthService);
   private layout = inject(CalendarLayoutService);
   private colorPipe = new BookingColorPipe();
@@ -84,20 +79,13 @@ export class CleaningOrganizationComponent implements OnInit, OnDestroy {
   cleaningDate = signal('');
   startTime = signal('');
   endTime = signal('');
-  cleaningTypes = signal<CleaningType[]>([]);
-  selectedCleaningTypeId = signal<number | null>(null);
-  isLoadingCleaningTypes = signal(false);
+  cleaningRate = signal<number | null>(null);
+  isLoadingRate = signal(false);
   isCreatingBill = signal(false);
   invoiceFormError = signal<string | null>(null);
   toast = signal<ToastMessage | null>(null);
   isAdmin = computed(() => this.authService.hasRole('admin'));
   canCreateBill = computed(() => this.authService.hasPermission('bills:create'));
-
-  selectedCleaningType = computed<CleaningType | null>(() => {
-    const id = this.selectedCleaningTypeId();
-    if (id === null) return null;
-    return this.cleaningTypes().find(type => type.cleaning_type_id === id) ?? null;
-  });
 
   previewHours = computed(() =>
     this.computeHours(this.cleaningDate(), this.startTime(), this.endTime())
@@ -105,9 +93,9 @@ export class CleaningOrganizationComponent implements OnInit, OnDestroy {
 
   previewCost = computed(() => {
     const hours = this.previewHours();
-    const cleaningType = this.selectedCleaningType();
-    if (hours === null || cleaningType === null) return null;
-    return Math.round(hours * cleaningType.hourly_rate * 100) / 100;
+    const rate = this.cleaningRate();
+    if (hours === null || rate === null) return null;
+    return Math.round(hours * rate * 100) / 100;
   });
 
   isInvoiceFormValid = computed(
@@ -116,7 +104,7 @@ export class CleaningOrganizationComponent implements OnInit, OnDestroy {
       !!this.startTime() &&
       !!this.endTime() &&
       this.previewHours() !== null &&
-      this.selectedCleaningType() !== null
+      this.cleaningRate() !== null
   );
 
   weekDays = computed<CleaningWeekDay[]>(() => {
@@ -283,32 +271,20 @@ export class CleaningOrganizationComponent implements OnInit, OnDestroy {
     this.cleaningDate.set(this.layout.toIso(new Date()));
     this.startTime.set('');
     this.endTime.set('');
-    this.selectedCleaningTypeId.set(null);
+    this.cleaningRate.set(null);
     this.invoiceFormError.set(null);
-    this.isLoadingCleaningTypes.set(true);
+    this.isLoadingRate.set(true);
 
-    this.cleaningTypeService.list(true).subscribe({
-      next: cleaningTypes => {
-        this.cleaningTypes.set(cleaningTypes);
-        this.isLoadingCleaningTypes.set(false);
-        if (!cleaningTypes.length) {
-          this.invoiceFormError.set(
-            'No hay tipos de limpieza disponibles. Créalos en el panel de administrador.'
-          );
-        }
+    this.billService.getCleaningRate().subscribe({
+      next: response => {
+        this.cleaningRate.set(response.cleaning_hourly_rate);
+        this.isLoadingRate.set(false);
       },
       error: () => {
-        this.cleaningTypes.set([]);
-        this.isLoadingCleaningTypes.set(false);
-        this.invoiceFormError.set('No se han podido cargar los tipos de limpieza.');
+        this.isLoadingRate.set(false);
+        this.invoiceFormError.set('No se ha podido cargar la tarifa de limpieza.');
       },
     });
-  }
-
-  updateSelectedCleaningType(event: Event): void {
-    const value = (event.target as HTMLSelectElement).value;
-    this.selectedCleaningTypeId.set(value ? Number(value) : null);
-    this.invoiceFormError.set(null);
   }
 
   closeInvoiceModal(): void {
@@ -318,8 +294,7 @@ export class CleaningOrganizationComponent implements OnInit, OnDestroy {
     this.cleaningDate.set('');
     this.startTime.set('');
     this.endTime.set('');
-    this.cleaningTypes.set([]);
-    this.selectedCleaningTypeId.set(null);
+    this.cleaningRate.set(null);
     this.invoiceFormError.set(null);
   }
 
@@ -343,9 +318,7 @@ export class CleaningOrganizationComponent implements OnInit, OnDestroy {
 
   submitInvoice(): void {
     const opportunity = this.selectedInvoiceOpportunity();
-    const cleaningType = this.selectedCleaningType();
-    if (!opportunity || !cleaningType || this.isCreatingBill() || !this.isInvoiceFormValid())
-      return;
+    if (!opportunity || this.isCreatingBill() || !this.isInvoiceFormValid()) return;
 
     if (this.previewHours() === null) {
       this.invoiceFormError.set('La hora de fin debe ser posterior a la hora de inicio.');
@@ -361,7 +334,6 @@ export class CleaningOrganizationComponent implements OnInit, OnDestroy {
         cleaning_date: this.cleaningDate(),
         start_time: this.startTime(),
         end_time: this.endTime(),
-        cleaning_type_id: cleaningType.cleaning_type_id,
       })
       .subscribe({
         next: bill => {
@@ -376,8 +348,7 @@ export class CleaningOrganizationComponent implements OnInit, OnDestroy {
           this.selectedInvoiceOpportunity.set(null);
           this.showToast(
             'success',
-            `Factura creada (${bill.cleaning_type_name}): ${bill.clean_hours} h × ` +
-              `${bill.hourly_rate} €/h = ${bill.cost} €`
+            `Factura creada: ${bill.clean_hours} h × ${bill.hourly_rate} €/h = ${bill.cost} €`
           );
         },
         error: (error: HttpErrorResponse) => {

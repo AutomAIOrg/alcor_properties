@@ -226,29 +226,6 @@
           </p>
         }
 
-        <label class="comment-field cleaning-type-field">
-          Tipo de limpieza
-          <select
-            class="type-select"
-            [value]="selectedCleaningTypeId() ?? ''"
-            required
-            [disabled]="isLoadingCleaningTypes() || !cleaningTypes().length"
-            (change)="updateSelectedCleaningType($event)"
-          >
-            <option value="" disabled>
-              {{
-                isLoadingCleaningTypes() ? 'Cargando tipos...' : 'Selecciona un tipo de limpieza'
-              }}
-            </option>
-            @for (cleaningType of cleaningTypes(); track cleaningType.cleaning_type_id) {
-              <option [value]="cleaningType.cleaning_type_id">
-                {{ cleaningType.name }} ·
-                {{ cleaningType.hourly_rate | currency: 'EUR' : 'symbol' : '1.2-2' }}/h
-              </option>
-            }
-          </select>
-        </label>
-
         <div class="invoice-form-grid">
           <label class="comment-field">
             Fecha de limpieza
@@ -276,9 +253,11 @@
         }
 
         <div class="invoice-summary">
-          @if (selectedCleaningType() !== null) {
+          @if (isLoadingRate()) {
+            <p>Cargando tarifa...</p>
+          } @else if (cleaningRate() !== null) {
             <p>
-              <strong>Tarifa:</strong> {{ selectedCleaningType()!.hourly_rate }} €/h
+              <strong>Tarifa:</strong> {{ cleaningRate() }} €/h
               @if (previewHours() !== null) {
                 · <strong>Horas:</strong> {{ previewHours() }} · <strong>Total:</strong>
                 {{ previewCost() }} €

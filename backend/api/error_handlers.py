@@ -95,15 +95,3 @@ async def bill_not_found_error_handler(request: Request, exc: Exception) -> JSON
 async def bill_already_exists_error_handler(request: Request, exc: Exception) -> JSONResponse:
     """Devuelve un error 409 cuando la factura ya existe."""
     return JSONResponse(status_code=409, content={"detail": str(exc)})
-
-
-async def cleaning_type_not_found_error_handler(request: Request, exc: Exception) -> JSONResponse:
-    """Devuelve un error 404 cuando no se encuentra el tipo de limpieza."""
-    return JSONResponse(status_code=404, content={"detail": str(exc)})
-
-
-async def cleaning_type_already_exists_error_handler(
-    request: Request, exc: Exception
-) -> JSONResponse:
-    """Devuelve un error 409 cuando el tipo de limpieza ya existe."""
-    return JSONResponse(status_code=409, content={"detail": str(exc)})

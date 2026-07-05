@@ -15,8 +15,6 @@ function makeBill(overrides: Partial<Bill> = {}): Bill {
     clean_hours: 2,
     cost: 30,
     hourly_rate: 15,
-    cleaning_type_id: 1,
-    cleaning_type_name: 'Limpieza normal',
     state: 'Creada',
     paid_at: null,
     cancellation_note: null,
@@ -44,6 +42,22 @@ describe('BillService', () => {
     httpMock.verify();
   });
 
+  describe('getCleaningRate', () => {
+    it('hace GET al endpoint de tarifa y devuelve la respuesta', () => {
+      let result: { cleaning_hourly_rate: number } | undefined;
+
+      service.getCleaningRate().subscribe(response => {
+        result = response;
+      });
+
+      const req = httpMock.expectOne(`${API}/settings/cleaning-rate`);
+      expect(req.request.method).toBe('GET');
+      req.flush({ cleaning_hourly_rate: 18 });
+
+      expect(result).toEqual({ cleaning_hourly_rate: 18 });
+    });
+  });
+
   describe('createBill', () => {
     it('hace POST al endpoint de facturas y devuelve la factura creada', () => {
       const payload: BillCreateRequest = {
@@ -51,7 +65,6 @@ describe('BillService', () => {
         cleaning_date: '2026-06-02',
         start_time: '10:00',
         end_time: '12:00',
-        cleaning_type_id: 1,
       };
       const created = makeBill();
       let result: Bill | undefined;
@@ -119,6 +132,23 @@ describe('BillService', () => {
       req.flush(updated);
 
       expect(result).toEqual(updated);
+    });
+  });
+
+  describe('updateCleaningRate', () => {
+    it('hace PUT al endpoint de tarifa', () => {
+      let result: { cleaning_hourly_rate: number } | undefined;
+
+      service.updateCleaningRate(20).subscribe(response => {
+        result = response;
+      });
+
+      const req = httpMock.expectOne(`${API}/settings/cleaning-rate`);
+      expect(req.request.method).toBe('PUT');
+      expect(req.request.body).toEqual({ cleaning_hourly_rate: 20 });
+      req.flush({ cleaning_hourly_rate: 20 });
+
+      expect(result).toEqual({ cleaning_hourly_rate: 20 });
     });
   });
 });

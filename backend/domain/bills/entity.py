@@ -63,13 +63,6 @@ class Bill(BaseModel):
     hourly_rate: Decimal | None = Field(
         default=None, ge=0, description="Precio por hora de limpieza aplicado en esta factura (€)"
     )
-    cleaning_type_id: int | None = Field(
-        default=None, description="ID del tipo de limpieza aplicado (catálogo)"
-    )
-    cleaning_type_name: str | None = Field(
-        default=None,
-        description="Nombre del tipo de limpieza congelado al facturar (histórico estable)",
-    )
     paid_at: date | None = Field(
         default=None, description="Fecha en la que se pagó la factura (solo si está Pagada)"
     )

@@ -3,6 +3,7 @@ DTOs (Data Transfer Objects) para la API de facturas.
 """
 
 from datetime import date, time
+from decimal import Decimal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -12,15 +13,17 @@ class BillCreateRequest(BaseModel):
     DTO de entrada para POST /bills/.
 
     Solo se capturan los datos de la limpieza; el apartamento, las horas, el coste
-    y el estado se derivan en el backend a partir de la reserva y del tipo de limpieza.
+    y el estado se derivan en el backend a partir de la reserva.
     """
 
     record_id: int = Field(..., description="ID de la reserva (booking) asociada a la limpieza")
     cleaning_date: date = Field(..., description="Fecha en la que se realizó la limpieza")
     start_time: time = Field(..., description="Hora de inicio de la limpieza")
     end_time: time = Field(..., description="Hora de fin de la limpieza")
-    cleaning_type_id: int = Field(
-        ..., description="ID del tipo de limpieza seleccionado; su tarifa determina el coste"
+    hourly_rate: Decimal | None = Field(
+        default=None,
+        ge=0,
+        description="Precio por hora (€). Si no se indica, se usa el del sistema.",
     )
 
 
@@ -36,8 +39,6 @@ class BillResponse(BaseModel):
     clean_hours: float
     cost: float | None = None
     hourly_rate: float | None = None
-    cleaning_type_id: int | None = None
-    cleaning_type_name: str | None = None
     state: str
     paid_at: date | None = None
     cancellation_note: str | None = None

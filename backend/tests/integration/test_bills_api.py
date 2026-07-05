@@ -29,7 +29,6 @@ _VALID_PAYLOAD = {
     "cleaning_date": "2026-06-01",
     "start_time": "10:00",
     "end_time": "12:00",
-    "cleaning_type_id": 1,
 }
 
 
