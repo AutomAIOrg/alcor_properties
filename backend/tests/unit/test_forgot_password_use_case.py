@@ -12,6 +12,7 @@ from application.auth.forgot_password_use_case import ForgotPasswordUseCase
 from application.auth.token_manager_interface import ITokenManager
 from application.shared.email_sender_interface import IEmailSender
 from application.shared.user_repository_interface import IUserRepository
+from domain.auth.reset_token import IssuedResetToken
 from tests.helpers import make_user
 
 pytestmark = pytest.mark.unit
@@ -27,7 +28,9 @@ class TestForgotPasswordUseCase:
         user = make_user()
         user.email = "admin@example.com"
         user_repository.get_by_email.return_value = user
-        token_manager.create_reset_token.return_value = "reset-token"
+        token_manager.create_reset_token.return_value = IssuedResetToken(
+            token="reset-token", jti="jti-123"
+        )
 
         result = ForgotPasswordUseCase(
             user_repository, token_manager, email_sender, FRONTEND_URL
@@ -36,6 +39,7 @@ class TestForgotPasswordUseCase:
         assert result is None
         user_repository.get_by_email.assert_called_once_with("admin@example.com")
         token_manager.create_reset_token.assert_called_once_with(subject="1")
+        user_repository.set_password_reset_jti.assert_called_once_with(1, "jti-123")
         email_sender.send_password_reset.assert_called_once_with(
             "admin@example.com",
             "https://app.example.com/reset-password?token=reset-token",
@@ -48,7 +52,9 @@ class TestForgotPasswordUseCase:
         user = make_user()
         user.email = "admin@example.com"
         user_repository.get_by_email.return_value = user
-        token_manager.create_reset_token.return_value = "reset-token"
+        token_manager.create_reset_token.return_value = IssuedResetToken(
+            token="reset-token", jti="jti-123"
+        )
         email_sender.send_password_reset.side_effect = RuntimeError("SMTP caído")
 
         # Un fallo de envío no debe propagarse (la respuesta sigue siendo uniforme).

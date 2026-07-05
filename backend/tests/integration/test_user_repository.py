@@ -162,3 +162,28 @@ class TestDeleteUser:
 
         with pytest.raises(UserNotFound):
             repository.delete_user(9999)
+
+
+class TestPasswordResetJti:
+    def test_set_and_consume_password_reset_jti(self, sqlite_session):
+        orm = _insert_user_orm(sqlite_session)
+        repository = SQLAlchemyUserRepository(sqlite_session)
+
+        repository.set_password_reset_jti(orm.id, "jti-abc")
+
+        assert repository.consume_password_reset_jti(orm.id, "jti-abc") is True
+        assert repository.consume_password_reset_jti(orm.id, "jti-abc") is False
+
+    def test_consume_password_reset_jti_returns_false_for_wrong_jti(self, sqlite_session):
+        orm = _insert_user_orm(sqlite_session)
+        repository = SQLAlchemyUserRepository(sqlite_session)
+
+        repository.set_password_reset_jti(orm.id, "jti-abc")
+
+        assert repository.consume_password_reset_jti(orm.id, "jti-other") is False
+
+    def test_set_password_reset_jti_raises_user_not_found_for_missing_id(self, sqlite_session):
+        repository = SQLAlchemyUserRepository(sqlite_session)
+
+        with pytest.raises(UserNotFound):
+            repository.set_password_reset_jti(9999, "jti-abc")
