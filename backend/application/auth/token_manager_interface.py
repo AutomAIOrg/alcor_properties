@@ -6,6 +6,7 @@ from abc import ABC, abstractmethod
 from collections.abc import Mapping
 from typing import Any
 
+from domain.auth.reset_token import IssuedResetToken
 from domain.auth.token_payload_entity import TokenPayload
 
 
@@ -37,7 +38,7 @@ class ITokenManager(ABC):
         pass
 
     @abstractmethod
-    def create_reset_token(self, subject: str) -> str:
+    def create_reset_token(self, subject: str) -> IssuedResetToken:
         """Crea un token de un solo uso para restablecer la contraseña."""
         pass
 

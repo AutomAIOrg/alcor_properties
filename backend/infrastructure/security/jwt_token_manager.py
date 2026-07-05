@@ -2,6 +2,7 @@
 Implementación JWT del puerto de tokens.
 """
 
+import uuid
 from collections.abc import Mapping
 from datetime import UTC, datetime, timedelta
 from typing import Any
@@ -11,6 +12,7 @@ from jwt import ExpiredSignatureError, InvalidTokenError
 
 from application.auth.token_manager_interface import ITokenManager
 from config import settings
+from domain.auth.reset_token import IssuedResetToken
 from domain.auth.token_payload_entity import TokenPayload
 from domain.auth.user_entity import Role
 from domain.exceptions import InvalidToken, TokenExpired
@@ -73,13 +75,16 @@ class JwtTokenManager(ITokenManager):
         """Valida un token de refresh y devuelve sus claims normalizados."""
         return self._decode_token(token, expected_type="refresh")
 
-    def create_reset_token(self, subject: str) -> str:
+    def create_reset_token(self, subject: str) -> IssuedResetToken:
         """Crea un token de un solo uso para restablecer la contraseña."""
-        return self._create_token(
+        jti = str(uuid.uuid4())
+        token = self._create_token(
             subject=subject,
             token_type="reset",
             expires_delta=timedelta(minutes=self._reset_token_expire_minutes),
+            claims={"jti": jti},
         )
+        return IssuedResetToken(token=token, jti=jti)
 
     def decode_reset_token(self, token: str) -> TokenPayload:
         """Valida un token de restablecimiento de contraseña y devuelve sus claims."""
@@ -137,4 +142,5 @@ class JwtTokenManager(ITokenManager):
             issued_at=datetime.fromtimestamp(payload["iat"], tz=UTC),
             username=payload.get("username"),
             role=role,
+            jti=payload.get("jti"),
         )
