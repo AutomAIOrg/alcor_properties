@@ -212,6 +212,44 @@ class TestUpdateBillStateUseCase:
         assert result.state == "Creada"
         assert result.paid_at is None
 
+    def test_created_to_cancelled_stores_note(self):
+        bills = _bills_with(make_bill(bill_id=1, state="Creada"))
+
+        result = _update_use_case(bills).execute(
+            1, "Cancelada", cancellation_note="Reserva duplicada"
+        )
+
+        assert result.state == "Cancelada"
+        assert result.cancellation_note == "Reserva duplicada"
+
+    def test_cancelled_without_note_stores_none(self):
+        bills = _bills_with(make_bill(bill_id=1, state="Creada"))
+
+        result = _update_use_case(bills).execute(1, "Cancelada", cancellation_note="   ")
+
+        assert result.state == "Cancelada"
+        assert result.cancellation_note is None
+
+    def test_reactivating_cancelled_clears_note(self):
+        bills = _bills_with(
+            make_bill(bill_id=1, state="Cancelada", cancellation_note="Motivo previo")
+        )
+
+        result = _update_use_case(bills).execute(1, "Creada")
+
+        assert result.state == "Creada"
+        assert result.cancellation_note is None
+
+    def test_note_ignored_when_not_cancelling(self):
+        bills = _bills_with(make_bill(bill_id=1, state="Creada"))
+
+        result = _update_use_case(bills).execute(
+            1, "Pagada", cancellation_note="No debería guardarse"
+        )
+
+        assert result.state == "Pagada"
+        assert result.cancellation_note is None
+
     def test_invalid_transition_raises_validation_error(self):
         bills = _bills_with(make_bill(bill_id=1, state="Pagada"))
 

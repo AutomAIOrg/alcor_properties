@@ -85,4 +85,9 @@ async def update_bill_state(
     ],
     _: User = Depends(require_cleaning),
 ):
-    return update_bill_state_use_case.execute(bill_id, payload.state, paid_at=payload.paid_at)
+    return update_bill_state_use_case.execute(
+        bill_id,
+        payload.state,
+        paid_at=payload.paid_at,
+        cancellation_note=payload.cancellation_note,
+    )

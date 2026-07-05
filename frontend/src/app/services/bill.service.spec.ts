@@ -17,6 +17,7 @@ function makeBill(overrides: Partial<Bill> = {}): Bill {
     hourly_rate: 15,
     state: 'Creada',
     paid_at: null,
+    cancellation_note: null,
     previously_cancelled: false,
     ...overrides,
   };

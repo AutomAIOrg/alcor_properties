@@ -98,6 +98,23 @@ class TestUpdate:
         assert updated.state == "Pagada"
         assert updated.paid_at == date(2026, 5, 20)
 
+    def test_persists_cancellation_note(self, sqlite_session):
+        booking = _insert_booking(sqlite_session)
+        orm = _insert_bill(sqlite_session, record_id=booking.record_id, state="Creada")
+        repo = SQLAlchemyBillRepository(sqlite_session)
+        existing = repo.get_by_id(orm.bill_id)
+
+        updated = repo.update(
+            existing.model_copy(
+                update={"state": "Cancelada", "cancellation_note": "Reserva duplicada"}
+            )
+        )
+
+        assert updated.state == "Cancelada"
+        assert updated.cancellation_note == "Reserva duplicada"
+        # Se persiste realmente (recarga desde la BD).
+        assert repo.get_by_id(orm.bill_id).cancellation_note == "Reserva duplicada"
+
 
 class TestList:
     def test_filters_by_apartment_id(self, sqlite_session):

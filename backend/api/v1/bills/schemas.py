@@ -41,6 +41,7 @@ class BillResponse(BaseModel):
     hourly_rate: float | None = None
     state: str
     paid_at: date | None = None
+    cancellation_note: str | None = None
     previously_cancelled: bool = False
 
 
@@ -51,4 +52,9 @@ class BillUpdateStateRequest(BaseModel):
     paid_at: date | None = Field(
         default=None,
         description="Fecha de pago. Solo aplica al pasar a 'Pagada'; por defecto, hoy.",
+    )
+    cancellation_note: str | None = Field(
+        default=None,
+        max_length=500,
+        description="Nota explicativa. Solo aplica al pasar a 'Cancelada'.",
     )

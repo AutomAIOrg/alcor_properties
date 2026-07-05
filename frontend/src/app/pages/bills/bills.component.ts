@@ -3,7 +3,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { AuthService } from '../../auth/auth.service';
-import { Bill, BillState } from '../../models/bill.model';
+import { Bill, BillState, BillUpdateStateRequest } from '../../models/bill.model';
 import { BookingColorPipe } from '../../pipes/booking-color.pipe';
 import { ApartmentService } from '../../services/apartment.service';
 import { BillService } from '../../services/bill.service';
@@ -71,6 +71,8 @@ export class BillsComponent implements OnInit, OnDestroy {
 
   markPaidBill = signal<Bill | null>(null);
   paidAtDate = signal('');
+  cancelBill = signal<Bill | null>(null);
+  cancelNote = signal('');
   pendingTransition = signal<PendingTransition | null>(null);
 
   readonly allowedBillTransitions = allowedBillTransitions;
@@ -199,6 +201,12 @@ export class BillsComponent implements OnInit, OnDestroy {
       return;
     }
 
+    if (targetState === 'Cancelada') {
+      this.cancelBill.set(bill);
+      this.cancelNote.set('');
+      return;
+    }
+
     if (billStateRequiresConfirmation(targetState)) {
       this.pendingTransition.set({ bill, targetState });
       return;
@@ -224,6 +232,23 @@ export class BillsComponent implements OnInit, OnDestroy {
     this.applyTransition(bill, 'Pagada', this.paidAtDate());
   }
 
+  closeCancelModal(): void {
+    if (this.isUpdating()) return;
+    this.cancelBill.set(null);
+    this.cancelNote.set('');
+  }
+
+  updateCancelNote(event: Event): void {
+    this.cancelNote.set((event.target as HTMLTextAreaElement).value);
+  }
+
+  confirmCancel(): void {
+    const bill = this.cancelBill();
+    if (!bill?.bill_id || this.isUpdating()) return;
+
+    this.applyTransition(bill, 'Cancelada', undefined, this.cancelNote().trim());
+  }
+
   closeConfirmDialog(): void {
     if (this.isUpdating()) return;
     this.pendingTransition.set(null);
@@ -244,14 +269,22 @@ export class BillsComponent implements OnInit, OnDestroy {
     );
   }
 
-  private applyTransition(bill: Bill, targetState: BillState, paidAt?: string): void {
+  private applyTransition(
+    bill: Bill,
+    targetState: BillState,
+    paidAt?: string,
+    cancellationNote?: string
+  ): void {
     if (!bill.bill_id) return;
 
     this.isUpdating.set(true);
 
-    const payload: { state: BillState; paid_at?: string } = { state: targetState };
+    const payload: BillUpdateStateRequest = { state: targetState };
     if (targetState === 'Pagada' && paidAt) {
       payload.paid_at = paidAt;
+    }
+    if (targetState === 'Cancelada' && cancellationNote) {
+      payload.cancellation_note = cancellationNote;
     }
 
     this.billService.updateBillState(bill.bill_id, payload).subscribe({
@@ -262,6 +295,8 @@ export class BillsComponent implements OnInit, OnDestroy {
         this.isUpdating.set(false);
         this.markPaidBill.set(null);
         this.paidAtDate.set('');
+        this.cancelBill.set(null);
+        this.cancelNote.set('');
         this.pendingTransition.set(null);
         this.showToast('success', `Factura #${updated.bill_id} actualizada a ${updated.state}.`);
       },

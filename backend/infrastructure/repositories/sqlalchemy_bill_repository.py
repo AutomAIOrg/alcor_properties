@@ -73,6 +73,7 @@ class SQLAlchemyBillRepository(IBillRepository):
 
         orm.state = bill.state
         orm.paid_at = bill.paid_at
+        orm.cancellation_note = bill.cancellation_note
 
         self._db.commit()
         self._db.refresh(orm)
@@ -177,6 +178,7 @@ class SQLAlchemyBillRepository(IBillRepository):
             apartment_id=orm.apartment_id,
             state=orm.state,
             paid_at=orm.paid_at,
+            cancellation_note=orm.cancellation_note,
         )
 
     @staticmethod
@@ -191,4 +193,5 @@ class SQLAlchemyBillRepository(IBillRepository):
             apartment_id=bill.apartment_id,
             state=bill.state,
             paid_at=bill.paid_at,
+            cancellation_note=bill.cancellation_note,
         )

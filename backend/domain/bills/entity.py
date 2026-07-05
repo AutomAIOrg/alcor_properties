@@ -66,6 +66,11 @@ class Bill(BaseModel):
     paid_at: date | None = Field(
         default=None, description="Fecha en la que se pagó la factura (solo si está Pagada)"
     )
+    cancellation_note: str | None = Field(
+        default=None,
+        max_length=500,
+        description="Nota explicativa del motivo de cancelación (solo si está Cancelada)",
+    )
 
     # Campo calculado — establecido por la capa de aplicación, no persistido en la BD.
     # True en una factura virtual 'Pendiente' cuya limpieza tuvo una factura cancelada

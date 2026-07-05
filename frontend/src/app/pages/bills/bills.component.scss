@@ -162,6 +162,17 @@ table {
   }
 }
 
+.cancellation-note {
+  margin: 0.3rem 0 0;
+  max-width: 220px;
+  color: #667085;
+  font-size: 0.76rem;
+  font-style: italic;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .refactored-badge {
   display: inline-block;
   margin-left: 0.35rem;
@@ -261,6 +272,14 @@ table {
   &:hover:not(:disabled) {
     background: #1d4ed8;
   }
+
+  &.danger {
+    background: #d92d20;
+
+    &:hover:not(:disabled) {
+      background: #b42318;
+    }
+  }
 }
 
 .secondary-btn {
@@ -313,12 +332,23 @@ table {
   font-size: 0.86rem;
   font-weight: 700;
 
-  input {
+  input,
+  textarea {
     padding: 0.55rem 0.7rem;
     border: 1px solid #d0d5dd;
     border-radius: 8px;
     font: inherit;
     font-weight: 400;
+    outline: none;
+
+    &:focus {
+      border-color: #2563eb;
+    }
+  }
+
+  textarea {
+    resize: vertical;
+    min-height: 3.5rem;
   }
 }
 
