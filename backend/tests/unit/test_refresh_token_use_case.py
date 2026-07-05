@@ -40,8 +40,21 @@ class TestRefreshTokenUseCase:
         user_repository.get_by_id.assert_called_once_with(1)
         token_manager.create_access_token.assert_called_once_with(
             subject="1",
-            claims={"username": "admin", "role": Role.ADMIN},
+            claims={"username": "admin", "role": Role.ADMIN, "ver": 0},
         )
+
+    def test_revoked_token_version_raises_invalid_token(self):
+        user_repository = MagicMock(spec=IUserRepository)
+        token_manager = MagicMock(spec=ITokenManager)
+        token_manager.decode_refresh_token.return_value = _token_payload(subject="1", version=0)
+        user_repository.get_by_id.return_value = make_user(token_version=1)
+
+        with pytest.raises(InvalidToken, match="revocado"):
+            RefreshTokenUseCase(user_repository, token_manager).execute(
+                RefreshTokenCommand(refresh_token="refresh-token")
+            )
+
+        token_manager.create_access_token.assert_not_called()
 
     def test_missing_user_raises_invalid_token(self):
         user_repository = MagicMock(spec=IUserRepository)
@@ -70,8 +83,9 @@ class TestRefreshTokenUseCase:
         token_manager.create_access_token.assert_not_called()
 
 
-def _token_payload(subject: str) -> TokenPayload:
+def _token_payload(subject: str, version: int = 0) -> TokenPayload:
     return TokenPayload(
         subject=subject,
         expires_at=datetime.now(UTC) + timedelta(days=1),
+        token_version=version,
     )

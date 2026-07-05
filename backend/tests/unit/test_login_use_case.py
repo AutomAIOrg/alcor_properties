@@ -41,9 +41,9 @@ class TestLoginUseCase:
         )
         token_manager.create_access_token.assert_called_once_with(
             subject="1",
-            claims={"username": "admin", "role": Role.ADMIN},
+            claims={"username": "admin", "role": Role.ADMIN, "ver": 0},
         )
-        token_manager.create_refresh_token.assert_called_once_with(subject="1")
+        token_manager.create_refresh_token.assert_called_once_with(subject="1", token_version=0)
 
     def test_unknown_username_raises_invalid_credentials(self):
         user_repository = MagicMock(spec=IUserRepository)

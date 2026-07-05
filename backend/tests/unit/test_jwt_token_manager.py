@@ -47,12 +47,13 @@ class TestJwtTokenManager:
             refresh_token_expire_days=7,
         )
 
-        token = manager.create_refresh_token(subject="1")
+        token = manager.create_refresh_token(subject="1", token_version=3)
 
         payload = manager.decode_refresh_token(token)
         assert payload.subject == "1"
         assert payload.username is None
         assert payload.role is None
+        assert payload.token_version == 3
         assert payload.issued_at is not None
         assert payload.expires_at > payload.issued_at
 

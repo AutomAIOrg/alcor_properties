@@ -45,6 +45,8 @@ class TestResetPasswordUseCase:
         password_manager.hash.assert_called_once_with("nueva123")
         assert user.password == "hashed-new-password"
         user_repository.update_user.assert_called_once_with(user)
+        # Invalida las sesiones activas del usuario.
+        user_repository.bump_token_version.assert_called_once_with(1)
         token_manager.create_access_token.assert_not_called()
         token_manager.create_refresh_token.assert_not_called()
 

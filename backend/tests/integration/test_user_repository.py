@@ -187,3 +187,31 @@ class TestPasswordResetJti:
 
         with pytest.raises(UserNotFound):
             repository.set_password_reset_jti(9999, "jti-abc")
+
+
+class TestTokenVersion:
+    def test_new_user_starts_with_token_version_zero(self, sqlite_session):
+        orm = _insert_user_orm(sqlite_session)
+        repository = SQLAlchemyUserRepository(sqlite_session)
+
+        stored = repository.get_by_id(orm.id)
+
+        assert stored is not None
+        assert stored.token_version == 0
+
+    def test_bump_token_version_increments_value(self, sqlite_session):
+        orm = _insert_user_orm(sqlite_session)
+        repository = SQLAlchemyUserRepository(sqlite_session)
+
+        repository.bump_token_version(orm.id)
+        repository.bump_token_version(orm.id)
+
+        stored = repository.get_by_id(orm.id)
+        assert stored is not None
+        assert stored.token_version == 2
+
+    def test_bump_token_version_raises_user_not_found_for_missing_id(self, sqlite_session):
+        repository = SQLAlchemyUserRepository(sqlite_session)
+
+        with pytest.raises(UserNotFound):
+            repository.bump_token_version(9999)
