@@ -1,7 +1,7 @@
 """create_cleaning_types_table
 
 Revision ID: e7f1a2b3c4d5
-Revises: d6e0f4a8b3c5
+Revises: e7a1b2c3d4f5
 Create Date: 2026-07-03 10:00:00.000000
 
 """
@@ -14,7 +14,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "e7f1a2b3c4d5"
-down_revision: str | Sequence[str] | None = "d6e0f4a8b3c5"
+down_revision: str | Sequence[str] | None = "e7a1b2c3d4f5"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
