@@ -6,9 +6,11 @@ import { CleaningOrganizationComponent } from './cleaning-organization.component
 import { AuthService } from '../../auth/auth.service';
 import { Bill } from '../../models/bill.model';
 import { Booking, CleaningOpportunity as CleaningOpportunityDto } from '../../models/booking.model';
+import { CleaningType } from '../../models/cleaning-type.model';
 import { BillService } from '../../services/bill.service';
 import { BookingService } from '../../services/booking.service';
 import { CalendarLayoutService } from '../../services/calendar-layout.service';
+import { CleaningTypeService } from '../../services/cleaning-type.service';
 
 function makeCleaningOpportunity(
   overrides: Partial<CleaningOpportunityDto> = {}
@@ -59,10 +61,22 @@ function makeBill(overrides: Partial<Bill> = {}): Bill {
     clean_hours: 2,
     cost: 30,
     hourly_rate: 15,
+    cleaning_type_id: 1,
+    cleaning_type_name: 'Limpieza normal',
     state: 'Creada',
     paid_at: null,
     cancellation_note: null,
     previously_cancelled: false,
+    ...overrides,
+  };
+}
+
+function makeCleaningType(overrides: Partial<CleaningType> = {}): CleaningType {
+  return {
+    cleaning_type_id: 1,
+    name: 'Limpieza normal',
+    hourly_rate: 15,
+    active: true,
     ...overrides,
   };
 }
@@ -72,6 +86,7 @@ describe('CleaningOrganizationComponent', () => {
   let component: CleaningOrganizationComponent;
   let bookingServiceSpy: jest.Mocked<BookingService>;
   let billServiceSpy: jest.Mocked<BillService>;
+  let cleaningTypeServiceSpy: jest.Mocked<CleaningTypeService>;
   let authServiceSpy: jest.Mocked<AuthService>;
 
   function setup(
@@ -85,9 +100,12 @@ describe('CleaningOrganizationComponent', () => {
     } as unknown as jest.Mocked<BookingService>;
 
     billServiceSpy = {
-      getCleaningRate: jest.fn().mockReturnValue(of({ cleaning_hourly_rate: 15 })),
       createBill: jest.fn(),
     } as unknown as jest.Mocked<BillService>;
+
+    cleaningTypeServiceSpy = {
+      list: jest.fn().mockReturnValue(of([makeCleaningType()])),
+    } as unknown as jest.Mocked<CleaningTypeService>;
 
     authServiceSpy = {
       hasRole: jest.fn().mockReturnValue(isAdmin),
@@ -102,6 +120,7 @@ describe('CleaningOrganizationComponent', () => {
       providers: [
         { provide: BookingService, useValue: bookingServiceSpy },
         { provide: BillService, useValue: billServiceSpy },
+        { provide: CleaningTypeService, useValue: cleaningTypeServiceSpy },
         { provide: AuthService, useValue: authServiceSpy },
         CalendarLayoutService,
       ],
@@ -429,15 +448,18 @@ describe('CleaningOrganizationComponent', () => {
     invoiceButton.click();
     fixture.detectChanges();
 
-    expect(billServiceSpy.getCleaningRate).toHaveBeenCalledTimes(1);
+    expect(cleaningTypeServiceSpy.list).toHaveBeenCalledTimes(1);
     expect(fixture.nativeElement.querySelector('.invoice-dialog')).not.toBeNull();
-    expect(fixture.nativeElement.textContent).toContain('15 €/h');
-    expect(fixture.nativeElement.textContent).not.toContain('Total:');
 
     const submitButton: HTMLButtonElement = fixture.nativeElement.querySelector(
       '.invoice-dialog .primary-btn'
     );
     expect(submitButton.disabled).toBe(true);
+
+    component.selectedCleaningTypeId.set(1);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('15 €/h');
+    expect(fixture.nativeElement.textContent).not.toContain('Total:');
 
     component.startTime.set('10:00');
     component.endTime.set('12:00');
@@ -454,10 +476,13 @@ describe('CleaningOrganizationComponent', () => {
       cleaning_date: expect.any(String),
       start_time: '10:00',
       end_time: '12:00',
+      cleaning_type_id: 1,
     });
     expect(component.apiCleaningOpportunities()[0].has_bill).toBe(true);
     expect(component.apiCleaningOpportunities()[0].bill_state).toBe('Creada');
-    expect(fixture.nativeElement.textContent).toContain('Factura creada: 2 h × 15 €/h = 30 €');
+    expect(fixture.nativeElement.textContent).toContain(
+      'Factura creada (Limpieza normal): 2 h × 15 €/h = 30 €'
+    );
     expect(fixture.nativeElement.querySelector('.invoice-dialog')).toBeNull();
   });
 
@@ -476,6 +501,9 @@ describe('CleaningOrganizationComponent', () => {
 
     const invoiceButton: HTMLButtonElement = fixture.nativeElement.querySelector('.invoice-btn');
     invoiceButton.click();
+    fixture.detectChanges();
+
+    component.selectedCleaningTypeId.set(1);
     fixture.detectChanges();
 
     const submitButton: HTMLButtonElement = fixture.nativeElement.querySelector(
@@ -514,6 +542,7 @@ describe('CleaningOrganizationComponent', () => {
     invoiceButton.click();
     fixture.detectChanges();
 
+    component.selectedCleaningTypeId.set(1);
     component.startTime.set('10:00');
     component.endTime.set('12:00');
     fixture.detectChanges();
@@ -710,9 +739,12 @@ describe('CleaningOrganizationComponent', () => {
     } as unknown as jest.Mocked<BookingService>;
 
     billServiceSpy = {
-      getCleaningRate: jest.fn(),
       createBill: jest.fn(),
     } as unknown as jest.Mocked<BillService>;
+
+    cleaningTypeServiceSpy = {
+      list: jest.fn().mockReturnValue(of([makeCleaningType()])),
+    } as unknown as jest.Mocked<CleaningTypeService>;
 
     authServiceSpy = {
       hasRole: jest.fn().mockReturnValue(false),
@@ -724,6 +756,7 @@ describe('CleaningOrganizationComponent', () => {
       providers: [
         { provide: BookingService, useValue: bookingServiceSpy },
         { provide: BillService, useValue: billServiceSpy },
+        { provide: CleaningTypeService, useValue: cleaningTypeServiceSpy },
         { provide: AuthService, useValue: authServiceSpy },
         CalendarLayoutService,
       ],

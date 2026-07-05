@@ -18,6 +18,8 @@ from api.error_handlers import (
     bill_not_found_error_handler,
     booking_conflict_handler,
     booking_not_found_handler,
+    cleaning_type_already_exists_error_handler,
+    cleaning_type_not_found_error_handler,
     domain_validation_error_handler,
     integrity_error_handler,
     invalid_credentials_handler,
@@ -38,6 +40,8 @@ from domain.exceptions import (
     BillNotFoundError,
     BookingConflict,
     BookingNotFound,
+    CleaningTypeAlreadyExistsError,
+    CleaningTypeNotFoundError,
     DomainValidationError,
     IntegrityError,
     InvalidCredentials,
@@ -94,6 +98,10 @@ app.add_exception_handler(ApartmentNotFoundError, apartment_not_found_error_hand
 app.add_exception_handler(ApartmentHasBookingsError, apartment_has_bookings_error_handler)
 app.add_exception_handler(BillNotFoundError, bill_not_found_error_handler)
 app.add_exception_handler(BillAlreadyExistsError, bill_already_exists_error_handler)
+app.add_exception_handler(CleaningTypeNotFoundError, cleaning_type_not_found_error_handler)
+app.add_exception_handler(
+    CleaningTypeAlreadyExistsError, cleaning_type_already_exists_error_handler
+)
 
 # Rutas de la API
 app.include_router(v1_router)
