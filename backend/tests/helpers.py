@@ -10,6 +10,7 @@ from domain.apartments.entity import Apartment
 from domain.auth.user_entity import Role, User
 from domain.bills.entity import Bill
 from domain.bookings.entity import Booking
+from domain.cleaning_types.entity import CleaningType
 
 
 def make_booking(**overrides) -> Booking:
@@ -49,6 +50,17 @@ def make_bill(**overrides) -> Bill:
         "state": "Creada",
     }
     return Bill(**{**defaults, **overrides})
+
+
+def make_cleaning_type(**overrides) -> CleaningType:
+    """Devuelve un CleaningType válido con valores por defecto, aplicando los overrides dados."""
+    defaults: dict = {
+        "cleaning_type_id": 1,
+        "name": "Limpieza normal",
+        "hourly_rate": Decimal("15.00"),
+        "active": True,
+    }
+    return CleaningType(**{**defaults, **overrides})
 
 
 def make_apartment(**overrides) -> Apartment:

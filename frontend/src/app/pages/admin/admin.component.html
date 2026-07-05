@@ -223,52 +223,107 @@
       <button
         class="accordion-trigger"
         type="button"
-        [attr.aria-expanded]="isBillingSectionOpen()"
-        (click)="toggleBillingSection()"
+        [attr.aria-expanded]="isCleaningTypesSectionOpen()"
+        (click)="toggleCleaningTypesSection()"
       >
         <span>
-          <strong>Tarifa de limpieza</strong>
-          <small>Precio por hora aplicado al calcular nuevas facturas de limpieza.</small>
+          <strong>Tipos de limpieza</strong>
+          <small>
+            Catálogo de tipos de limpieza con su tarifa por hora, usada para calcular el coste de
+            las facturas.
+          </small>
         </span>
-        <span class="accordion-icon" [class.open]="isBillingSectionOpen()">▾</span>
+        <span class="accordion-icon" [class.open]="isCleaningTypesSectionOpen()">▾</span>
       </button>
 
-      @if (isBillingSectionOpen()) {
+      @if (isCleaningTypesSectionOpen()) {
         <div class="accordion-content">
-          <article class="admin-card billing-card">
-            @if (cleaningRateError()) {
+          <article class="admin-card">
+            @if (cleaningTypesError()) {
               <div class="notice error-notice">
-                <span>{{ cleaningRateError() }}</span>
-                <button class="secondary-btn" type="button" (click)="loadCleaningRate()">
+                <span>{{ cleaningTypesError() }}</span>
+                <button class="secondary-btn" type="button" (click)="loadCleaningTypes()">
                   Reintentar
                 </button>
               </div>
             }
 
-            @if (isLoadingCleaningRate()) {
-              <p class="state-cell">Cargando tarifa...</p>
-            } @else {
-              <form class="admin-form billing-form" (ngSubmit)="saveCleaningRate()">
-                <label>
-                  Tarifa actual (€/h)
-                  <input
-                    type="number"
-                    name="cleaningRate"
-                    min="0"
-                    step="0.01"
-                    [ngModel]="cleaningRateDraft()"
-                    (ngModelChange)="updateCleaningRateDraft($event)"
-                    required
-                  />
-                </label>
+            <div class="table-wrapper">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Tipo de limpieza</th>
+                    <th>Tarifa (€/h)</th>
+                    <th>Estado</th>
+                    <th>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @if (isLoadingCleaningTypes()) {
+                    <tr>
+                      <td colspan="4" class="state-cell">Cargando tipos de limpieza...</td>
+                    </tr>
+                  } @else if (cleaningTypesError()) {
+                    <tr>
+                      <td colspan="4" class="state-cell">
+                        No se han podido cargar los tipos de limpieza. Revisa el error y vuelve a
+                        intentarlo.
+                      </td>
+                    </tr>
+                  } @else if (!cleaningTypes().length) {
+                    <tr>
+                      <td colspan="4" class="state-cell">No hay tipos de limpieza para mostrar.</td>
+                    </tr>
+                  } @else {
+                    @for (cleaningType of cleaningTypes(); track cleaningType.cleaning_type_id) {
+                      <tr>
+                        <td>
+                          <strong>{{ cleaningType.name }}</strong>
+                        </td>
+                        <td>
+                          <span>{{ cleaningType.hourly_rate }} €/h</span>
+                        </td>
+                        <td>
+                          <span class="role-chip">
+                            {{ cleaningType.active ? 'Activo' : 'Inactivo' }}
+                          </span>
+                        </td>
+                        <td class="actions-cell">
+                          <div class="row-actions">
+                            <button
+                              class="icon-btn edit-btn"
+                              type="button"
+                              title="Editar tipo de limpieza"
+                              aria-label="Editar tipo de limpieza"
+                              [disabled]="isSavingCleaningType() || isDeletingCleaningType()"
+                              (click)="startEditingCleaningType(cleaningType)"
+                            >
+                              ✎
+                            </button>
+                            <button
+                              class="icon-btn delete-btn"
+                              type="button"
+                              title="Eliminar tipo de limpieza"
+                              aria-label="Eliminar tipo de limpieza"
+                              [disabled]="isSavingCleaningType() || isDeletingCleaningType()"
+                              (click)="openDeleteCleaningTypeDialog(cleaningType)"
+                            >
+                              🗑
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    }
+                  }
+                </tbody>
+              </table>
+            </div>
 
-                <div class="section-actions">
-                  <button class="primary-btn" type="submit" [disabled]="isSavingCleaningRate()">
-                    {{ isSavingCleaningRate() ? 'Guardando...' : 'Guardar tarifa' }}
-                  </button>
-                </div>
-              </form>
-            }
+            <div class="section-actions users-actions">
+              <button class="primary-btn" type="button" (click)="openCreateCleaningTypeDialog()">
+                Crear tipo de limpieza
+              </button>
+            </div>
           </article>
         </div>
       }
@@ -603,6 +658,124 @@
             (click)="confirmDeleteProperty()"
           >
             {{ isDeletingProperty() ? 'Eliminando...' : 'Confirmar' }}
+          </button>
+        </div>
+      </section>
+    </div>
+  }
+
+  @if (isCleaningTypeFormModalOpen()) {
+    <div class="modal-backdrop" role="presentation">
+      <section
+        class="confirm-dialog user-form-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="cleaning-type-form-title"
+      >
+        <h2 id="cleaning-type-form-title">
+          {{
+            editingCleaningTypeId() === null ? 'Crear tipo de limpieza' : 'Editar tipo de limpieza'
+          }}
+        </h2>
+        <form
+          class="admin-form user-form"
+          (ngSubmit)="saveCleaningType()"
+          #cleaningTypeForm="ngForm"
+        >
+          <label>
+            Nombre
+            <input
+              type="text"
+              name="cleaningTypeName"
+              placeholder="Limpieza fin de semana"
+              [ngModel]="newCleaningType().name"
+              (ngModelChange)="updateNewCleaningTypeName($event)"
+              required
+            />
+          </label>
+
+          <label>
+            Tarifa (€/h)
+            <input
+              type="number"
+              name="cleaningTypeRate"
+              min="0"
+              step="0.01"
+              placeholder="15.00"
+              [ngModel]="newCleaningType().hourly_rate"
+              (ngModelChange)="updateNewCleaningTypeHourlyRate($event)"
+              required
+            />
+          </label>
+
+          <label class="checkbox-field">
+            <input
+              type="checkbox"
+              name="cleaningTypeActive"
+              [ngModel]="newCleaningType().active"
+              (ngModelChange)="updateNewCleaningTypeActive($event)"
+            />
+            Activo (disponible al facturar)
+          </label>
+
+          <div class="dialog-actions">
+            <button
+              class="secondary-btn"
+              type="button"
+              [disabled]="isSavingCleaningType()"
+              (click)="closeCleaningTypeFormDialog()"
+            >
+              Cancelar
+            </button>
+            <button
+              class="primary-btn"
+              type="submit"
+              [disabled]="cleaningTypeForm.invalid || isSavingCleaningType()"
+            >
+              @if (isSavingCleaningType()) {
+                Guardando...
+              } @else if (editingCleaningTypeId() !== null) {
+                Guardar cambios
+              } @else {
+                Añadir tipo
+              }
+            </button>
+          </div>
+        </form>
+      </section>
+    </div>
+  }
+
+  @if (cleaningTypePendingDeletion()) {
+    <div class="modal-backdrop" role="presentation">
+      <section
+        class="confirm-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="delete-cleaning-type-title"
+      >
+        <h2 id="delete-cleaning-type-title">Eliminar tipo de limpieza</h2>
+        <p>
+          ¿Seguro que deseas eliminar el tipo
+          <strong>{{ cleaningTypePendingDeletion()!.name }}</strong
+          >? Las facturas ya emitidas conservarán su tipo.
+        </p>
+        <div class="dialog-actions">
+          <button
+            class="secondary-btn"
+            type="button"
+            [disabled]="isDeletingCleaningType()"
+            (click)="closeDeleteCleaningTypeDialog()"
+          >
+            Cancelar
+          </button>
+          <button
+            class="danger-btn"
+            type="button"
+            [disabled]="isDeletingCleaningType()"
+            (click)="confirmDeleteCleaningType()"
+          >
+            {{ isDeletingCleaningType() ? 'Eliminando...' : 'Confirmar' }}
           </button>
         </div>
       </section>
