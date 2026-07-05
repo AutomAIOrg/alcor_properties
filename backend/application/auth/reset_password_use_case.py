@@ -48,11 +48,19 @@ class ResetPasswordUseCase:
 
         payload = self._token_manager.decode_reset_token(command.reset_token)
 
+        if not payload.jti:
+            logger.warning("Token de restablecimiento sin jti")
+            raise InvalidToken("Token de restablecimiento inválido.")
+
         try:
             user_id = int(payload.subject)
         except (TypeError, ValueError) as exc:
             logger.warning("Subject del token de restablecimiento no válido")
             raise InvalidToken("Subject del token no válido.") from exc
+
+        if not self._user_repository.consume_password_reset_jti(user_id, payload.jti):
+            logger.warning("Token de restablecimiento ya utilizado o inválido")
+            raise InvalidToken("Token de restablecimiento ya utilizado o inválido.")
 
         user = self._user_repository.get_by_id(user_id)
         if user is None:

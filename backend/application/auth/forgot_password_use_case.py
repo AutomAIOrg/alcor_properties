@@ -40,7 +40,8 @@ class ForgotPasswordUseCase:
             return
 
         reset_token = self._token_manager.create_reset_token(subject=str(user.id))
-        reset_link = f"{self._frontend_url.rstrip('/')}/reset-password?token={reset_token}"
+        self._user_repository.set_password_reset_jti(user.id, reset_token.jti)
+        reset_link = f"{self._frontend_url.rstrip('/')}/reset-password?token={reset_token.token}"
 
         # Un fallo de envío (SMTP mal configurado, caído, etc.) no debe tumbar la
         # petición ni revelar nada: se registra en el log y se responde igual.
