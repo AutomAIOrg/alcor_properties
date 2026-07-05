@@ -6,18 +6,19 @@
       <input
         type="text"
         class="search-input"
-        placeholder="Buscar huésped o nº reserva…"
+        placeholder="Buscar huésped, nº reserva o ID…"
         [value]="searchQuery()"
         (input)="onSearchInputEvent($event)"
         (focus)="onSearchFocus()"
+        (keydown.enter)="onSearchEnter()"
         autocomplete="off"
       />
-      @if (showSuggestions() && suggestions().length) {
+      @if (showSuggestions() && searchSuggestions().length) {
         <div class="suggestions-panel">
-          @for (s of suggestions(); track s.text) {
-            <button class="suggestion-item" type="button" (mousedown)="selectSuggestion(s.text)">
-              <span class="suggestion-text">{{ s.text }}</span>
-              <span class="suggestion-label">{{ s.label }}</span>
+          @for (b of searchSuggestions(); track b.record_id) {
+            <button class="suggestion-item" type="button" (mousedown)="goToBooking(b)">
+              <span class="suggestion-text">{{ b.guest_name }} · {{ b.apartment_id }}</span>
+              <span class="suggestion-label">#{{ b.record_id }} · {{ b.check_in }}</span>
             </button>
           }
         </div>
@@ -87,18 +88,19 @@
         <input
           type="text"
           class="search-input"
-          placeholder="Buscar huésped o nº reserva…"
+          placeholder="Buscar huésped, nº reserva o ID…"
           [value]="searchQuery()"
           (input)="onSearchInputEvent($event)"
           (focus)="onSearchFocus()"
+          (keydown.enter)="onSearchEnter()"
           autocomplete="off"
         />
-        @if (showSuggestions() && suggestions().length) {
+        @if (showSuggestions() && searchSuggestions().length) {
           <div class="suggestions-panel">
-            @for (s of suggestions(); track s.text) {
-              <button class="suggestion-item" type="button" (mousedown)="selectSuggestion(s.text)">
-                <span class="suggestion-text">{{ s.text }}</span>
-                <span class="suggestion-label">{{ s.label }}</span>
+            @for (b of searchSuggestions(); track b.record_id) {
+              <button class="suggestion-item" type="button" (mousedown)="goToBooking(b)">
+                <span class="suggestion-text">{{ b.guest_name }} · {{ b.apartment_id }}</span>
+                <span class="suggestion-label">#{{ b.record_id }} · {{ b.check_in }}</span>
               </button>
             }
           </div>

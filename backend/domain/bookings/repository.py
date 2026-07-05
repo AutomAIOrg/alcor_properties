@@ -31,13 +31,15 @@ class IBookingRepository(ABC):
         status: str | None = None,
         guest_name: str | None = None,
         booking_number: str | None = None,
+        search: str | None = None,
     ) -> list[Booking]:
         """
         Devuelve las reservas, opcionalmente filtradas por rango de fechas y limitadas en cantidad.
 
         Cuando se proporcionan *start_date* / *end_date*, solo se retornan reservas cuya
         estancia se superpone con ese rango semiabierto [start_date, end_date). El resto de
-        parámetros aplican filtros adicionales.
+        parámetros aplican filtros adicionales. *search* aplica una coincidencia parcial
+        (subcadena) sobre el nombre del huésped, el número de reserva o el ID de la reserva (OR).
         """
         pass
 

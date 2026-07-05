@@ -70,6 +70,7 @@ class ListBookingsQuery:
         status: str | None = None,
         guest_name: str | None = None,
         booking_number: str | None = None,
+        search: str | None = None,
     ) -> list[Booking]:
         if start_date and end_date:
             bookings = self._repo.search_bookings(
@@ -79,6 +80,7 @@ class ListBookingsQuery:
                 status=status,
                 guest_name=guest_name,
                 booking_number=booking_number,
+                search=search,
             )
         elif days is not None:
             resolved_start = start_date or date.today()
@@ -90,6 +92,7 @@ class ListBookingsQuery:
                 status=status,
                 guest_name=guest_name,
                 booking_number=booking_number,
+                search=search,
             )
         elif start_date or end_date:
             bookings = self._repo.search_bookings(
@@ -99,6 +102,7 @@ class ListBookingsQuery:
                 status=status,
                 guest_name=guest_name,
                 booking_number=booking_number,
+                search=search,
             )
         else:
             bookings = self._repo.search_bookings(
@@ -107,6 +111,7 @@ class ListBookingsQuery:
                 status=status,
                 guest_name=guest_name,
                 booking_number=booking_number,
+                search=search,
             )
         return apply_all(bookings, self._electric_ids)
 

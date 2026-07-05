@@ -84,6 +84,7 @@ class TestListBookings:
             status=None,
             guest_name=None,
             booking_number=None,
+            search=None,
         )
 
     def test_start_date_only_is_allowed(self, api_client, mock_use_cases):
@@ -101,6 +102,7 @@ class TestListBookings:
             status=None,
             guest_name=None,
             booking_number=None,
+            search=None,
         )
 
     def test_returns_422_when_date_range_is_inverted(self, api_client, mock_use_cases):

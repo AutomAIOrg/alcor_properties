@@ -42,6 +42,7 @@ class TestListBookingsQuery:
             status=None,
             guest_name=None,
             booking_number=None,
+            search=None,
         )
 
     def test_with_start_date_only_delegates_open_range_to_repo(self, mock_repo):
@@ -57,6 +58,7 @@ class TestListBookingsQuery:
             status=None,
             guest_name=None,
             booking_number=None,
+            search=None,
         )
 
     def test_with_end_date_only_delegates_open_range_to_repo(self, mock_repo):
@@ -72,6 +74,7 @@ class TestListBookingsQuery:
             status=None,
             guest_name=None,
             booking_number=None,
+            search=None,
         )
 
     def test_with_days_calculates_end_date_from_start(self, mock_repo):
@@ -87,6 +90,7 @@ class TestListBookingsQuery:
             status=None,
             guest_name=None,
             booking_number=None,
+            search=None,
         )
 
     def test_without_filters_passes_limit_to_repo(self, mock_repo):
@@ -100,6 +104,21 @@ class TestListBookingsQuery:
             status=None,
             guest_name=None,
             booking_number=None,
+            search=None,
+        )
+
+    def test_forwards_search_filter_to_repo(self, mock_repo):
+        mock_repo.search_bookings.return_value = []
+
+        ListBookingsQuery(mock_repo, set()).execute(search="Ana", limit=8)
+
+        mock_repo.search_bookings.assert_called_once_with(
+            limit=8,
+            apartment_id=None,
+            status=None,
+            guest_name=None,
+            booking_number=None,
+            search="Ana",
         )
 
 

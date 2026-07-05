@@ -47,6 +47,9 @@ async def get_bookings(
     status: str | None = Query(None, description="Filtrar por estado de reserva"),
     guest_name: str | None = Query(None, description="Filtrar por nombre de huesped (parcial)"),
     booking_number: str | None = Query(None, description="Filtrar por numero de reserva (parcial)"),
+    search: str | None = Query(
+        None, description="Buscar por huesped, numero de reserva o ID de reserva (parcial, OR)"
+    ),
     use_cases: BookingUseCases = Depends(get_booking_use_cases),
     _: User = Depends(require_admin),
 ):
@@ -60,6 +63,7 @@ async def get_bookings(
         status=status,
         guest_name=guest_name,
         booking_number=booking_number,
+        search=search,
     )
 
 
