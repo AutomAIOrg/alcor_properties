@@ -3,7 +3,6 @@ Configuración de ajustes para la aplicación backend.
 """
 
 import os
-from decimal import Decimal
 from pathlib import Path
 
 from pydantic import Field, model_validator
@@ -44,9 +43,6 @@ class Settings(BaseSettings):
 
     # Cupo eléctrico — IDs de reservas separados por comas
     ELECTRIC: str = ""
-
-    # Tarifa por hora de limpieza (€) usada para calcular el coste de las facturas
-    CLEANING_HOURLY_RATE: Decimal = Decimal(0)
 
     # API
     API_PREFIX: str = "/api/v1"

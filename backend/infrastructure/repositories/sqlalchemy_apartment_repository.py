@@ -83,6 +83,7 @@ class SQLAlchemyApartmentRepository(IApartmentRepository):
         orm.owner_name = updated_apartment.owner_name
         orm.email = updated_apartment.email
         orm.phone = updated_apartment.phone
+        orm.color = updated_apartment.color
         try:
             self._db.commit()
         except Exception as e:
@@ -242,4 +243,5 @@ class SQLAlchemyApartmentRepository(IApartmentRepository):
             owner_name=row.owner_name,
             email=row.email,
             phone=row.phone,
+            color=row.color,
         )

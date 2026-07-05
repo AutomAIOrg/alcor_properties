@@ -13,13 +13,15 @@ from application.bills.list_bills_use_cases import ListPendingBillsUseCase
 from application.bills.update_bill_use_case import UpdateBillStateUseCase
 from domain.bills.repository import IBillRepository
 from domain.bookings.repository import IBookingRepository
+from domain.cleaning_types.repository import ICleaningTypeRepository
 from domain.exceptions import (
     BillAlreadyExistsError,
     BillNotFoundError,
     BookingNotFound,
+    CleaningTypeNotFoundError,
     DomainValidationError,
 )
-from tests.helpers import make_bill, make_booking
+from tests.helpers import make_bill, make_booking, make_cleaning_type
 
 pytestmark = pytest.mark.unit
 
@@ -31,8 +33,12 @@ def _create_use_case(
     bills: MagicMock,
     bookings: MagicMock,
     rate: Decimal = Decimal("15"),
+    cleaning_types: MagicMock | None = None,
 ) -> CreateBillUseCase:
-    return CreateBillUseCase(bills, bookings, rate)
+    if cleaning_types is None:
+        cleaning_types = MagicMock(spec=ICleaningTypeRepository)
+        cleaning_types.get_by_id.return_value = make_cleaning_type(hourly_rate=rate)
+    return CreateBillUseCase(bills, bookings, cleaning_types)
 
 
 def _create_data(**overrides) -> CreateBillData:
@@ -41,6 +47,7 @@ def _create_data(**overrides) -> CreateBillData:
         "cleaning_date": date(2026, 5, 25),
         "start_time": time(10, 0),
         "end_time": time(12, 0),
+        "cleaning_type_id": 1,
     }
     return CreateBillData(**{**defaults, **overrides})
 
@@ -70,31 +77,51 @@ class TestCreateBillUseCase:
         assert result.state == "Creada"
         bills.create.assert_called_once()
 
-    def test_uses_payload_hourly_rate_when_provided(self):
+    def test_uses_cleaning_type_rate_and_freezes_snapshot(self):
         bookings = MagicMock(spec=IBookingRepository)
         bookings.get_by_id.return_value = make_booking(record_id=5)
         bills = MagicMock(spec=IBillRepository)
         bills.exists_for_booking.return_value = False
         bills.create.side_effect = lambda bill: bill
+        cleaning_types = MagicMock(spec=ICleaningTypeRepository)
+        cleaning_types.get_by_id.return_value = make_cleaning_type(
+            cleaning_type_id=7, name="Limpieza fin de semana", hourly_rate=Decimal("20")
+        )
 
-        result = _create_use_case(bills, bookings, rate=Decimal("10")).execute(
-            _create_data(hourly_rate=Decimal("20"))
+        result = _create_use_case(bills, bookings, cleaning_types=cleaning_types).execute(
+            _create_data(cleaning_type_id=7)
         )
 
         assert result.hourly_rate == Decimal("20.00")
         assert result.cost == Decimal("40.00")
+        assert result.cleaning_type_id == 7
+        assert result.cleaning_type_name == "Limpieza fin de semana"
 
-    def test_uses_injected_rate_when_payload_rate_is_none(self):
+    def test_raises_when_cleaning_type_not_found(self):
         bookings = MagicMock(spec=IBookingRepository)
         bookings.get_by_id.return_value = make_booking(record_id=5)
         bills = MagicMock(spec=IBillRepository)
         bills.exists_for_booking.return_value = False
-        bills.create.side_effect = lambda bill: bill
+        cleaning_types = MagicMock(spec=ICleaningTypeRepository)
+        cleaning_types.get_by_id.return_value = None
 
-        result = _create_use_case(bills, bookings, rate=Decimal("12.50")).execute(_create_data())
+        with pytest.raises(CleaningTypeNotFoundError):
+            _create_use_case(bills, bookings, cleaning_types=cleaning_types).execute(_create_data())
 
-        assert result.hourly_rate == Decimal("12.50")
-        assert result.cost == Decimal("25.00")
+        bills.create.assert_not_called()
+
+    def test_raises_when_cleaning_type_inactive(self):
+        bookings = MagicMock(spec=IBookingRepository)
+        bookings.get_by_id.return_value = make_booking(record_id=5)
+        bills = MagicMock(spec=IBillRepository)
+        bills.exists_for_booking.return_value = False
+        cleaning_types = MagicMock(spec=ICleaningTypeRepository)
+        cleaning_types.get_by_id.return_value = make_cleaning_type(active=False)
+
+        with pytest.raises(DomainValidationError, match="inactivo"):
+            _create_use_case(bills, bookings, cleaning_types=cleaning_types).execute(_create_data())
+
+        bills.create.assert_not_called()
 
     def test_raises_when_bill_already_exists_for_booking(self):
         bookings = MagicMock(spec=IBookingRepository)

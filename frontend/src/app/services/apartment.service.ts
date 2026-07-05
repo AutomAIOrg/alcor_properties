@@ -17,6 +17,7 @@ export interface ApartmentResponse {
   owner_name: string | null;
   email: string | null;
   phone: string | null;
+  color: string | null;
 }
 
 export type ApartmentCreateRequest = ApartmentResponse;
@@ -32,6 +33,7 @@ export interface ApartmentUpdateRequest {
   owner_name: string | null;
   email: string | null;
   phone: string | null;
+  color: string | null;
 }
 
 export interface ApartmentMessageResponse {

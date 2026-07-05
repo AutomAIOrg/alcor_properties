@@ -1,7 +1,8 @@
-import { Component, ViewChild, inject, signal } from '@angular/core';
+import { Component, OnInit, ViewChild, inject, signal } from '@angular/core';
 
 import { Apartment } from '../../models/apartment.model';
 import { Booking } from '../../models/booking.model';
+import { ApartmentColorService } from '../../services/apartment-color.service';
 import { ApartmentService } from '../../services/apartment.service';
 import {
   BookingCreateModalComponent,
@@ -33,8 +34,9 @@ type Tab = 'availability' | 'apartment' | 'bookings';
   templateUrl: './searches.component.html',
   styleUrl: './searches.component.scss',
 })
-export class SearchesComponent {
+export class SearchesComponent implements OnInit {
   private apartmentService = inject(ApartmentService);
+  private apartmentColor = inject(ApartmentColorService);
 
   @ViewChild(AvailabilitySearchComponent) private availabilitySearch?: AvailabilitySearchComponent;
   @ViewChild(ApartmentSearchComponent) private apartmentSearch?: ApartmentSearchComponent;
@@ -50,6 +52,11 @@ export class SearchesComponent {
   loadingApartmentIds = signal(false);
   apartmentIdsError = signal<string | null>(null);
   private apartmentIdsLoaded = false;
+
+  ngOnInit(): void {
+    // Los badges de apartamento usan el color personalizado del piso si lo tiene.
+    this.apartmentColor.ensureLoaded();
+  }
 
   selectTab(tab: Tab): void {
     this.activeTab.set(tab);

@@ -33,3 +33,6 @@ class ApartmentORM(Base):
     owner_name: Mapped[str | None] = mapped_column("Owner Name", String(50), nullable=True)
     email: Mapped[str | None] = mapped_column("Email", String(35), nullable=True)
     phone: Mapped[str | None] = mapped_column("Nº Telefono", String(15), nullable=True)
+
+    # Presentación: color personalizado en el calendario (#RRGGBB); NULL = color automático
+    color: Mapped[str | None] = mapped_column("Color", String(7), nullable=True)

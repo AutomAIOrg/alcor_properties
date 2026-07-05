@@ -68,6 +68,30 @@ class TestApartmentCreation:
 
 
 # ---------------------------------------------------------------------------
+# Apartment — color personalizado del calendario
+# ---------------------------------------------------------------------------
+
+
+class TestApartmentColor:
+    def test_color_defaults_to_none(self):
+        assert Apartment(apartment_id="R999").color is None
+
+    def test_valid_hex_color_is_accepted(self):
+        assert make_apartment(color="#aabbcc").color == "#aabbcc"
+
+    def test_uppercase_hex_color_is_accepted(self):
+        assert make_apartment(color="#AABBCC").color == "#AABBCC"
+
+    def test_blank_color_becomes_none(self):
+        assert make_apartment(color="   ").color is None
+
+    @pytest.mark.parametrize("invalid", ["red", "#abc", "#1234", "aabbcc", "#gggggg"])
+    def test_invalid_color_raises_value_error(self, invalid):
+        with pytest.raises(ValueError, match="hexadecimal"):
+            make_apartment(color=invalid)
+
+
+# ---------------------------------------------------------------------------
 # ApartmentSearchFilters — validaciones de rango y fechas
 # ---------------------------------------------------------------------------
 
