@@ -42,11 +42,11 @@ from application.bookings.queries import (
     GetUpcomingCheckoutsQuery,
     ListBookingsQuery,
 )
-from application.shared.email_sender_interface import IEmailSender
 from application.settings.use_cases import (
     GetCleaningHourlyRateUseCase,
     UpdateCleaningHourlyRateUseCase,
 )
+from application.shared.email_sender_interface import IEmailSender
 from application.shared.password_manager_interface import IPasswordManager
 from application.shared.user_repository_interface import IUserRepository
 from application.users.create_user_use_case import CreateUserUseCase
