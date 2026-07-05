@@ -4,9 +4,11 @@ No contiene fixtures de pytest — solo funciones de fábrica puras.
 """
 
 from datetime import date
+from decimal import Decimal
 
 from domain.apartments.entity import Apartment
 from domain.auth.user_entity import Role, User
+from domain.bills.entity import Bill
 from domain.bookings.entity import Booking
 
 
@@ -34,6 +36,19 @@ def make_user(**overrides) -> User:
         "role": Role.ADMIN,
     }
     return User(**{**defaults, **overrides})
+
+
+def make_bill(**overrides) -> Bill:
+    """Devuelve una Bill válida con valores por defecto, aplicando los overrides dados."""
+    defaults: dict = {
+        "apartment_id": "TEST-001",
+        "record_id": 1,
+        "cleaning_date": date(2026, 6, 1),
+        "clean_hours": Decimal("2.00"),
+        "cost": Decimal("30.00"),
+        "state": "Creada",
+    }
+    return Bill(**{**defaults, **overrides})
 
 
 def make_apartment(**overrides) -> Apartment:

@@ -29,6 +29,9 @@
             🧹 Org. Limpiezas
           </a>
         }
+        @if (authService.hasPermission('bills:read')) {
+          <a routerLink="/bills" routerLinkActive="active-link">💶 Facturas</a>
+        }
       </nav>
 
       <div class="sidebar-actions">

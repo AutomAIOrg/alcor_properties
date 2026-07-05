@@ -1,6 +1,7 @@
 import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
+import { AuthService } from '../../auth/auth.service';
 import { Role } from '../../models/user.model';
 import {
   ApartmentCreateRequest,
@@ -13,6 +14,7 @@ import {
   AdminUserSaveRequest,
   AdminUserService,
 } from '../../services/admin-user.service';
+import { BillService } from '../../services/bill.service';
 
 type ToastType = 'success' | 'error';
 
@@ -67,8 +69,10 @@ interface AdminPropertyDraft {
   styleUrl: './admin.component.scss',
 })
 export class AdminComponent implements OnInit, OnDestroy {
+  readonly authService = inject(AuthService);
   private adminUserService = inject(AdminUserService);
   private apartmentService = inject(ApartmentService);
+  private billService = inject(BillService);
   private toastTimeout: ReturnType<typeof setTimeout> | null = null;
 
   readonly roleOptions: Role[] = ['admin', 'limpiadora'];
@@ -95,6 +99,13 @@ export class AdminComponent implements OnInit, OnDestroy {
 
   isUsersSectionOpen = signal(false);
   isPropertiesSectionOpen = signal(false);
+  isBillingSectionOpen = signal(false);
+
+  cleaningRate = signal<number | null>(null);
+  cleaningRateDraft = signal('');
+  isLoadingCleaningRate = signal(false);
+  isSavingCleaningRate = signal(false);
+  cleaningRateError = signal<string | null>(null);
 
   newUser = signal<AdminUserDraft>({
     username: '',
@@ -152,6 +163,65 @@ export class AdminComponent implements OnInit, OnDestroy {
 
   togglePropertiesSection(): void {
     this.isPropertiesSectionOpen.update(isOpen => !isOpen);
+  }
+
+  toggleBillingSection(): void {
+    const willOpen = !this.isBillingSectionOpen();
+    this.isBillingSectionOpen.set(willOpen);
+    if (willOpen) {
+      this.loadCleaningRate();
+    }
+  }
+
+  loadCleaningRate(): void {
+    this.isLoadingCleaningRate.set(true);
+    this.cleaningRateError.set(null);
+
+    this.billService.getCleaningRate().subscribe({
+      next: response => {
+        this.cleaningRate.set(response.cleaning_hourly_rate);
+        this.cleaningRateDraft.set(String(response.cleaning_hourly_rate));
+        this.isLoadingCleaningRate.set(false);
+      },
+      error: () => {
+        this.cleaningRate.set(null);
+        this.cleaningRateDraft.set('');
+        this.cleaningRateError.set('No se ha podido cargar la tarifa de limpieza.');
+        this.isLoadingCleaningRate.set(false);
+      },
+    });
+  }
+
+  updateCleaningRateDraft(value: string): void {
+    this.cleaningRateDraft.set(value);
+  }
+
+  saveCleaningRate(): void {
+    const parsed = Number(this.cleaningRateDraft());
+    if (!Number.isFinite(parsed) || parsed < 0 || this.isSavingCleaningRate()) {
+      this.showToast('error', 'Introduce una tarifa válida (≥ 0).');
+      return;
+    }
+
+    this.isSavingCleaningRate.set(true);
+    this.cleaningRateError.set(null);
+
+    this.billService.updateCleaningRate(parsed).subscribe({
+      next: response => {
+        this.cleaningRate.set(response.cleaning_hourly_rate);
+        this.cleaningRateDraft.set(String(response.cleaning_hourly_rate));
+        this.isSavingCleaningRate.set(false);
+        this.showToast('success', 'Tarifa de limpieza actualizada.');
+      },
+      error: (error: HttpErrorResponse) => {
+        this.isSavingCleaningRate.set(false);
+        this.showToast(
+          'error',
+          'No se ha podido guardar la tarifa.',
+          this.getApiErrorMessage(error)
+        );
+      },
+    });
   }
 
   updateNewUserUsername(username: string): void {

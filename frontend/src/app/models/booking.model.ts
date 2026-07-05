@@ -28,4 +28,7 @@ export interface CleaningOpportunity {
   available_from: string;
   available_until: string | null;
   comments: string;
+  can_bill: boolean;
+  has_bill: boolean;
+  bill_state: string | null;
 }

@@ -43,6 +43,7 @@ describe('AppComponent', () => {
         provideRouter([
           { path: 'calendar', component: StubRouteComponent },
           { path: 'cleaning-organization', component: StubRouteComponent },
+          { path: 'bills', component: StubRouteComponent },
           { path: 'searches', component: StubRouteComponent },
           { path: 'admin', component: StubRouteComponent },
         ]),
@@ -60,8 +61,8 @@ describe('AppComponent', () => {
     TestBed.resetTestingModule();
   });
 
-  it('muestra únicamente Organización Limpiezas como enlace de menú para limpiadora', () => {
-    permissions = new Set<Permission>(['cleaning:access', 'bookings:read']);
+  it('muestra Organización Limpiezas y Facturas como enlaces de menú para limpiadora', () => {
+    permissions = new Set<Permission>(['cleaning:access', 'bookings:read', 'bills:read']);
     currentUser = makeUser({ role: 'limpiadora' });
 
     setup();
@@ -71,10 +72,23 @@ describe('AppComponent', () => {
     );
     const sidebarText = fixture.nativeElement.textContent;
 
-    expect(menuLinks).toEqual(['🧹 Org. Limpiezas']);
+    expect(menuLinks).toEqual(['🧹 Org. Limpiezas', '💶 Facturas']);
     expect(sidebarText).not.toContain('Calendario');
     expect(sidebarText).not.toContain('Búsquedas');
     expect(sidebarText).not.toContain('Panel de Administrador');
+  });
+
+  it('muestra el enlace Facturas cuando el usuario tiene bills:read', () => {
+    permissions = new Set<Permission>(['bills:read']);
+    currentUser = makeUser({ role: 'limpiadora' });
+
+    setup();
+
+    const menuLinks = [...fixture.nativeElement.querySelectorAll('.menu a')].map(link =>
+      (link.textContent ?? '').trim()
+    );
+
+    expect(menuLinks).toContain('💶 Facturas');
   });
 
   it('mantiene Calendario visible para usuarios con permiso de calendario', () => {

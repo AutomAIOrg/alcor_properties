@@ -116,3 +116,19 @@ class ApartmentHasBookingsError(DomainException):
         super().__init__(
             f"El apartamento {apartment_id} no puede ser eliminado porque tiene reservas"
         )
+
+
+class BillNotFoundError(DomainException):
+    """Se lanza cuando no se puede encontrar una factura por su identificador."""
+
+    def __init__(self, bill_id: int) -> None:
+        self.bill_id = bill_id
+        super().__init__(f"Factura con ID {bill_id} no encontrada")
+
+
+class BillAlreadyExistsError(DomainException):
+    """Se lanza cuando ya existe una factura para la reserva (limpieza) indicada."""
+
+    def __init__(self, record_id: int) -> None:
+        self.record_id = record_id
+        super().__init__(f"Ya existe una factura para la reserva {record_id}")
