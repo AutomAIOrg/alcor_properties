@@ -49,6 +49,52 @@
   }
 }
 
+.date-range-input-group {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.date-range-input--editable {
+  cursor: text;
+  padding-right: 2.25rem;
+
+  &::placeholder {
+    color: #98a2b3;
+  }
+}
+
+.calendar-toggle-btn {
+  position: absolute;
+  right: 0.35rem;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.85rem;
+  height: 1.85rem;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: #667085;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    color 0.15s;
+
+  &:hover {
+    background: #f2f4f7;
+    color: #2563eb;
+  }
+
+  &:focus-visible {
+    outline: 2px solid #2563eb;
+    outline-offset: 1px;
+  }
+}
+
 .range-calendar {
   border: 1px solid #eaecf0;
   border-radius: 12px;

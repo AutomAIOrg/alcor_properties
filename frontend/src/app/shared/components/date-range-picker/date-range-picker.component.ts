@@ -29,6 +29,7 @@ export class DateRangePickerComponent {
   toPlaceholder = input('Seleccionar salida');
   required = input(false);
   allowPartialRange = input(false);
+  manualInput = input(false);
 
   rangeChange = output<DateRangeValue>();
   rangeComplete = output<DateRangeValue>();
@@ -94,6 +95,51 @@ export class DateRangePickerComponent {
     this.openCalendar(field);
   }
 
+  onCalendarIconClick(event: MouseEvent, field: 'from' | 'to'): void {
+    this.onDateInputClick(event, field);
+  }
+
+  onManualDateEnter(event: Event): void {
+    (event.target as HTMLInputElement).blur();
+  }
+
+  onManualDateInput(field: 'from' | 'to', event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const raw = input.value.trim();
+    const currentIso = field === 'from' ? this.from() : this.to();
+
+    if (raw === '') {
+      if (currentIso === '') return;
+      this.emitRange(
+        field === 'from' ? { from: '', to: this.to() } : { from: this.from(), to: '' }
+      );
+      return;
+    }
+
+    const iso = this.parseDisplayDate(raw);
+    if (!iso) {
+      input.value = this.formatDisplayDate(currentIso);
+      return;
+    }
+
+    const from = field === 'from' ? iso : this.from();
+    const to = field === 'to' ? iso : this.to();
+
+    const range: DateRangeValue =
+      from && to && from > to
+        ? field === 'from'
+          ? { from: iso, to: '' }
+          : { from: '', to: iso }
+        : { from, to };
+
+    this.emitRange(range);
+    this.calendarMonth.set(this.dateFromIso(iso));
+
+    if (range.from && range.to) {
+      this.rangeComplete.emit(range);
+    }
+  }
+
   prevMonth(): void {
     const date = this.calendarMonth();
     this.calendarMonth.set(new Date(date.getFullYear(), date.getMonth() - 1, 1));
@@ -146,7 +192,8 @@ export class DateRangePickerComponent {
   @HostListener('document:click', ['$event.target'])
   onDocumentClick(target: EventTarget | null): void {
     if (!(target instanceof Element)) return;
-    if (!this.calendarOpen() || target.closest('.range-calendar')) return;
+    if (!this.calendarOpen()) return;
+    if (target.closest('.range-calendar') || target.closest('.date-range-input-group')) return;
 
     if (this.hasIncompleteRange() && !this.allowPartialRange()) {
       this.emitRange({ from: '', to: '' });
@@ -186,5 +233,23 @@ export class DateRangePickerComponent {
   private dateFromIso(iso: string): Date {
     const [year, month, day] = iso.split('-').map(Number);
     return new Date(year, month - 1, day);
+  }
+
+  private parseDisplayDate(value: string): string | null {
+    const match = value.match(/^(\d{1,2})\s*[/.\-]\s*(\d{1,2})\s*[/.\-]\s*(\d{2}|\d{4})$/);
+    if (!match) return null;
+
+    const day = Number(match[1]);
+    const month = Number(match[2]);
+    const year = match[3].length === 2 ? 2000 + Number(match[3]) : Number(match[3]);
+
+    if (month < 1 || month > 12 || day < 1 || day > 31) return null;
+
+    const date = new Date(year, month - 1, day);
+    if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) {
+      return null;
+    }
+
+    return this.isoFromDate(date);
   }
 }

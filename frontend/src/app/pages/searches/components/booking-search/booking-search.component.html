@@ -6,6 +6,9 @@
         [from]="bkg.from()"
         [to]="bkg.to()"
         [allowPartialRange]="true"
+        [manualInput]="true"
+        fromPlaceholder="dd/mm/aaaa"
+        toPlaceholder="dd/mm/aaaa"
         (rangeChange)="setBookingRange($event)"
         (rangeComplete)="completeBookingRange($event)"
       />
