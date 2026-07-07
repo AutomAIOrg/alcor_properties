@@ -1,0 +1,66 @@
+<div class="receipt">
+  <header class="receipt-header">
+    <img class="receipt-logo" src="logo_limpieza.PNG" alt="Servicios de Limpieza" />
+    <div class="receipt-heading">
+      <h3 class="receipt-title">RECIBO</h3>
+      <p class="receipt-date">FECHA {{ emissionLabel() }}</p>
+      <p class="receipt-week">Semana {{ weekLabel() }}</p>
+      @if (data().paid) {
+        <span class="receipt-paid-badge">PAGADA</span>
+      }
+    </div>
+  </header>
+
+  <section class="receipt-apartment">
+    <span class="receipt-label">Apartamento</span>
+    <p class="receipt-apartment-name">
+      <strong>{{ data().apartmentId }}</strong>
+      @if (data().address) {
+        <span class="receipt-address"> — {{ data().address }}</span>
+      }
+    </p>
+  </section>
+
+  <dl class="receipt-details">
+    <div class="receipt-detail">
+      <dt>Fecha limpieza</dt>
+      <dd>{{ cleaningDateLabel() }}</dd>
+    </div>
+    @if (data().cleaningTypeName) {
+      <div class="receipt-detail">
+        <dt>Tipo de limpieza</dt>
+        <dd>{{ data().cleaningTypeName }}</dd>
+      </div>
+    }
+    <div class="receipt-detail">
+      <dt>Horas totales</dt>
+      <dd>{{ hoursLabel() }}</dd>
+    </div>
+    @if (data().hourlyRate !== null) {
+      <div class="receipt-detail">
+        <dt>Tarifa aplicada</dt>
+        <dd>{{ hourlyRateLabel() }} €/hora</dd>
+      </div>
+    }
+  </dl>
+
+  <section class="receipt-total" [class.paid]="data().paid">
+    <div class="receipt-total-text">
+      <span class="receipt-total-label">
+        {{ data().paid ? 'Total pagado' : 'Total a pagar' }}
+      </span>
+      @if (data().hourlyRate !== null) {
+        <span class="receipt-total-breakdown">
+          {{ hoursLabel() }} × {{ hourlyRateLabel() }} €/hora
+        </span>
+      }
+      @if (data().paid && paidAtLabel()) {
+        <span class="receipt-paid-date">Pagada el {{ paidAtLabel() }}</span>
+      }
+    </div>
+    <div class="receipt-total-figure">
+      <span class="receipt-amount">{{ costLabel() }} €</span>
+      <span class="receipt-amount-words">{{ costWords() }}</span>
+    </div>
+  </section>
+</div>

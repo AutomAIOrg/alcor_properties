@@ -14,6 +14,9 @@ export interface Bill {
   paid_at: string | null;
   cancellation_note: string | null;
   previously_cancelled: boolean;
+  address: string | null;
+  apartment_description: string | null;
+  created_at: string | null;
 }
 
 export interface BillCreateRequest {

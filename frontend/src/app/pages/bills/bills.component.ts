@@ -9,6 +9,11 @@ import { ApartmentService } from '../../services/apartment.service';
 import { BillService } from '../../services/bill.service';
 import { CalendarLayoutService } from '../../services/calendar-layout.service';
 import {
+  BillReceiptComponent,
+  BillReceiptData,
+  billToReceiptData,
+} from '../../shared/components/bill-receipt/bill-receipt.component';
+import {
   DateRangePickerComponent,
   DateRangeValue,
 } from '../../shared/components/date-range-picker/date-range-picker.component';
@@ -34,7 +39,7 @@ interface PendingTransition {
 @Component({
   selector: 'app-bills',
   standalone: true,
-  imports: [CurrencyPipe, RouterLink, DateRangePickerComponent],
+  imports: [CurrencyPipe, RouterLink, BillReceiptComponent, DateRangePickerComponent],
   templateUrl: './bills.component.html',
   styleUrl: './bills.component.scss',
 })
@@ -69,6 +74,7 @@ export class BillsComponent implements OnInit, OnDestroy {
   filterCostMin = signal('');
   filterCostMax = signal('');
 
+  billReceiptView = signal<BillReceiptData | null>(null);
   markPaidBill = signal<Bill | null>(null);
   paidAtDate = signal('');
   cancelBill = signal<Bill | null>(null);
@@ -190,6 +196,21 @@ export class BillsComponent implements OnInit, OnDestroy {
       bill.bill_id !== null &&
       !this.isPendingBill(bill)
     );
+  }
+
+  // Muestra el recibo de una factura ya creada (mismo formato que la
+  // previsualización previa al guardado en Organización Limpiezas).
+  openBillReceipt(bill: Bill): void {
+    const receipt = billToReceiptData(bill, this.layout.toIso(new Date()));
+    if (!receipt) {
+      this.showToast('error', 'No se ha podido cargar la factura.');
+      return;
+    }
+    this.billReceiptView.set(receipt);
+  }
+
+  closeBillReceipt(): void {
+    this.billReceiptView.set(null);
   }
 
   requestTransition(bill: Bill, targetState: BillState): void {

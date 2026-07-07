@@ -25,6 +25,9 @@ function makeBill(overrides: Partial<Bill> = {}): Bill {
     paid_at: null,
     cancellation_note: null,
     previously_cancelled: false,
+    address: 'C/ Raquero 6 Bloque 3',
+    apartment_description: 'Porto Fino',
+    created_at: '2026-06-03',
     ...overrides,
   };
 }
@@ -92,6 +95,52 @@ describe('BillsComponent', () => {
 
     expect(buttons).toContain('Marcar pagada');
     expect(buttons).toContain('Cancelar');
+  });
+
+  it('muestra el recibo de la factura al pulsar el chip de estado', () => {
+    fixture.detectChanges();
+
+    const chipButton: HTMLButtonElement = fixture.nativeElement.querySelector(
+      'button.bill-state-chip'
+    );
+    chipButton.click();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('.receipt')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('.receipt-paid-badge')).toBeNull();
+    expect(fixture.nativeElement.textContent).toContain('RECIBO');
+    expect(fixture.nativeElement.textContent).toContain('treinta euros');
+    expect(fixture.nativeElement.textContent).toContain('C/ Raquero 6 Bloque 3');
+    expect(fixture.nativeElement.textContent).not.toContain('Porto Fino');
+    // La FECHA usa el created_at congelado de la factura, no el día actual.
+    expect(fixture.nativeElement.textContent).toContain('FECHA 03/06/2026');
+
+    const closeButton: HTMLButtonElement = fixture.nativeElement.querySelector(
+      '.receipt-dialog .secondary-btn'
+    );
+    closeButton.click();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('.receipt')).toBeNull();
+  });
+
+  it('muestra el sello PAGADA y la fecha de pago en el recibo de una factura pagada', () => {
+    billServiceSpy.listBills.mockReturnValue(
+      of([makeBill({ state: 'Pagada', paid_at: '2026-06-05' })])
+    );
+    component.searchBills();
+    fixture.detectChanges();
+
+    const chipButton: HTMLButtonElement = fixture.nativeElement.querySelector(
+      'button.bill-state-chip'
+    );
+    chipButton.click();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('.receipt-paid-badge')).not.toBeNull();
+    expect(fixture.nativeElement.textContent).toContain('PAGADA');
+    expect(fixture.nativeElement.textContent).toContain('Total pagado');
+    expect(fixture.nativeElement.textContent).toContain('Pagada el 05/06/2026');
   });
 
   it('marca una factura como pagada desde el modal', () => {

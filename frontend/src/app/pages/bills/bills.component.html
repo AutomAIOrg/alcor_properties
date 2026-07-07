@@ -151,14 +151,25 @@
                   }
                 </td>
                 <td>
-                  <span
-                    class="bill-state-chip"
-                    [class.paid]="bill.state === 'Pagada'"
-                    [class.cancelled]="bill.state === 'Cancelada'"
-                    [class.pending]="bill.state === 'Pendiente'"
-                  >
-                    {{ bill.state }}
-                  </span>
+                  @if (bill.bill_id !== null) {
+                    <button
+                      class="bill-state-chip"
+                      [class.paid]="bill.state === 'Pagada'"
+                      [class.cancelled]="bill.state === 'Cancelada'"
+                      type="button"
+                      title="Ver factura"
+                      (click)="openBillReceipt(bill)"
+                    >
+                      {{ bill.state }}
+                    </button>
+                  } @else {
+                    <span
+                      class="bill-state-chip"
+                      [class.pending]="bill.state === 'Pendiente'"
+                    >
+                      {{ bill.state }}
+                    </span>
+                  }
                   @if (bill.previously_cancelled) {
                     <span class="refactored-badge" title="Factura cancelada anteriormente">
                       Refacturación
@@ -201,6 +212,26 @@
       </table>
     </div>
   </section>
+
+  @if (billReceiptView()) {
+    <div class="modal-backdrop" role="presentation" (click)="closeBillReceipt()">
+      <section
+        class="confirm-dialog receipt-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="bill-receipt-title"
+        (click)="$event.stopPropagation()"
+      >
+        <h2 id="bill-receipt-title">Factura</h2>
+
+        <app-bill-receipt [data]="billReceiptView()!" />
+
+        <div class="dialog-actions">
+          <button class="secondary-btn" type="button" (click)="closeBillReceipt()">Cerrar</button>
+        </div>
+      </section>
+    </div>
+  }
 
   @if (markPaidBill()) {
     <div class="modal-backdrop" role="presentation" (click)="closeMarkPaidModal()">

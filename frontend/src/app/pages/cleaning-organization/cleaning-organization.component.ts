@@ -9,6 +9,11 @@ import { BillService } from '../../services/bill.service';
 import { BookingService } from '../../services/booking.service';
 import { CalendarLayoutService } from '../../services/calendar-layout.service';
 import { CleaningTypeService } from '../../services/cleaning-type.service';
+import {
+  BillReceiptComponent,
+  BillReceiptData,
+  billToReceiptData,
+} from '../../shared/components/bill-receipt/bill-receipt.component';
 
 interface CleaningWindow {
   apartmentId: string;
@@ -21,6 +26,7 @@ interface CleaningWindow {
   canBill: boolean;
   hasBill: boolean;
   billState: string | null;
+  address: string | null;
 }
 
 interface CleaningWeekDay {
@@ -52,7 +58,7 @@ interface ToastMessage {
 @Component({
   selector: 'app-cleaning-organization',
   standalone: true,
-  imports: [CurrencyPipe],
+  imports: [CurrencyPipe, BillReceiptComponent],
   templateUrl: './cleaning-organization.component.html',
   styleUrl: './cleaning-organization.component.scss',
 })
@@ -89,6 +95,10 @@ export class CleaningOrganizationComponent implements OnInit, OnDestroy {
   isLoadingCleaningTypes = signal(false);
   isCreatingBill = signal(false);
   invoiceFormError = signal<string | null>(null);
+  showInvoicePreview = signal(false);
+  previewEmissionIso = signal('');
+  billReceiptView = signal<BillReceiptData | null>(null);
+  isLoadingBillReceipt = signal(false);
   toast = signal<ToastMessage | null>(null);
   isAdmin = computed(() => this.authService.hasRole('admin'));
   canCreateBill = computed(() => this.authService.hasPermission('bills:create'));
@@ -118,6 +128,29 @@ export class CleaningOrganizationComponent implements OnInit, OnDestroy {
       this.previewHours() !== null &&
       this.selectedCleaningType() !== null
   );
+
+  // Datos del recibo para el paso de previsualización; null mientras el formulario
+  // esté incompleto. El formato (semana, importe en letra...) lo resuelve BillReceiptComponent.
+  invoiceReceiptData = computed<BillReceiptData | null>(() => {
+    const opportunity = this.selectedInvoiceOpportunity();
+    const cleaningType = this.selectedCleaningType();
+    const hours = this.previewHours();
+    const cost = this.previewCost();
+    if (!opportunity || !cleaningType || hours === null || cost === null) return null;
+
+    return {
+      emissionIso: this.previewEmissionIso(),
+      cleaningDateIso: this.cleaningDate(),
+      apartmentId: opportunity.apartmentId,
+      address: opportunity.address,
+      hours,
+      hourlyRate: cleaningType.hourly_rate,
+      cleaningTypeName: cleaningType.name,
+      cost,
+      paid: false,
+      paidAtIso: null,
+    };
+  });
 
   weekDays = computed<CleaningWeekDay[]>(() => {
     const monday = this.getWeekStart(this.currentDate());
@@ -171,6 +204,7 @@ export class CleaningOrganizationComponent implements OnInit, OnDestroy {
         canBill: opportunity.can_bill,
         hasBill: opportunity.has_bill,
         billState: opportunity.bill_state,
+        address: opportunity.address,
       }))
   );
 
@@ -324,6 +358,56 @@ export class CleaningOrganizationComponent implements OnInit, OnDestroy {
     this.cleaningTypes.set([]);
     this.selectedCleaningTypeId.set(null);
     this.invoiceFormError.set(null);
+    this.showInvoicePreview.set(false);
+    this.previewEmissionIso.set('');
+  }
+
+  openInvoicePreview(): void {
+    if (this.isCreatingBill() || !this.isInvoiceFormValid()) return;
+
+    if (this.previewHours() === null) {
+      this.invoiceFormError.set('La hora de fin debe ser posterior a la hora de inicio.');
+      return;
+    }
+
+    this.invoiceFormError.set(null);
+    this.previewEmissionIso.set(this.layout.toIso(new Date()));
+    this.showInvoicePreview.set(true);
+  }
+
+  backToInvoiceForm(): void {
+    if (this.isCreatingBill()) return;
+    this.showInvoicePreview.set(false);
+  }
+
+  // Recupera la factura de la limpieza y muestra su recibo (mismo formato
+  // que la previsualización previa al guardado).
+  openBillReceipt(opportunity: CleaningWindow): void {
+    if (!opportunity.hasBill || this.isLoadingBillReceipt()) return;
+
+    this.isLoadingBillReceipt.set(true);
+    this.billService.listBills({ apartment_id: opportunity.apartmentId }).subscribe({
+      next: bills => {
+        this.isLoadingBillReceipt.set(false);
+        const bill = bills.find(
+          item => item.record_id === opportunity.sourceBookingRecordId && item.bill_id !== null
+        );
+        const receipt = bill ? billToReceiptData(bill, this.layout.toIso(new Date())) : null;
+        if (!receipt) {
+          this.showToast('error', 'No se ha podido cargar la factura.');
+          return;
+        }
+        this.billReceiptView.set(receipt);
+      },
+      error: () => {
+        this.isLoadingBillReceipt.set(false);
+        this.showToast('error', 'No se ha podido cargar la factura.');
+      },
+    });
+  }
+
+  closeBillReceipt(): void {
+    this.billReceiptView.set(null);
   }
 
   updateCleaningDate(event: Event): void {
@@ -377,6 +461,8 @@ export class CleaningOrganizationComponent implements OnInit, OnDestroy {
           );
           this.isCreatingBill.set(false);
           this.selectedInvoiceOpportunity.set(null);
+          this.showInvoicePreview.set(false);
+          this.previewEmissionIso.set('');
           this.showToast(
             'success',
             `Factura creada (${bill.cleaning_type_name}): ${bill.clean_hours} h × ` +

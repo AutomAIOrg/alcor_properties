@@ -21,6 +21,9 @@ function makeBill(overrides: Partial<Bill> = {}): Bill {
     paid_at: null,
     cancellation_note: null,
     previously_cancelled: false,
+    address: null,
+    apartment_description: null,
+    created_at: null,
     ...overrides,
   };
 }

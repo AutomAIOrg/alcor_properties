@@ -162,6 +162,17 @@ table {
   }
 }
 
+// El chip de estado es un botón que abre el recibo de la factura ya creada.
+button.bill-state-chip {
+  border: none;
+  font-family: inherit;
+  cursor: pointer;
+
+  &:hover {
+    filter: brightness(0.95);
+  }
+}
+
 .cancellation-note {
   margin: 0.3rem 0 0;
   max-width: 220px;
@@ -301,6 +312,13 @@ table {
   justify-content: center;
   padding: 1rem;
   background: rgba(16, 24, 40, 0.48);
+}
+
+// El recibo necesita más ancho que un diálogo de confirmación y scroll propio.
+.confirm-dialog.receipt-dialog {
+  max-width: 680px;
+  max-height: calc(100vh - 2rem);
+  overflow-y: auto;
 }
 
 .confirm-dialog {
