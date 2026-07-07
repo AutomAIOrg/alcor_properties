@@ -60,6 +60,17 @@ class TestCreate:
         assert result.record_id == booking.record_id
         assert result.state == "Creada"
 
+    def test_persists_created_at(self, sqlite_session):
+        booking = _insert_booking(sqlite_session)
+        bill = make_bill(bill_id=None, record_id=booking.record_id, created_at=date(2026, 6, 24))
+
+        result = SQLAlchemyBillRepository(sqlite_session).create(bill)
+
+        assert result.created_at == date(2026, 6, 24)
+        assert SQLAlchemyBillRepository(sqlite_session).get_by_id(
+            result.bill_id
+        ).created_at == date(2026, 6, 24)
+
     def test_duplicate_record_id_raises_bill_already_exists(self, sqlite_session):
         booking = _insert_booking(sqlite_session)
         repo = SQLAlchemyBillRepository(sqlite_session)

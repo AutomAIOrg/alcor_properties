@@ -181,6 +181,7 @@ class SQLAlchemyBillRepository(IBillRepository):
             state=orm.state,
             paid_at=orm.paid_at,
             cancellation_note=orm.cancellation_note,
+            created_at=orm.created_at,
         )
 
     @staticmethod
@@ -198,4 +199,5 @@ class SQLAlchemyBillRepository(IBillRepository):
             state=bill.state,
             paid_at=bill.paid_at,
             cancellation_note=bill.cancellation_note,
+            created_at=bill.created_at,
         )

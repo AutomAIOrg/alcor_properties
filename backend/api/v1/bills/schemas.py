@@ -42,6 +42,9 @@ class BillResponse(BaseModel):
     paid_at: date | None = None
     cancellation_note: str | None = None
     previously_cancelled: bool = False
+    address: str | None = None
+    apartment_description: str | None = None
+    created_at: date | None = None
 
 
 class BillUpdateStateRequest(BaseModel):

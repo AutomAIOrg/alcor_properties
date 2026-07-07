@@ -12,7 +12,7 @@ from application.bookings.queries import (
     _cleaning_operational_range,
     _cleaning_window_overlaps_range,
 )
-from tests.helpers import make_booking
+from tests.helpers import make_apartment, make_booking
 
 pytestmark = pytest.mark.unit
 
@@ -40,6 +40,43 @@ class TestBuildCleaningOpportunities:
         assert len(opportunities) == 1
         assert opportunities[0].source_booking_record_id == 1
         assert opportunities[0].available_until is None
+
+    def test_enriches_with_apartment_address_and_description(self):
+        bookings = [
+            make_booking(
+                record_id=1,
+                apartment_id="R106",
+                check_in=date(2026, 6, 1),
+                check_out=date(2026, 6, 5),
+            ),
+        ]
+        apartments_by_id = {
+            "R106": make_apartment(
+                apartment_id="R106",
+                address="C/ Raquero 6 Bloque 3",
+                apartment_description="Porto Fino",
+            ),
+        }
+
+        opportunities = _build_cleaning_opportunities(bookings, apartments_by_id=apartments_by_id)
+
+        assert opportunities[0].address == "C/ Raquero 6 Bloque 3"
+        assert opportunities[0].apartment_description == "Porto Fino"
+
+    def test_apartment_data_is_none_when_not_found(self):
+        bookings = [
+            make_booking(
+                record_id=1,
+                apartment_id="R999",
+                check_in=date(2026, 6, 1),
+                check_out=date(2026, 6, 5),
+            ),
+        ]
+
+        opportunities = _build_cleaning_opportunities(bookings, apartments_by_id={})
+
+        assert opportunities[0].address is None
+        assert opportunities[0].apartment_description is None
 
     def test_skips_bookings_without_record_id(self):
         bookings = [
@@ -255,6 +292,36 @@ class TestGetCleaningOpportunitiesUseCase:
             start_date=date(2026, 5, 18),
             end_date=date(2026, 10, 10),
         )
+
+    def test_populates_apartment_address_from_repository(self, mock_repo):
+        mock_repo.search_bookings.return_value = [
+            make_booking(
+                record_id=1,
+                apartment_id="R106",
+                check_in=date(2026, 6, 15),
+                check_out=date(2026, 6, 19),
+            ),
+        ]
+
+        class _ApartmentRepo:
+            def get_all(self):
+                return [
+                    make_apartment(
+                        apartment_id="R106",
+                        address="C/ Raquero 6 Bloque 3",
+                        apartment_description="Porto Fino",
+                    )
+                ]
+
+        use_case = GetCleaningOpportunitiesUseCase(
+            mock_repo, apartment_repository=_ApartmentRepo()
+        )
+
+        opportunities = use_case.execute(reference_date=date(2026, 6, 18))
+
+        window = next(o for o in opportunities if o.source_booking_record_id == 1)
+        assert window.address == "C/ Raquero 6 Bloque 3"
+        assert window.apartment_description == "Porto Fino"
 
     def test_excludes_windows_outside_operational_range(self, mock_repo):
         mock_repo.search_bookings.return_value = [

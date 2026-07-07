@@ -9,8 +9,9 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from application.bills.create_bill_use_case import CreateBillData, CreateBillUseCase
-from application.bills.list_bills_use_cases import ListPendingBillsUseCase
+from application.bills.list_bills_use_cases import ListBillsUseCase, ListPendingBillsUseCase
 from application.bills.update_bill_use_case import UpdateBillStateUseCase
+from domain.apartments.repository import IApartmentRepository
 from domain.bills.repository import IBillRepository
 from domain.bookings.repository import IBookingRepository
 from domain.cleaning_types.repository import ICleaningTypeRepository
@@ -21,7 +22,7 @@ from domain.exceptions import (
     CleaningTypeNotFoundError,
     DomainValidationError,
 )
-from tests.helpers import make_bill, make_booking, make_cleaning_type
+from tests.helpers import make_apartment, make_bill, make_booking, make_cleaning_type
 
 pytestmark = pytest.mark.unit
 
@@ -75,6 +76,7 @@ class TestCreateBillUseCase:
         assert result.clean_hours == Decimal("1.50")
         assert result.cost == Decimal("22.50")
         assert result.state == "Creada"
+        assert result.created_at == date.today()
         bills.create.assert_called_once()
 
     def test_uses_cleaning_type_rate_and_freezes_snapshot(self):
@@ -231,6 +233,24 @@ class TestUpdateBillStateUseCase:
 
         assert result.paid_at == date(2026, 5, 20)
 
+    def test_response_is_enriched_with_apartment_address(self):
+        bills = _bills_with(make_bill(bill_id=1, state="Creada", apartment_id="R106"))
+        apartment_repo = MagicMock(spec=IApartmentRepository)
+        apartment_repo.get_all.return_value = [
+            make_apartment(
+                apartment_id="R106",
+                address="C/ Raquero 6 Bloque 3",
+                apartment_description="Porto Fino",
+            )
+        ]
+
+        result = UpdateBillStateUseCase(bills, apartment_repo).execute(
+            1, "Pagada", paid_at=date(2026, 5, 20)
+        )
+
+        assert result.address == "C/ Raquero 6 Bloque 3"
+        assert result.apartment_description == "Porto Fino"
+
     def test_paid_to_created_clears_payment_date(self):
         bills = _bills_with(make_bill(bill_id=1, state="Pagada", paid_at=date(2026, 5, 20)))
 
@@ -293,6 +313,49 @@ class TestUpdateBillStateUseCase:
             _update_use_case(bills).execute(99, "Pagada")
 
         bills.update.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# ListBillsUseCase
+# ---------------------------------------------------------------------------
+
+
+class TestListBillsUseCase:
+    def test_enriches_bills_with_apartment_address_and_description(self):
+        bill_repo = MagicMock(spec=IBillRepository)
+        bill_repo.list.return_value = [make_bill(apartment_id="R106")]
+        apartment_repo = MagicMock(spec=IApartmentRepository)
+        apartment_repo.get_all.return_value = [
+            make_apartment(
+                apartment_id="R106",
+                address="C/ Raquero 6 Bloque 3",
+                apartment_description="Porto Fino",
+            )
+        ]
+
+        result = ListBillsUseCase(bill_repo, apartment_repo).execute()
+
+        assert result[0].address == "C/ Raquero 6 Bloque 3"
+        assert result[0].apartment_description == "Porto Fino"
+
+    def test_bill_keeps_none_when_apartment_missing(self):
+        bill_repo = MagicMock(spec=IBillRepository)
+        bill_repo.list.return_value = [make_bill(apartment_id="R999")]
+        apartment_repo = MagicMock(spec=IApartmentRepository)
+        apartment_repo.get_all.return_value = []
+
+        result = ListBillsUseCase(bill_repo, apartment_repo).execute()
+
+        assert result[0].address is None
+        assert result[0].apartment_description is None
+
+    def test_works_without_apartment_repository(self):
+        bill_repo = MagicMock(spec=IBillRepository)
+        bill_repo.list.return_value = [make_bill(apartment_id="R106")]
+
+        result = ListBillsUseCase(bill_repo).execute()
+
+        assert result[0].address is None
 
 
 # ---------------------------------------------------------------------------

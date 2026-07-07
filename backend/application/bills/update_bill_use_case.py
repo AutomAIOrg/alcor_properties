@@ -4,6 +4,8 @@ Casos de uso (comandos) para el dominio de Facturas.
 
 from datetime import date
 
+from application.bills.list_bills_use_cases import enrich_with_apartment_data
+from domain.apartments.repository import IApartmentRepository
 from domain.bills.entity import (
     ALLOWED_BILL_TRANSITIONS,
     BILL_STATE_CANCELLED,
@@ -25,8 +27,13 @@ class UpdateBillStateUseCase:
     en cualquier otro estado (por ejemplo, al reactivar la factura).
     """
 
-    def __init__(self, bill_repository: IBillRepository) -> None:
+    def __init__(
+        self,
+        bill_repository: IBillRepository,
+        apartment_repository: IApartmentRepository | None = None,
+    ) -> None:
         self._bill_repository = bill_repository
+        self._apartment_repository = apartment_repository
 
     def execute(
         self,
@@ -55,4 +62,7 @@ class UpdateBillStateUseCase:
                 "cancellation_note": resolved_note,
             }
         )
-        return self._bill_repository.update(updated)
+        persisted = self._bill_repository.update(updated)
+        # La respuesta lleva la dirección del apartamento para que el recibo pueda
+        # mostrarse completo justo después del cambio de estado (sin recargar el listado).
+        return enrich_with_apartment_data([persisted], self._apartment_repository)[0]

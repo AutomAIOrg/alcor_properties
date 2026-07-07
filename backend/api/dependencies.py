@@ -279,6 +279,7 @@ class BookingUseCases:
 def get_booking_use_cases(
     repo: IBookingRepository = Depends(get_booking_repository),
     bill_repository: IBillRepository = Depends(get_bill_repository),
+    apartment_repository: IApartmentRepository = Depends(get_apartment_repository),
     electric_ids: set[str] = Depends(get_electric_ids),
 ) -> BookingUseCases:
     """Inyección de dependencias para los casos de uso de reservas."""
@@ -289,7 +290,9 @@ def get_booking_use_cases(
         upcoming_checkins_query=GetUpcomingCheckinsQuery(repo, electric_ids),
         upcoming_checkouts_query=GetUpcomingCheckoutsQuery(repo, electric_ids),
         calendar_events_query=GetCalendarEventsQuery(repo, electric_ids),
-        get_cleaning_opportunities_query=GetCleaningOpportunitiesUseCase(repo, bill_repository),
+        get_cleaning_opportunities_query=GetCleaningOpportunitiesUseCase(
+            repo, bill_repository, apartment_repository
+        ),
         stats_query=GetBookingStatsQuery(repo, electric_ids),
         create_command=CreateBookingUseCase(repo, electric_ids),
         update_command=UpdateBookingUseCase(repo, electric_ids),
@@ -362,24 +365,27 @@ def get_create_bill_use_case(
 
 def get_update_bill_state_use_case(
     bill_repository: IBillRepository = Depends(get_bill_repository),
+    apartment_repository: IApartmentRepository = Depends(get_apartment_repository),
 ) -> UpdateBillStateUseCase:
     """Inyección de dependencias para el caso de uso de actualizar el estado de una factura."""
-    return UpdateBillStateUseCase(bill_repository)
+    return UpdateBillStateUseCase(bill_repository, apartment_repository)
 
 
 def get_list_bills_use_case(
     bill_repository: IBillRepository = Depends(get_bill_repository),
+    apartment_repository: IApartmentRepository = Depends(get_apartment_repository),
 ) -> ListBillsUseCase:
     """Inyección de dependencias para el caso de uso de obtener todas las facturas."""
-    return ListBillsUseCase(bill_repository)
+    return ListBillsUseCase(bill_repository, apartment_repository)
 
 
 def get_list_pending_bills_use_case(
     booking_repository: IBookingRepository = Depends(get_booking_repository),
     bill_repository: IBillRepository = Depends(get_bill_repository),
+    apartment_repository: IApartmentRepository = Depends(get_apartment_repository),
 ) -> ListPendingBillsUseCase:
     """Inyección de dependencias para el caso de uso de obtener todas las facturas pendientes."""
-    return ListPendingBillsUseCase(booking_repository, bill_repository)
+    return ListPendingBillsUseCase(booking_repository, bill_repository, apartment_repository)
 
 
 def get_list_cleaning_types_use_case(

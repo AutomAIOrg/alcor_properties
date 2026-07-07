@@ -78,6 +78,10 @@ class Bill(BaseModel):
         max_length=500,
         description="Nota explicativa del motivo de cancelación (solo si está Cancelada)",
     )
+    created_at: date | None = Field(
+        default=None,
+        description="Fecha en la que se generó la factura (congelada; para la FECHA del recibo)",
+    )
 
     # Campo calculado — establecido por la capa de aplicación, no persistido en la BD.
     # True en una factura virtual 'Pendiente' cuya limpieza tuvo una factura cancelada
@@ -85,4 +89,14 @@ class Bill(BaseModel):
     previously_cancelled: bool = Field(
         default=False,
         description="True si la limpieza tuvo una factura cancelada y puede volver a facturarse",
+    )
+
+    # Campos calculados — establecidos por la capa de aplicación, no persistidos en la BD.
+    # Datos del apartamento para el recibo; evitan que la limpiadora tenga que
+    # consultar el endpoint (solo-admin) de apartamentos.
+    address: str | None = Field(
+        default=None, description="Dirección del apartamento asociado (para el recibo)"
+    )
+    apartment_description: str | None = Field(
+        default=None, description="Descripción del apartamento asociado (para el recibo)"
     )

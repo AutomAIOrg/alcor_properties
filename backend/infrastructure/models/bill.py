@@ -63,3 +63,7 @@ class BillORM(Base):
     cancellation_note: Mapped[str | None] = mapped_column(
         "Cancellation Note", String(500), nullable=True
     )
+
+    # Fecha de generación de la factura (congelada). El nombre físico evita colisión
+    # con la columna heredada "Created At", que en realidad almacena cleaning_date.
+    created_at: Mapped[date | None] = mapped_column("Bill Created At", Date, nullable=True)

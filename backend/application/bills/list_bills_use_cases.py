@@ -5,16 +5,51 @@ Casos de uso de lectura (consultas) para el dominio de Facturas.
 from datetime import date, datetime
 
 from application.bookings.queries import GetCleaningOpportunitiesUseCase
+from domain.apartments.repository import IApartmentRepository
 from domain.bills.entity import BILL_STATE_CANCELLED, BILL_STATE_PENDING, Bill
 from domain.bills.repository import IBillRepository
 from domain.bookings.repository import IBookingRepository
 
 
+def enrich_with_apartment_data(
+    bills: list[Bill],
+    apartment_repository: IApartmentRepository | None,
+) -> list[Bill]:
+    """Copia dirección y descripción del apartamento en cada factura (para el recibo)."""
+    if apartment_repository is None or not bills:
+        return bills
+
+    apartments_by_id = {
+        apartment.apartment_id: apartment for apartment in apartment_repository.get_all()
+    }
+
+    enriched: list[Bill] = []
+    for bill in bills:
+        apartment = apartments_by_id.get(bill.apartment_id)
+        if apartment is None:
+            enriched.append(bill)
+            continue
+        enriched.append(
+            bill.model_copy(
+                update={
+                    "address": apartment.address,
+                    "apartment_description": apartment.apartment_description,
+                }
+            )
+        )
+    return enriched
+
+
 class ListBillsUseCase:
     """Devuelve facturas reales con filtrado opcional."""
 
-    def __init__(self, bill_repository: IBillRepository) -> None:
+    def __init__(
+        self,
+        bill_repository: IBillRepository,
+        apartment_repository: IApartmentRepository | None = None,
+    ) -> None:
         self._bill_repository = bill_repository
+        self._apartment_repository = apartment_repository
 
     def execute(
         self,
@@ -25,7 +60,7 @@ class ListBillsUseCase:
         cost_min: float | None = None,
         cost_max: float | None = None,
     ) -> list[Bill]:
-        return self._bill_repository.list(
+        bills = self._bill_repository.list(
             apartment_id=apartment_id,
             state=state,
             date_from=date_from,
@@ -33,6 +68,7 @@ class ListBillsUseCase:
             cost_min=cost_min,
             cost_max=cost_max,
         )
+        return enrich_with_apartment_data(bills, self._apartment_repository)
 
 
 class ListPendingBillsUseCase:
@@ -51,10 +87,12 @@ class ListPendingBillsUseCase:
         self,
         booking_repository: IBookingRepository,
         bill_repository: IBillRepository,
+        apartment_repository: IApartmentRepository | None = None,
     ) -> None:
         self._get_cleaning_opportunities_use_case = GetCleaningOpportunitiesUseCase(
             booking_repository,
             bill_repository,
+            apartment_repository,
         )
 
     def execute(
@@ -85,6 +123,8 @@ class ListPendingBillsUseCase:
                     cleaning_date=checkout,
                     state=BILL_STATE_PENDING,
                     previously_cancelled=opportunity.bill_state == BILL_STATE_CANCELLED,
+                    address=opportunity.address,
+                    apartment_description=opportunity.apartment_description,
                 )
             )
 
