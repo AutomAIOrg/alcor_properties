@@ -393,9 +393,7 @@ def _build_cleaning_opportunities(
                     can_bill=booking.is_cleanable(now),
                     bill_state=bill_st,
                     address=apartment.address if apartment else None,
-                    apartment_description=(
-                        apartment.apartment_description if apartment else None
-                    ),
+                    apartment_description=(apartment.apartment_description if apartment else None),
                 )
             )
 

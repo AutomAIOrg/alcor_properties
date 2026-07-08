@@ -313,9 +313,7 @@ class TestGetCleaningOpportunitiesUseCase:
                     )
                 ]
 
-        use_case = GetCleaningOpportunitiesUseCase(
-            mock_repo, apartment_repository=_ApartmentRepo()
-        )
+        use_case = GetCleaningOpportunitiesUseCase(mock_repo, apartment_repository=_ApartmentRepo())
 
         opportunities = use_case.execute(reference_date=date(2026, 6, 18))
 
