@@ -4,7 +4,7 @@ Entidad de dominio de factura.
 Una factura representa la limpieza realizada en un apartamento tras una reserva.
 """
 
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -71,7 +71,27 @@ class Bill(BaseModel):
         description="Nombre del tipo de limpieza congelado al facturar (histórico estable)",
     )
     paid_at: date | None = Field(
-        default=None, description="Fecha en la que se pagó la factura (solo si está Pagada)"
+        default=None,
+        description=(
+            "Fecha de pago declarada por la limpiadora al confirmar; puede constar ya "
+            "con la factura aún en 'Creada', a la espera de administración"
+        ),
+    )
+    paid_confirmed_by_admin: datetime | None = Field(
+        default=None,
+        description="Instante (fecha y hora) de la confirmación de pago por administración",
+    )
+    paid_confirmed_by_admin_name: str | None = Field(
+        default=None,
+        description="Nombre completo (congelado) de quien confirmó el pago desde administración",
+    )
+    paid_confirmed_by_cleaner: datetime | None = Field(
+        default=None,
+        description="Instante (fecha y hora) de la confirmación de pago por la limpiadora",
+    )
+    paid_confirmed_by_cleaner_name: str | None = Field(
+        default=None,
+        description="Nombre completo (congelado) de quien confirmó el pago desde limpieza",
     )
     cancellation_note: str | None = Field(
         default=None,
