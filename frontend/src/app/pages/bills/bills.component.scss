@@ -171,6 +171,15 @@ button.bill-state-chip {
   &:hover {
     filter: brightness(0.95);
   }
+
+  // Mismo tamaño que .invoice-btn de Organización Limpiezas cuando la factura
+  // está Creada o Pagada; conserva sus colores. Las canceladas mantienen el
+  // tamaño de chip pequeño.
+  &:not(.cancelled) {
+    padding: 0.4rem 0.7rem;
+    border-radius: 8px;
+    font-size: 0.8rem;
+  }
 }
 
 .cancellation-note {
@@ -182,6 +191,22 @@ button.bill-state-chip {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.paid-confirmation-hint {
+  margin: 0.3rem 0 0;
+  max-width: 220px;
+  color: #b54708;
+  font-size: 0.76rem;
+  // La frase completa ("Pago confirmado por <Nombre> el día <fecha>") debe leerse
+  // entera: envuelve en varias líneas en vez de truncarse con puntos suspensivos.
+  overflow-wrap: anywhere;
+}
+
+.dialog-hint {
+  margin: 0.5rem 0 0;
+  color: #667085;
+  font-size: 0.82rem;
 }
 
 .refactored-badge {

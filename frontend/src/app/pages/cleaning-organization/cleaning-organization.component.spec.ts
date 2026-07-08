@@ -68,6 +68,10 @@ function makeBill(overrides: Partial<Bill> = {}): Bill {
     cleaning_type_name: 'Limpieza normal',
     state: 'Creada',
     paid_at: null,
+    paid_confirmed_by_admin: null,
+    paid_confirmed_by_admin_name: null,
+    paid_confirmed_by_cleaner: null,
+    paid_confirmed_by_cleaner_name: null,
     cancellation_note: null,
     previously_cancelled: false,
     address: null,
@@ -540,9 +544,8 @@ describe('CleaningOrganizationComponent', () => {
     component.currentDate.set(new Date(2026, 5, 3));
     fixture.detectChanges();
 
-    const chipButton: HTMLButtonElement = fixture.nativeElement.querySelector(
-      'button.bill-state-chip'
-    );
+    const chipButton: HTMLButtonElement =
+      fixture.nativeElement.querySelector('button.bill-state-chip');
     chipButton.click();
     fixture.detectChanges();
 

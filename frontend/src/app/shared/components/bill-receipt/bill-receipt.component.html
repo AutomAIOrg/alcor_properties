@@ -63,4 +63,12 @@
       <span class="receipt-amount-words">{{ costWords() }}</span>
     </div>
   </section>
+
+  @if (paidConfirmationLabels().length) {
+    <section class="receipt-confirmations">
+      @for (label of paidConfirmationLabels(); track label) {
+        <p class="receipt-confirmation-line">{{ label }}</p>
+      }
+    </section>
+  }
 </div>

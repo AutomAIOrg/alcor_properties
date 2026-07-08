@@ -12,6 +12,14 @@ export interface Bill {
   cleaning_type_name: string | null;
   state: BillState;
   paid_at: string | null;
+  /** Fecha de pago confirmada por administración; null si aún no ha confirmado. */
+  paid_confirmed_by_admin: string | null;
+  /** Nombre completo de quien confirmó el pago desde administración. */
+  paid_confirmed_by_admin_name: string | null;
+  /** Fecha de pago confirmada por la limpiadora; null si aún no ha confirmado. */
+  paid_confirmed_by_cleaner: string | null;
+  /** Nombre completo de quien confirmó el pago desde limpieza. */
+  paid_confirmed_by_cleaner_name: string | null;
   cancellation_note: string | null;
   previously_cancelled: boolean;
   address: string | null;

@@ -1,6 +1,11 @@
 import { Component, computed, input } from '@angular/core';
 import { Bill } from '../../../models/bill.model';
 import { amountToSpanishWords } from '../../utils/amount-to-words';
+import {
+  PaidConfirmation,
+  paidConfirmationSentence,
+  paidConfirmationsOf,
+} from '../../utils/format-confirmation';
 
 /**
  * Datos necesarios para maquetar el recibo de una limpieza, tanto en la
@@ -23,6 +28,12 @@ export interface BillReceiptData {
   paid: boolean;
   /** Fecha del pago (ISO); null si no está pagada o no consta. */
   paidAtIso: string | null;
+  /**
+   * Confirmaciones de pago ya registradas (administración y/o limpiadora), en orden.
+   * Se muestran aunque la factura aún no esté Pagada (solo una de las dos partes
+   * confirmó) y se conservan una vez pagada, como registro de quién confirmó y cuándo.
+   */
+  paidConfirmations: PaidConfirmation[];
 }
 
 /**
@@ -30,13 +41,15 @@ export interface BillReceiptData {
  * Devuelve null para facturas sin datos suficientes (p. ej. virtuales 'Pendiente').
  *
  * La fecha de emisión usa `bill.created_at` (congelada al generar la factura); si una
- * factura anterior a esta funcionalidad no la tiene, se recurre a `fallbackEmissionIso`.
+ * factura anterior a esta funcionalidad no la tiene, se recurre a `cleaning_date` (fecha
+ * estable de la propia factura) en vez de al día en que se está consultando el recibo,
+ * para que la FECHA no cambie según cuándo se mire.
  */
-export function billToReceiptData(bill: Bill, fallbackEmissionIso: string): BillReceiptData | null {
+export function billToReceiptData(bill: Bill): BillReceiptData | null {
   if (bill.bill_id === null || !bill.cleaning_date || bill.cost === null) return null;
 
   return {
-    emissionIso: bill.created_at ?? fallbackEmissionIso,
+    emissionIso: bill.created_at ?? bill.cleaning_date,
     cleaningDateIso: bill.cleaning_date,
     apartmentId: bill.apartment_id,
     address: bill.address,
@@ -46,6 +59,7 @@ export function billToReceiptData(bill: Bill, fallbackEmissionIso: string): Bill
     cost: bill.cost,
     paid: bill.state === 'Pagada',
     paidAtIso: bill.state === 'Pagada' ? bill.paid_at : null,
+    paidConfirmations: paidConfirmationsOf(bill),
   };
 }
 
@@ -105,6 +119,14 @@ export class BillReceiptComponent {
 
   // Importe total con el formato numérico del recibo (p. ej. "30,00").
   costLabel = computed(() => this.data().cost.toFixed(2).replace('.', ','));
+
+  // Líneas "Pago confirmado por <Nombre Apellidos> el día <fecha> a las <hora>", una
+  // por cada parte que ya haya confirmado el pago.
+  paidConfirmationLabels = computed(() =>
+    this.data().paidConfirmations.map(confirmation =>
+      paidConfirmationSentence(confirmation.name, confirmation.datetimeIso)
+    )
+  );
 
   private formatDate(iso: string): string {
     if (!iso) return '';

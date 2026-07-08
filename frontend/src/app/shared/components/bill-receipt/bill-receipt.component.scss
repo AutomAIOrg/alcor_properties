@@ -207,3 +207,16 @@
     text-transform: uppercase;
   }
 }
+
+// ── Confirmaciones de pago: quién y cuándo confirmó cada parte ───────────────
+.receipt-confirmations {
+  margin-top: 0.9rem;
+  padding-top: 0.9rem;
+  border-top: 1px dashed #eaecf0;
+}
+
+.receipt-confirmation-line {
+  margin: 0.2rem 0;
+  color: #475467;
+  font-size: 0.8rem;
+}

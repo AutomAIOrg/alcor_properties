@@ -149,6 +149,7 @@ export class CleaningOrganizationComponent implements OnInit, OnDestroy {
       cost,
       paid: false,
       paidAtIso: null,
+      paidConfirmations: [],
     };
   });
 
@@ -392,7 +393,7 @@ export class CleaningOrganizationComponent implements OnInit, OnDestroy {
         const bill = bills.find(
           item => item.record_id === opportunity.sourceBookingRecordId && item.bill_id !== null
         );
-        const receipt = bill ? billToReceiptData(bill, this.layout.toIso(new Date())) : null;
+        const receipt = bill ? billToReceiptData(bill) : null;
         if (!receipt) {
           this.showToast('error', 'No se ha podido cargar la factura.');
           return;

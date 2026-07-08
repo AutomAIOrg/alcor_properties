@@ -12,7 +12,7 @@ export function allowedBillTransitions(state: BillState): BillState[] {
 }
 
 export function billTransitionLabel(currentState: BillState, targetState: BillState): string {
-  if (targetState === 'Pagada') return 'Marcar pagada';
+  if (targetState === 'Pagada') return 'Confirmar pago';
   if (targetState === 'Cancelada') return 'Cancelar';
   if (targetState === 'Creada' && currentState === 'Pagada') return 'Revertir a creada';
   if (targetState === 'Creada' && currentState === 'Cancelada') return 'Reactivar';
