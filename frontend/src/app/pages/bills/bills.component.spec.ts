@@ -255,7 +255,7 @@ describe('BillsComponent', () => {
   });
 
   it('la limpiadora declara la fecha de pago al confirmar desde el modal', () => {
-    authServiceSpy.hasRole.mockImplementation((role: string) => role === 'limpiadora');
+    authServiceSpy.hasRole.mockImplementation(role => role === 'limpiadora');
     billServiceSpy.updateBillState.mockReturnValue(
       of(makeBill({ state: 'Pagada', paid_at: '2026-06-03' }))
     );
