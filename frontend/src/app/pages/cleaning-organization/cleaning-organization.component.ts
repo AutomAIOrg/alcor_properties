@@ -14,6 +14,7 @@ import {
   BillReceiptData,
   billToReceiptData,
 } from '../../shared/components/bill-receipt/bill-receipt.component';
+import { DismissableBackdropDirective } from '../../shared/directives/dismissable-backdrop.directive';
 
 interface CleaningWindow {
   apartmentId: string;
@@ -58,7 +59,7 @@ interface ToastMessage {
 @Component({
   selector: 'app-cleaning-organization',
   standalone: true,
-  imports: [CurrencyPipe, BillReceiptComponent],
+  imports: [CurrencyPipe, BillReceiptComponent, DismissableBackdropDirective],
   templateUrl: './cleaning-organization.component.html',
   styleUrl: './cleaning-organization.component.scss',
 })
@@ -174,8 +175,10 @@ export class CleaningOrganizationComponent implements OnInit, OnDestroy {
 
   weekStartIso = computed(() => this.weekDays()[0].iso);
   weekEndIso = computed(() => this.weekDays()[6].iso);
+  // Número de semana ISO del año (1..53) de la semana mostrada.
+  weekNumber = computed(() => this.layout.isoWeekNumber(this.weekDays()[0].date));
   weekLabel = computed(
-    () => `${this.formatDate(this.weekStartIso())} - ${this.formatDate(this.weekEndIso())}`
+    () => `${this.formatDate(this.weekStartIso())} al ${this.formatDate(this.weekEndIso())}`
   );
   currentWeekStartIso = computed(() => this.layout.toIso(this.getWeekStart(new Date())));
   nextWeekStartIso = computed(() => {

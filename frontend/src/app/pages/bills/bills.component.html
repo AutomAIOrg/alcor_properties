@@ -1,7 +1,6 @@
 <section class="bills-page">
   <header class="bills-header">
     <div>
-      <span class="eyebrow">Facturación</span>
       <h1>Gestión de facturas</h1>
       <p>Consulta y gestiona las facturas de limpieza.</p>
     </div>
@@ -193,7 +192,9 @@
                         <button
                           class="action-btn"
                           type="button"
+                          [class.pay]="targetState === 'Pagada'"
                           [class.danger]="targetState === 'Cancelada'"
+                          [class.revert]="targetState === 'Creada'"
                           [disabled]="isUpdating()"
                           (click)="requestTransition(bill, targetState)"
                         >
@@ -214,13 +215,17 @@
   </section>
 
   @if (billReceiptView()) {
-    <div class="modal-backdrop" role="presentation" (click)="closeBillReceipt()">
+    <div
+      class="modal-backdrop"
+      role="presentation"
+      appDismissableBackdrop
+      (backdropDismiss)="closeBillReceipt()"
+    >
       <section
         class="confirm-dialog receipt-dialog"
         role="dialog"
         aria-modal="true"
         aria-labelledby="bill-receipt-title"
-        (click)="$event.stopPropagation()"
       >
         <h2 id="bill-receipt-title">Factura</h2>
 
@@ -234,13 +239,17 @@
   }
 
   @if (markPaidBill()) {
-    <div class="modal-backdrop" role="presentation" (click)="closeMarkPaidModal()">
+    <div
+      class="modal-backdrop"
+      role="presentation"
+      appDismissableBackdrop
+      (backdropDismiss)="closeMarkPaidModal()"
+    >
       <section
         class="confirm-dialog"
         role="dialog"
         aria-modal="true"
         aria-labelledby="mark-paid-title"
-        (click)="$event.stopPropagation()"
       >
         <h2 id="mark-paid-title">Confirmar pago</h2>
         <p>
@@ -284,13 +293,17 @@
   }
 
   @if (cancelBill()) {
-    <div class="modal-backdrop" role="presentation" (click)="closeCancelModal()">
+    <div
+      class="modal-backdrop"
+      role="presentation"
+      appDismissableBackdrop
+      (backdropDismiss)="closeCancelModal()"
+    >
       <section
         class="confirm-dialog"
         role="dialog"
         aria-modal="true"
         aria-labelledby="cancel-bill-title"
-        (click)="$event.stopPropagation()"
       >
         <h2 id="cancel-bill-title">Cancelar factura</h2>
         <p>
@@ -333,13 +346,17 @@
   }
 
   @if (pendingTransition()) {
-    <div class="modal-backdrop" role="presentation" (click)="closeConfirmDialog()">
+    <div
+      class="modal-backdrop"
+      role="presentation"
+      appDismissableBackdrop
+      (backdropDismiss)="closeConfirmDialog()"
+    >
       <section
         class="confirm-dialog"
         role="dialog"
         aria-modal="true"
         aria-labelledby="confirm-transition-title"
-        (click)="$event.stopPropagation()"
       >
         <h2 id="confirm-transition-title">Confirmar cambio</h2>
         <p>{{ confirmationMessage(pendingTransition()!) }}</p>

@@ -1,7 +1,6 @@
 <section class="admin-panel">
   <header class="admin-header">
     <div>
-      <span class="eyebrow">Panel de Administrador</span>
       <h1>Configuración operativa</h1>
       <p>
         Gestiona los usuarios que acceden a la aplicación y la base de apartamentos que se usará en
@@ -331,7 +330,12 @@
   }
 
   @if (isUserFormModalOpen()) {
-    <div class="modal-backdrop" role="presentation">
+    <div
+      class="modal-backdrop"
+      role="presentation"
+      appDismissableBackdrop
+      (backdropDismiss)="closeUserFormDialog()"
+    >
       <section
         class="confirm-dialog user-form-dialog"
         role="dialog"
@@ -430,7 +434,12 @@
   }
 
   @if (isPropertyFormModalOpen()) {
-    <div class="modal-backdrop" role="presentation">
+    <div
+      class="modal-backdrop"
+      role="presentation"
+      appDismissableBackdrop
+      (backdropDismiss)="closePropertyFormDialog()"
+    >
       <section
         class="confirm-dialog user-form-dialog property-form-dialog"
         role="dialog"
@@ -616,7 +625,12 @@
   }
 
   @if (userPendingDeletion()) {
-    <div class="modal-backdrop" role="presentation">
+    <div
+      class="modal-backdrop"
+      role="presentation"
+      appDismissableBackdrop
+      (backdropDismiss)="closeDeleteUserDialog()"
+    >
       <section
         class="confirm-dialog"
         role="dialog"
@@ -652,7 +666,12 @@
   }
 
   @if (propertyPendingDeletion()) {
-    <div class="modal-backdrop" role="presentation">
+    <div
+      class="modal-backdrop"
+      role="presentation"
+      appDismissableBackdrop
+      (backdropDismiss)="closeDeletePropertyDialog()"
+    >
       <section
         class="confirm-dialog"
         role="dialog"
@@ -688,7 +707,12 @@
   }
 
   @if (isCleaningTypeFormModalOpen()) {
-    <div class="modal-backdrop" role="presentation">
+    <div
+      class="modal-backdrop"
+      role="presentation"
+      appDismissableBackdrop
+      (backdropDismiss)="closeCleaningTypeFormDialog()"
+    >
       <section
         class="confirm-dialog user-form-dialog"
         role="dialog"
@@ -770,7 +794,12 @@
   }
 
   @if (cleaningTypePendingDeletion()) {
-    <div class="modal-backdrop" role="presentation">
+    <div
+      class="modal-backdrop"
+      role="presentation"
+      appDismissableBackdrop
+      (backdropDismiss)="closeDeleteCleaningTypeDialog()"
+    >
       <section
         class="confirm-dialog"
         role="dialog"

@@ -67,6 +67,7 @@ function makeWeek(overrides: Partial<CalendarWeek> = {}): CalendarWeek {
     })),
     bars: [],
     totalLanes: 0,
+    weekNumber: 23, // Lun 2-jun-2025 → semana ISO 23
     ...overrides,
   };
 }
