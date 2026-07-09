@@ -107,3 +107,20 @@ async def cleaning_type_already_exists_error_handler(
 ) -> JSONResponse:
     """Devuelve un error 409 cuando el tipo de limpieza ya existe."""
     return JSONResponse(status_code=409, content={"detail": str(exc)})
+
+
+async def file_storage_error_handler(request: Request, exc: Exception) -> JSONResponse:
+    """Devuelve un error 502 cuando falla el almacenamiento remoto (NAS)."""
+    return JSONResponse(status_code=502, content={"detail": str(exc)})
+
+
+async def bill_document_render_error_handler(request: Request, exc: Exception) -> JSONResponse:
+    """Devuelve un error 500 cuando falla la generación del documento PDF."""
+    return JSONResponse(status_code=500, content={"detail": str(exc)})
+
+
+async def bill_document_already_exists_error_handler(
+    request: Request, exc: Exception
+) -> JSONResponse:
+    """Devuelve un error 409 cuando el documento de factura ya existe."""
+    return JSONResponse(status_code=409, content={"detail": str(exc)})

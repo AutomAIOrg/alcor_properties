@@ -2,7 +2,7 @@
 DTOs (Data Transfer Objects) para la API de facturas.
 """
 
-from datetime import date, time
+from datetime import date, datetime, time
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -57,3 +57,18 @@ class BillUpdateStateRequest(BaseModel):
         max_length=500,
         description="Nota explicativa. Solo aplica al pasar a 'Cancelada'.",
     )
+
+
+class BillDocumentResponse(BaseModel):
+    """DTO de salida con metadatos del documento generado y subido al NAS."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    bill_id: int
+    filename: str
+    nas_path: str
+    content_type: str
+    size_bytes: int
+    uploaded_by: int
+    uploaded_at: datetime
