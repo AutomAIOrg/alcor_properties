@@ -148,3 +148,25 @@ class CleaningTypeAlreadyExistsError(DomainException):
     def __init__(self, name: str) -> None:
         self.name = name
         super().__init__(f"El tipo de limpieza '{name}' ya existe")
+
+
+class BillDocumentRenderError(DomainException):
+    """Se lanza cuando falla la generación del documento PDF de factura."""
+
+    def __init__(self, message: str = "No se pudo generar el documento de factura") -> None:
+        super().__init__(message)
+
+
+class BillDocumentAlreadyExistsError(DomainException):
+    """Se lanza cuando ya existe un documento de factura para la factura indicada."""
+
+    def __init__(self, bill_id: int) -> None:
+        self.bill_id = bill_id
+        super().__init__(f"Ya existe un documento de factura para la factura {bill_id}")
+
+
+class FileStorageError(DomainException):
+    """Se lanza cuando falla la subida de un archivo al almacenamiento remoto (NAS)."""
+
+    def __init__(self, message: str = "No se pudo almacenar el archivo en el NAS") -> None:
+        super().__init__(message)
