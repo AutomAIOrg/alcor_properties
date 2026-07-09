@@ -162,6 +162,26 @@ table {
   }
 }
 
+// El chip de estado es un botón que abre el recibo de la factura ya creada.
+button.bill-state-chip {
+  border: none;
+  font-family: inherit;
+  cursor: pointer;
+
+  &:hover {
+    filter: brightness(0.95);
+  }
+
+  // Mismo tamaño que .invoice-btn de Organización Limpiezas cuando la factura
+  // está Creada o Pagada; conserva sus colores. Las canceladas mantienen el
+  // tamaño de chip pequeño.
+  &:not(.cancelled) {
+    padding: 0.4rem 0.7rem;
+    border-radius: 8px;
+    font-size: 0.8rem;
+  }
+}
+
 .cancellation-note {
   margin: 0.3rem 0 0;
   max-width: 220px;
@@ -171,6 +191,22 @@ table {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.paid-confirmation-hint {
+  margin: 0.3rem 0 0;
+  max-width: 220px;
+  color: #b54708;
+  font-size: 0.76rem;
+  // La frase completa ("Pago confirmado por <Nombre> el día <fecha>") debe leerse
+  // entera: envuelve en varias líneas en vez de truncarse con puntos suspensivos.
+  overflow-wrap: anywhere;
+}
+
+.dialog-hint {
+  margin: 0.5rem 0 0;
+  color: #667085;
+  font-size: 0.82rem;
 }
 
 .refactored-badge {
@@ -301,6 +337,13 @@ table {
   justify-content: center;
   padding: 1rem;
   background: rgba(16, 24, 40, 0.48);
+}
+
+// El recibo necesita más ancho que un diálogo de confirmación y scroll propio.
+.confirm-dialog.receipt-dialog {
+  max-width: 680px;
+  max-height: calc(100vh - 2rem);
+  overflow-y: auto;
 }
 
 .confirm-dialog {

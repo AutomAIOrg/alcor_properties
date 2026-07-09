@@ -109,3 +109,5 @@ class CleaningOpportunityResponse(BaseModel):
     can_bill: bool = False
     has_bill: bool = False
     bill_state: str | None = None
+    address: str | None = None
+    apartment_description: str | None = None

@@ -55,6 +55,8 @@ function makeCleaningOpportunity(
     can_bill: false,
     has_bill: false,
     bill_state: null,
+    address: null,
+    apartment_description: null,
     ...overrides,
   };
 }

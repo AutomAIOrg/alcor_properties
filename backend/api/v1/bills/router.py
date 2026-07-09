@@ -83,11 +83,12 @@ async def update_bill_state(
     update_bill_state_use_case: Annotated[
         UpdateBillStateUseCase, Depends(get_update_bill_state_use_case)
     ],
-    _: User = Depends(require_cleaning),
+    current_user: User = Depends(require_cleaning),
 ):
     return update_bill_state_use_case.execute(
         bill_id,
         payload.state,
+        actor=current_user,
         paid_at=payload.paid_at,
         cancellation_note=payload.cancellation_note,
     )

@@ -25,6 +25,8 @@ function makeCleaningOpportunity(
     can_bill: false,
     has_bill: false,
     bill_state: null,
+    address: null,
+    apartment_description: null,
     ...overrides,
   };
 }
@@ -66,8 +68,15 @@ function makeBill(overrides: Partial<Bill> = {}): Bill {
     cleaning_type_name: 'Limpieza normal',
     state: 'Creada',
     paid_at: null,
+    paid_confirmed_by_admin: null,
+    paid_confirmed_by_admin_name: null,
+    paid_confirmed_by_cleaner: null,
+    paid_confirmed_by_cleaner_name: null,
     cancellation_note: null,
     previously_cancelled: false,
+    address: null,
+    apartment_description: null,
+    created_at: null,
     ...overrides,
   };
 }
@@ -102,6 +111,7 @@ describe('CleaningOrganizationComponent', () => {
 
     billServiceSpy = {
       createBill: jest.fn(),
+      listBills: jest.fn(),
     } as unknown as jest.Mocked<BillService>;
 
     cleaningTypeServiceSpy = {
@@ -232,6 +242,7 @@ describe('CleaningOrganizationComponent', () => {
         canBill: false,
         hasBill: false,
         billState: null,
+        address: null,
       },
     ]);
   });
@@ -442,6 +453,8 @@ describe('CleaningOrganizationComponent', () => {
         comments: 'Llevar llaves',
         can_bill: true,
         has_bill: false,
+        address: 'C/ Raquero 6 Bloque 3',
+        apartment_description: 'Porto Fino',
       }),
     ]);
     billServiceSpy.createBill.mockReturnValue(of(makeBill()));
@@ -456,10 +469,10 @@ describe('CleaningOrganizationComponent', () => {
     expect(cleaningTypeServiceSpy.list).toHaveBeenCalledTimes(1);
     expect(fixture.nativeElement.querySelector('.invoice-dialog')).not.toBeNull();
 
-    const submitButton: HTMLButtonElement = fixture.nativeElement.querySelector(
-      '.invoice-dialog .primary-btn'
+    const previewButton: HTMLButtonElement = fixture.nativeElement.querySelector(
+      '.invoice-dialog .preview-btn'
     );
-    expect(submitButton.disabled).toBe(true);
+    expect(previewButton.disabled).toBe(true);
 
     component.selectedCleaningTypeId.set(1);
     fixture.detectChanges();
@@ -470,10 +483,25 @@ describe('CleaningOrganizationComponent', () => {
     component.endTime.set('12:00');
     fixture.detectChanges();
 
-    expect(submitButton.disabled).toBe(false);
+    expect(previewButton.disabled).toBe(false);
     expect(fixture.nativeElement.textContent).toContain('Total: 30 €');
 
-    submitButton.click();
+    previewButton.click();
+    fixture.detectChanges();
+
+    // Antes de guardar se muestra la previsualización del recibo, sin crear la factura.
+    expect(component.showInvoicePreview()).toBe(true);
+    expect(fixture.nativeElement.querySelector('.receipt')).not.toBeNull();
+    expect(fixture.nativeElement.textContent).toContain('RECIBO');
+    expect(fixture.nativeElement.textContent).toContain('treinta euros');
+    expect(fixture.nativeElement.textContent).toContain('C/ Raquero 6 Bloque 3');
+    expect(fixture.nativeElement.textContent).not.toContain('Porto Fino');
+    expect(billServiceSpy.createBill).not.toHaveBeenCalled();
+
+    const confirmButton: HTMLButtonElement = fixture.nativeElement.querySelector(
+      '.invoice-dialog .confirm-btn'
+    );
+    confirmButton.click();
     fixture.detectChanges();
 
     expect(billServiceSpy.createBill).toHaveBeenCalledWith({
@@ -489,6 +517,44 @@ describe('CleaningOrganizationComponent', () => {
       'Factura creada (Limpieza normal): 2 h × 15 €/h = 30 €'
     );
     expect(fixture.nativeElement.querySelector('.invoice-dialog')).toBeNull();
+  });
+
+  it('muestra el recibo de una factura ya creada al pulsar el chip de estado', () => {
+    setup([
+      makeCleaningOpportunity({
+        source_booking_record_id: 1,
+        apartment_id: 'R180',
+        available_from: '2026-06-02',
+        available_until: '2026-06-05',
+        can_bill: true,
+        has_bill: true,
+        bill_state: 'Creada',
+      }),
+    ]);
+    billServiceSpy.listBills.mockReturnValue(
+      of([
+        makeBill({
+          record_id: 1,
+          address: 'C/ Raquero 6 Bloque 3',
+          apartment_description: 'Porto Fino',
+        }),
+      ])
+    );
+
+    component.currentDate.set(new Date(2026, 5, 3));
+    fixture.detectChanges();
+
+    const chipButton: HTMLButtonElement =
+      fixture.nativeElement.querySelector('button.bill-state-chip');
+    chipButton.click();
+    fixture.detectChanges();
+
+    expect(billServiceSpy.listBills).toHaveBeenCalledWith({ apartment_id: 'R180' });
+    expect(fixture.nativeElement.querySelector('.receipt')).not.toBeNull();
+    expect(fixture.nativeElement.textContent).toContain('RECIBO');
+    expect(fixture.nativeElement.textContent).toContain('treinta euros');
+    expect(fixture.nativeElement.textContent).toContain('C/ Raquero 6 Bloque 3');
+    expect(fixture.nativeElement.textContent).not.toContain('Porto Fino');
   });
 
   it('mantiene bloqueado el botón de generar factura hasta introducir horas', () => {
@@ -552,10 +618,16 @@ describe('CleaningOrganizationComponent', () => {
     component.endTime.set('12:00');
     fixture.detectChanges();
 
-    const submitButton: HTMLButtonElement = fixture.nativeElement.querySelector(
-      '.invoice-dialog .primary-btn'
+    const previewButton: HTMLButtonElement = fixture.nativeElement.querySelector(
+      '.invoice-dialog .preview-btn'
     );
-    submitButton.click();
+    previewButton.click();
+    fixture.detectChanges();
+
+    const confirmButton: HTMLButtonElement = fixture.nativeElement.querySelector(
+      '.invoice-dialog .confirm-btn'
+    );
+    confirmButton.click();
     fixture.detectChanges();
 
     expect(fixture.nativeElement.textContent).toContain('Ya existe una factura para esta reserva.');

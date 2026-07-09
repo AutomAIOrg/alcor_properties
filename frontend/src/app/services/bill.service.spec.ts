@@ -19,8 +19,15 @@ function makeBill(overrides: Partial<Bill> = {}): Bill {
     cleaning_type_name: 'Limpieza normal',
     state: 'Creada',
     paid_at: null,
+    paid_confirmed_by_admin: null,
+    paid_confirmed_by_admin_name: null,
+    paid_confirmed_by_cleaner: null,
+    paid_confirmed_by_cleaner_name: null,
     cancellation_note: null,
     previously_cancelled: false,
+    address: null,
+    apartment_description: null,
+    created_at: null,
     ...overrides,
   };
 }

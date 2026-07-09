@@ -4,7 +4,7 @@ Integration tests — endpoints HTTP de bills.
 FastAPI TestClient con casos de uso inyectados como MagicMock.
 """
 
-from datetime import date
+from datetime import date, datetime
 from unittest.mock import MagicMock
 
 import pytest
@@ -63,9 +63,33 @@ class TestUpdateBillState:
 
         assert response.status_code == 200
         assert response.json()["state"] == "Pagada"
-        mock_update_bill_state_use_case.execute.assert_called_once_with(
-            1, "Pagada", paid_at=date(2026, 6, 1), cancellation_note=None
+        # El cliente de pruebas autentica como limpiadora: el usuario completo viaja
+        # al caso de uso para registrar quién confirmó el pago (rol, nombre y apellidos).
+        mock_update_bill_state_use_case.execute.assert_called_once()
+        call = mock_update_bill_state_use_case.execute.call_args
+        assert call.args == (1, "Pagada")
+        assert call.kwargs["actor"].role == Role.LIMPIADORA
+        assert call.kwargs["actor"].name == "Limpiadora"
+        assert call.kwargs["actor"].lastname == "Test"
+        assert call.kwargs["paid_at"] == date(2026, 6, 1)
+        assert call.kwargs["cancellation_note"] is None
+
+    def test_partial_confirmation_returns_confirmation_fields(
+        self, bills_api_client, mock_update_bill_state_use_case
+    ):
+        mock_update_bill_state_use_case.execute.return_value = make_bill(
+            bill_id=1, state="Creada", paid_confirmed_by_cleaner=datetime(2026, 6, 1, 14, 30)
         )
+
+        response = bills_api_client.put(
+            "/api/v1/bills/1", json={"state": "Pagada", "paid_at": "2026-06-01"}
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["state"] == "Creada"
+        assert data["paid_confirmed_by_cleaner"] == "2026-06-01T14:30:00"
+        assert data["paid_confirmed_by_admin"] is None
 
     def test_cancel_with_note_passes_note_to_use_case(
         self, bills_api_client, mock_update_bill_state_use_case
@@ -81,9 +105,11 @@ class TestUpdateBillState:
 
         assert response.status_code == 200
         assert response.json()["cancellation_note"] == "Reserva duplicada"
-        mock_update_bill_state_use_case.execute.assert_called_once_with(
-            1, "Cancelada", paid_at=None, cancellation_note="Reserva duplicada"
-        )
+        call = mock_update_bill_state_use_case.execute.call_args
+        assert call.args == (1, "Cancelada")
+        assert call.kwargs["actor"].role == Role.LIMPIADORA
+        assert call.kwargs["paid_at"] is None
+        assert call.kwargs["cancellation_note"] == "Reserva duplicada"
 
     def test_invalid_transition_returns_422(
         self, bills_api_client, mock_update_bill_state_use_case

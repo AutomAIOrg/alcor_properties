@@ -145,3 +145,8 @@ class CleaningOpportunity(BaseModel):
     can_bill: bool = False
     has_bill: bool = False
     bill_state: str | None = None
+    # Datos del apartamento congelados para el recibo (dirección y descripción).
+    # Se rellenan en la capa de aplicación; permiten a la limpiadora ver la
+    # dirección completa sin necesidad de acceder al endpoint (solo-admin) de apartamentos.
+    address: str | None = None
+    apartment_description: str | None = None

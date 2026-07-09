@@ -9,6 +9,11 @@ import { ApartmentService } from '../../services/apartment.service';
 import { BillService } from '../../services/bill.service';
 import { CalendarLayoutService } from '../../services/calendar-layout.service';
 import {
+  BillReceiptComponent,
+  BillReceiptData,
+  billToReceiptData,
+} from '../../shared/components/bill-receipt/bill-receipt.component';
+import {
   DateRangePickerComponent,
   DateRangeValue,
 } from '../../shared/components/date-range-picker/date-range-picker.component';
@@ -18,6 +23,10 @@ import {
   billStateRequiresConfirmation,
   billTransitionLabel,
 } from '../../shared/utils/bill-transitions';
+import {
+  paidConfirmationSentence,
+  paidConfirmationsOf,
+} from '../../shared/utils/format-confirmation';
 
 type ToastType = 'success' | 'error';
 
@@ -34,7 +43,7 @@ interface PendingTransition {
 @Component({
   selector: 'app-bills',
   standalone: true,
-  imports: [CurrencyPipe, RouterLink, DateRangePickerComponent],
+  imports: [CurrencyPipe, RouterLink, BillReceiptComponent, DateRangePickerComponent],
   templateUrl: './bills.component.html',
   styleUrl: './bills.component.scss',
 })
@@ -69,13 +78,13 @@ export class BillsComponent implements OnInit, OnDestroy {
   filterCostMin = signal('');
   filterCostMax = signal('');
 
+  billReceiptView = signal<BillReceiptData | null>(null);
   markPaidBill = signal<Bill | null>(null);
   paidAtDate = signal('');
   cancelBill = signal<Bill | null>(null);
   cancelNote = signal('');
   pendingTransition = signal<PendingTransition | null>(null);
 
-  readonly allowedBillTransitions = allowedBillTransitions;
   readonly billTransitionLabel = billTransitionLabel;
 
   ngOnInit(): void {
@@ -192,12 +201,60 @@ export class BillsComponent implements OnInit, OnDestroy {
     );
   }
 
+  // Administración y limpiadora comparten esta página; el modal de confirmación de
+  // pago y las transiciones visibles dependen del rol.
+  isAdmin(): boolean {
+    return this.authService.hasRole('admin');
+  }
+
+  // True si el rol del usuario actual ya registró su confirmación de pago.
+  hasConfirmedPaid(bill: Bill): boolean {
+    return this.isAdmin()
+      ? bill.paid_confirmed_by_admin !== null
+      : bill.paid_confirmed_by_cleaner !== null;
+  }
+
+  // Transiciones disponibles para el usuario actual: oculta "Confirmar pago"
+  // cuando su parte ya confirmó (falta la confirmación de la otra).
+  availableTransitions(bill: Bill): BillState[] {
+    return allowedBillTransitions(bill.state).filter(
+      targetState => targetState !== 'Pagada' || !this.hasConfirmedPaid(bill)
+    );
+  }
+
+  // Una línea "Pago confirmado por <Nombre Apellidos> el día <fecha> a las <hora>" por
+  // cada parte que ya haya confirmado el pago. Se muestran mientras falte la otra
+  // confirmación y se conservan tras completarse el pago, como registro de quién lo
+  // confirmó y cuándo.
+  paidConfirmationDetails(bill: Bill): string[] {
+    return paidConfirmationsOf(bill).map(confirmation =>
+      paidConfirmationSentence(confirmation.name, confirmation.datetimeIso)
+    );
+  }
+
+  // Muestra el recibo de una factura ya creada (mismo formato que la
+  // previsualización previa al guardado en Organización Limpiezas).
+  openBillReceipt(bill: Bill): void {
+    const receipt = billToReceiptData(bill);
+    if (!receipt) {
+      this.showToast('error', 'No se ha podido cargar la factura.');
+      return;
+    }
+    this.billReceiptView.set(receipt);
+  }
+
+  closeBillReceipt(): void {
+    this.billReceiptView.set(null);
+  }
+
   requestTransition(bill: Bill, targetState: BillState): void {
     if (!this.canUpdateBill(bill) || this.isUpdating()) return;
 
     if (targetState === 'Pagada') {
       this.markPaidBill.set(bill);
-      this.paidAtDate.set(this.layout.toIso(new Date()));
+      // La fecha de pago solo la declara la limpiadora (por defecto, hoy);
+      // administración únicamente confirma.
+      this.paidAtDate.set(this.isAdmin() ? '' : this.layout.toIso(new Date()));
       return;
     }
 
@@ -227,8 +284,15 @@ export class BillsComponent implements OnInit, OnDestroy {
 
   confirmMarkPaid(): void {
     const bill = this.markPaidBill();
-    if (!bill?.bill_id || !this.paidAtDate() || this.isUpdating()) return;
+    if (!bill?.bill_id || this.isUpdating()) return;
 
+    // Administración solo confirma: no envía fecha de pago (el backend la ignoraría).
+    if (this.isAdmin()) {
+      this.applyTransition(bill, 'Pagada');
+      return;
+    }
+
+    if (!this.paidAtDate()) return;
     this.applyTransition(bill, 'Pagada', this.paidAtDate());
   }
 
@@ -298,6 +362,15 @@ export class BillsComponent implements OnInit, OnDestroy {
         this.cancelBill.set(null);
         this.cancelNote.set('');
         this.pendingTransition.set(null);
+        // Si se confirmó el pago pero la factura sigue Creada, falta la otra parte.
+        if (targetState === 'Pagada' && updated.state !== 'Pagada') {
+          this.showToast(
+            'success',
+            `Pago de la factura #${updated.bill_id} confirmado. ` +
+              'Pasará a Pagada cuando confirme la otra parte.'
+          );
+          return;
+        }
         this.showToast('success', `Factura #${updated.bill_id} actualizada a ${updated.state}.`);
       },
       error: (error: HttpErrorResponse) => {
