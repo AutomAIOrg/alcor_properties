@@ -153,6 +153,7 @@
     @case ('month') {
       <div class="calendar-grid-wrapper">
         <div class="weekday-header-row">
+          <div class="weekday-header week-number-header">Sem</div>
           @for (day of WEEKDAYS; track day) {
             <div class="weekday-header">{{ day }}</div>
           }
@@ -166,6 +167,7 @@
     @case ('week') {
       <div class="calendar-grid-wrapper">
         <div class="weekday-header-row">
+          <div class="weekday-header week-number-header">Sem</div>
           @for (day of WEEKDAYS; track day) {
             <div class="weekday-header">{{ day }}</div>
           }
