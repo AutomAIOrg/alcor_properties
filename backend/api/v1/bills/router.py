@@ -16,12 +16,7 @@ from api.dependencies import (
     get_update_bill_state_use_case,
     require_cleaning,
 )
-from api.v1.bills.schemas import (
-    BillCreateRequest,
-    BillDocumentResponse,
-    BillResponse,
-    BillUpdateStateRequest,
-)
+from api.v1.bills.schemas import BillCreateRequest, BillResponse, BillUpdateStateRequest
 from application.bills.create_bill_use_case import CreateBillData, CreateBillUseCase
 from application.bills.generate_and_store_bill_document_use_case import (
     GenerateAndStoreBillDocumentUseCase,
@@ -79,10 +74,17 @@ async def list_bills(
 async def create_bill(
     payload: BillCreateRequest,
     create_bill_use_case: Annotated[CreateBillUseCase, Depends(get_create_bill_use_case)],
-    _: User = Depends(require_cleaning),
+    document_use_case: Annotated[
+        GenerateAndStoreBillDocumentUseCase,
+        Depends(get_generate_and_store_bill_document_use_case),
+    ],
+    current_user: User = Depends(require_cleaning),
 ):
     data = CreateBillData(**payload.model_dump())
-    return create_bill_use_case.execute(data)
+    created_bill = create_bill_use_case.execute(data)
+    assert created_bill.bill_id is not None
+    document_use_case.execute(created_bill.bill_id, uploaded_by=current_user.id)
+    return created_bill
 
 
 @router.put("/{bill_id}", response_model=BillResponse)
@@ -100,20 +102,3 @@ async def update_bill_state(
         paid_at=payload.paid_at,
         cancellation_note=payload.cancellation_note,
     )
-
-
-@router.post(
-    "/{bill_id}/document",
-    response_model=BillDocumentResponse,
-    status_code=status.HTTP_201_CREATED,
-)
-async def generate_bill_document(
-    bill_id: int,
-    use_case: Annotated[
-        GenerateAndStoreBillDocumentUseCase,
-        Depends(get_generate_and_store_bill_document_use_case),
-    ],
-    current_user: User = Depends(require_cleaning),
-):
-    document = use_case.execute(bill_id, uploaded_by=current_user.id)
-    return BillDocumentResponse.model_validate(document)

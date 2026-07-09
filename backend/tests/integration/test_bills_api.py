@@ -15,7 +15,6 @@ from domain.auth.user_entity import Role
 from domain.bills.entity import BILL_STATE_PENDING
 from domain.exceptions import (
     BillAlreadyExistsError,
-    BillDocumentAlreadyExistsError,
     BillNotFoundError,
     BookingNotFound,
     DomainValidationError,
@@ -36,8 +35,14 @@ _VALID_PAYLOAD = {
 
 
 class TestCreateBill:
-    def test_valid_payload_returns_201(self, bills_api_client, mock_create_bill_use_case):
+    def test_valid_payload_returns_201(
+        self,
+        bills_api_client,
+        mock_create_bill_use_case,
+        mock_generate_bill_document_use_case,
+    ):
         mock_create_bill_use_case.execute.return_value = make_bill(bill_id=1)
+        mock_generate_bill_document_use_case.execute.return_value = make_bill_document(id=10)
 
         response = bills_api_client.post("/api/v1/bills/", json=_VALID_PAYLOAD)
 
@@ -46,6 +51,29 @@ class TestCreateBill:
         assert data["bill_id"] == 1
         assert data["state"] == "Creada"
         mock_create_bill_use_case.execute.assert_called_once()
+        mock_generate_bill_document_use_case.execute.assert_called_once_with(1, uploaded_by=2)
+
+    def test_nas_failure_returns_502_after_bill_created(
+        self,
+        bills_api_client,
+        mock_create_bill_use_case,
+        mock_generate_bill_document_use_case,
+    ):
+        mock_create_bill_use_case.execute.return_value = make_bill(bill_id=1)
+        mock_generate_bill_document_use_case.execute.side_effect = FileStorageError(
+            "No se pudo almacenar el documento de factura en el NAS."
+        )
+
+        response = bills_api_client.post("/api/v1/bills/", json=_VALID_PAYLOAD)
+
+        assert response.status_code == 502
+        mock_create_bill_use_case.execute.assert_called_once()
+        mock_generate_bill_document_use_case.execute.assert_called_once_with(1, uploaded_by=2)
+
+    def test_manual_document_endpoint_no_longer_exists(self, bills_api_client):
+        response = bills_api_client.post("/api/v1/bills/1/document")
+
+        assert response.status_code == 404
 
     def test_missing_required_field_returns_422(self, bills_api_client):
         response = bills_api_client.post("/api/v1/bills/", json={"record_id": 5})
@@ -184,10 +212,16 @@ class TestErrorHandlers:
 
 
 class TestPermissions:
-    def test_admin_can_create_bill(self, bills_api_client, mock_create_bill_use_case):
+    def test_admin_can_create_bill(
+        self,
+        bills_api_client,
+        mock_create_bill_use_case,
+        mock_generate_bill_document_use_case,
+    ):
         admin_user = make_user(role=Role.ADMIN)
         app.dependency_overrides[get_current_user] = lambda: admin_user
         mock_create_bill_use_case.execute.return_value = make_bill(bill_id=1)
+        mock_generate_bill_document_use_case.execute.return_value = make_bill_document(id=10)
 
         try:
             response = bills_api_client.post("/api/v1/bills/", json=_VALID_PAYLOAD)
@@ -199,6 +233,7 @@ class TestPermissions:
     def test_unauthenticated_request_returns_401(self):
         from api.dependencies import (
             get_create_bill_use_case,
+            get_generate_and_store_bill_document_use_case,
             get_list_bills_use_case,
             get_list_pending_bills_use_case,
             get_update_bill_state_use_case,
@@ -206,6 +241,7 @@ class TestPermissions:
 
         deps = (
             get_create_bill_use_case,
+            get_generate_and_store_bill_document_use_case,
             get_update_bill_state_use_case,
             get_list_bills_use_case,
             get_list_pending_bills_use_case,
@@ -236,55 +272,3 @@ class TestPermissions:
             app.dependency_overrides.pop(get_current_user, None)
 
         assert response.status_code == 403
-
-
-class TestGenerateBillDocument:
-    def test_returns_201(self, bills_api_client, mock_generate_bill_document_use_case):
-        mock_generate_bill_document_use_case.execute.return_value = make_bill_document(id=10)
-
-        response = bills_api_client.post("/api/v1/bills/1/document")
-
-        assert response.status_code == 201
-        data = response.json()
-        assert data["id"] == 10
-        assert data["bill_id"] == 1
-        assert data["nas_path"].endswith(".pdf")
-        mock_generate_bill_document_use_case.execute.assert_called_once_with(1, uploaded_by=2)
-
-    def test_bill_not_found_returns_404(
-        self, bills_api_client, mock_generate_bill_document_use_case
-    ):
-        mock_generate_bill_document_use_case.execute.side_effect = BillNotFoundError(99)
-
-        response = bills_api_client.post("/api/v1/bills/99/document")
-
-        assert response.status_code == 404
-
-    def test_domain_validation_returns_422(
-        self, bills_api_client, mock_generate_bill_document_use_case
-    ):
-        mock_generate_bill_document_use_case.execute.side_effect = DomainValidationError(
-            "La factura no tiene tarifa por hora; no se puede generar el documento."
-        )
-
-        response = bills_api_client.post("/api/v1/bills/1/document")
-
-        assert response.status_code == 422
-
-    def test_nas_failure_returns_502(self, bills_api_client, mock_generate_bill_document_use_case):
-        mock_generate_bill_document_use_case.execute.side_effect = FileStorageError(
-            "No se pudo almacenar el documento de factura en el NAS."
-        )
-
-        response = bills_api_client.post("/api/v1/bills/1/document")
-
-        assert response.status_code == 502
-
-    def test_document_already_exists_returns_409(
-        self, bills_api_client, mock_generate_bill_document_use_case
-    ):
-        mock_generate_bill_document_use_case.execute.side_effect = BillDocumentAlreadyExistsError(1)
-
-        response = bills_api_client.post("/api/v1/bills/1/document")
-
-        assert response.status_code == 409
