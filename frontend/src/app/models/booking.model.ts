@@ -31,4 +31,6 @@ export interface CleaningOpportunity {
   can_bill: boolean;
   has_bill: boolean;
   bill_state: string | null;
+  address: string | null;
+  apartment_description: string | null;
 }

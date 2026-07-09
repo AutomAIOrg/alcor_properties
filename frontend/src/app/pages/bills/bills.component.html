@@ -151,14 +151,25 @@
                   }
                 </td>
                 <td>
-                  <span
-                    class="bill-state-chip"
-                    [class.paid]="bill.state === 'Pagada'"
-                    [class.cancelled]="bill.state === 'Cancelada'"
-                    [class.pending]="bill.state === 'Pendiente'"
-                  >
-                    {{ bill.state }}
-                  </span>
+                  @if (bill.bill_id !== null) {
+                    <button
+                      class="bill-state-chip"
+                      [class.paid]="bill.state === 'Pagada'"
+                      [class.cancelled]="bill.state === 'Cancelada'"
+                      type="button"
+                      title="Ver factura"
+                      (click)="openBillReceipt(bill)"
+                    >
+                      {{ bill.state }}
+                    </button>
+                  } @else {
+                    <span class="bill-state-chip" [class.pending]="bill.state === 'Pendiente'">
+                      {{ bill.state }}
+                    </span>
+                  }
+                  @for (line of paidConfirmationDetails(bill); track line) {
+                    <p class="paid-confirmation-hint" [title]="line">{{ line }}</p>
+                  }
                   @if (bill.previously_cancelled) {
                     <span class="refactored-badge" title="Factura cancelada anteriormente">
                       Refacturación
@@ -178,7 +189,7 @@
                     </span>
                   } @else if (canUpdateBill(bill)) {
                     <div class="row-actions">
-                      @for (targetState of allowedBillTransitions(bill.state); track targetState) {
+                      @for (targetState of availableTransitions(bill); track targetState) {
                         <button
                           class="action-btn"
                           type="button"
@@ -202,6 +213,26 @@
     </div>
   </section>
 
+  @if (billReceiptView()) {
+    <div class="modal-backdrop" role="presentation" (click)="closeBillReceipt()">
+      <section
+        class="confirm-dialog receipt-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="bill-receipt-title"
+        (click)="$event.stopPropagation()"
+      >
+        <h2 id="bill-receipt-title">Factura</h2>
+
+        <app-bill-receipt [data]="billReceiptView()!" />
+
+        <div class="dialog-actions">
+          <button class="secondary-btn" type="button" (click)="closeBillReceipt()">Cerrar</button>
+        </div>
+      </section>
+    </div>
+  }
+
   @if (markPaidBill()) {
     <div class="modal-backdrop" role="presentation" (click)="closeMarkPaidModal()">
       <section
@@ -211,22 +242,30 @@
         aria-labelledby="mark-paid-title"
         (click)="$event.stopPropagation()"
       >
-        <h2 id="mark-paid-title">Marcar como pagada</h2>
+        <h2 id="mark-paid-title">Confirmar pago</h2>
         <p>
           Factura <strong>#{{ markPaidBill()!.bill_id }}</strong> · Piso
           <strong>{{ markPaidBill()!.apartment_id }}</strong>
         </p>
+        <p class="dialog-hint">
+          La factura pasará a Pagada cuando administración y limpiadora hayan confirmado el pago.
+          @if (isAdmin()) {
+            La fecha de pago la declara la limpiadora al confirmar.
+          }
+        </p>
 
-        <label class="dialog-field">
-          Fecha de pago
-          <input type="date" [value]="paidAtDate()" (input)="updatePaidAtDate($event)" />
-        </label>
+        @if (!isAdmin()) {
+          <label class="dialog-field">
+            Fecha de pago
+            <input type="date" [value]="paidAtDate()" (input)="updatePaidAtDate($event)" />
+          </label>
+        }
 
         <div class="dialog-actions">
           <button
             class="primary-btn"
             type="button"
-            [disabled]="isUpdating() || !paidAtDate()"
+            [disabled]="isUpdating() || (!isAdmin() && !paidAtDate())"
             (click)="confirmMarkPaid()"
           >
             {{ isUpdating() ? 'Guardando...' : 'Confirmar' }}

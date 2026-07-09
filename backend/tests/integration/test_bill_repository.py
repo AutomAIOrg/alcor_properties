@@ -2,7 +2,7 @@
 Integration tests — SQLAlchemyBillRepository contra SQLite en memoria.
 """
 
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 
 import pytest
@@ -60,6 +60,17 @@ class TestCreate:
         assert result.record_id == booking.record_id
         assert result.state == "Creada"
 
+    def test_persists_created_at(self, sqlite_session):
+        booking = _insert_booking(sqlite_session)
+        bill = make_bill(bill_id=None, record_id=booking.record_id, created_at=date(2026, 6, 24))
+
+        result = SQLAlchemyBillRepository(sqlite_session).create(bill)
+
+        assert result.created_at == date(2026, 6, 24)
+        assert SQLAlchemyBillRepository(sqlite_session).get_by_id(
+            result.bill_id
+        ).created_at == date(2026, 6, 24)
+
     def test_duplicate_record_id_raises_bill_already_exists(self, sqlite_session):
         booking = _insert_booking(sqlite_session)
         repo = SQLAlchemyBillRepository(sqlite_session)
@@ -97,6 +108,29 @@ class TestUpdate:
 
         assert updated.state == "Pagada"
         assert updated.paid_at == date(2026, 5, 20)
+
+    def test_persists_payment_confirmations(self, sqlite_session):
+        booking = _insert_booking(sqlite_session)
+        orm = _insert_bill(sqlite_session, record_id=booking.record_id, state="Creada")
+        repo = SQLAlchemyBillRepository(sqlite_session)
+        existing = repo.get_by_id(orm.bill_id)
+
+        repo.update(
+            existing.model_copy(
+                update={
+                    "paid_confirmed_by_admin": datetime(2026, 5, 19, 10, 45),
+                    "paid_confirmed_by_admin_name": "Admin User",
+                    "paid_confirmed_by_cleaner": datetime(2026, 5, 20, 16, 5),
+                    "paid_confirmed_by_cleaner_name": "Limpiadora Test",
+                }
+            )
+        )
+
+        reloaded = repo.get_by_id(orm.bill_id)
+        assert reloaded.paid_confirmed_by_admin == datetime(2026, 5, 19, 10, 45)
+        assert reloaded.paid_confirmed_by_admin_name == "Admin User"
+        assert reloaded.paid_confirmed_by_cleaner == datetime(2026, 5, 20, 16, 5)
+        assert reloaded.paid_confirmed_by_cleaner_name == "Limpiadora Test"
 
     def test_persists_cancellation_note(self, sqlite_session):
         booking = _insert_booking(sqlite_session)

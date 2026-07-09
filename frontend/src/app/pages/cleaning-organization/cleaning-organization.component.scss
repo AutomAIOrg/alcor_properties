@@ -387,8 +387,37 @@ table {
   }
 }
 
+// El chip de estado es un botón que abre el recibo de la factura ya creada.
+// Mismo tamaño que .invoice-btn (con el que alterna en esta misma columna,
+// según el estado) para que la columna no cambie de tamaño; conserva los
+// colores propios del chip (gris Creada, verde Pagada).
+button.bill-state-chip {
+  padding: 0.4rem 0.7rem;
+  border: none;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    filter: brightness(0.95);
+  }
+
+  &:disabled {
+    cursor: wait;
+  }
+}
+
 .invoice-dialog {
   max-width: 560px;
+  max-height: calc(100vh - 2rem);
+  overflow-y: auto;
+
+  // En el paso de previsualización el recibo necesita más ancho para que
+  // la línea de desglose (dirección incluida) respire como en el documento real.
+  &.preview-mode {
+    max-width: 680px;
+  }
 }
 
 .invoice-form-grid {
@@ -468,6 +497,12 @@ table {
   border-radius: 8px;
   background: #fffbeb;
   color: #92400e;
+  font-size: 0.84rem;
+}
+
+.preview-hint {
+  margin-top: 0.75rem;
+  color: #667085;
   font-size: 0.84rem;
 }
 

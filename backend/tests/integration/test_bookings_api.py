@@ -241,6 +241,8 @@ class TestSpecialCollectionEndpoints:
                 available_from=date(2026, 6, 5),
                 available_until=date(2026, 6, 10),
                 comments="",
+                address="C/ Raquero 6 Bloque 3",
+                apartment_description="Porto Fino",
             )
         ]
 
@@ -258,6 +260,8 @@ class TestSpecialCollectionEndpoints:
                 "can_bill": False,
                 "has_bill": False,
                 "bill_state": None,
+                "address": "C/ Raquero 6 Bloque 3",
+                "apartment_description": "Porto Fino",
             }
         ]
         mock_use_cases.get_cleaning_opportunities_query.execute.assert_called_once_with()
