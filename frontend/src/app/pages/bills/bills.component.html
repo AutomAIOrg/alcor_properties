@@ -192,7 +192,9 @@
                         <button
                           class="action-btn"
                           type="button"
+                          [class.pay]="targetState === 'Pagada'"
                           [class.danger]="targetState === 'Cancelada'"
+                          [class.revert]="targetState === 'Creada'"
                           [disabled]="isUpdating()"
                           (click)="requestTransition(bill, targetState)"
                         >
