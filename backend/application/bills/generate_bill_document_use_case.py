@@ -10,7 +10,11 @@ import logging
 from datetime import date
 from pathlib import Path
 
-from application.bills.bill_pdf_renderer_interface import BillPdfData, IBillPdfRenderer
+from application.bills.bill_pdf_renderer_interface import (
+    BillPdfData,
+    IBillPdfRenderer,
+    PaidConfirmation,
+)
 from domain.apartments.repository import IApartmentRepository
 from domain.bills.entity import BILL_STATE_PAID, Bill
 from domain.exceptions import DomainValidationError
@@ -47,8 +51,9 @@ class GenerateBillDocumentUseCase:
 
         data = BillPdfData(
             bill_id=bill.bill_id,
-            # Emisión = día de generación (en el flujo de creación coincide con la creación).
-            emission_date=date.today(),
+            # Emisión = fecha de creación congelada (para que la FECHA del recibo no cambie
+            # al regenerarlo al pagar); solo se recurre a hoy si la factura no la tiene.
+            emission_date=bill.created_at or date.today(),
             cleaning_date=bill.cleaning_date,
             apartment_id=bill.apartment_id,
             address=address,
@@ -58,6 +63,7 @@ class GenerateBillDocumentUseCase:
             cost=bill.cost,
             paid=bill.state == BILL_STATE_PAID,
             paid_at=bill.paid_at,
+            paid_confirmations=self._paid_confirmations(bill),
         )
 
         content = self._pdf_renderer.render(data)
@@ -68,6 +74,25 @@ class GenerateBillDocumentUseCase:
 
         logger.info("PDF de la factura %s generado en %s", bill.bill_id, output_path)
         return output_path
+
+    @staticmethod
+    def _paid_confirmations(bill: Bill) -> tuple[PaidConfirmation, ...]:
+        """
+        Confirmaciones de pago registradas (administración y/o limpiadora, en ese orden).
+        Port de format-confirmation.ts::paidConfirmationsOf.
+        """
+        confirmations: list[PaidConfirmation] = []
+        if bill.paid_confirmed_by_admin and bill.paid_confirmed_by_admin_name:
+            confirmations.append(
+                PaidConfirmation(bill.paid_confirmed_by_admin_name, bill.paid_confirmed_by_admin)
+            )
+        if bill.paid_confirmed_by_cleaner and bill.paid_confirmed_by_cleaner_name:
+            confirmations.append(
+                PaidConfirmation(
+                    bill.paid_confirmed_by_cleaner_name, bill.paid_confirmed_by_cleaner
+                )
+            )
+        return tuple(confirmations)
 
     @staticmethod
     def _filename(bill: Bill) -> str:

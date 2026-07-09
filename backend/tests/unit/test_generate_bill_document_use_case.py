@@ -5,7 +5,7 @@ Con un renderer y un repositorio de apartamentos falsos: comprueba que resuelve 
 dirección, construye los datos correctos y escribe el PDF en la carpeta indicada.
 """
 
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 from pathlib import Path
 
@@ -73,6 +73,33 @@ def test_paid_bill_marks_data_as_paid(tmp_path: Path) -> None:
     assert renderer.received is not None
     assert renderer.received.paid is True
     assert renderer.received.paid_at == date(2026, 7, 9)
+
+
+def test_paid_confirmations_and_emission_from_created_at(tmp_path: Path) -> None:
+    renderer = _FakeRenderer()
+    use_case = GenerateBillDocumentUseCase(
+        _FakeApartmentRepository(make_apartment()), renderer, tmp_path
+    )
+    bill = make_bill(
+        bill_id=11,
+        state="Pagada",
+        paid_at=date(2026, 7, 9),
+        created_at=date(2026, 7, 8),
+        paid_confirmed_by_admin=datetime(2026, 7, 9, 10, 15),
+        paid_confirmed_by_admin_name="María López",
+        paid_confirmed_by_cleaner=datetime(2026, 7, 9, 12, 40),
+        paid_confirmed_by_cleaner_name="Ana García",
+    )
+
+    use_case.execute(bill)
+
+    assert renderer.received is not None
+    # La emisión usa created_at (congelada), no la fecha de hoy.
+    assert renderer.received.emission_date == date(2026, 7, 8)
+    # Administración primero, luego limpiadora.
+    confirmations = renderer.received.paid_confirmations
+    assert [c.name for c in confirmations] == ["María López", "Ana García"]
+    assert confirmations[0].confirmed_at == datetime(2026, 7, 9, 10, 15)
 
 
 def test_missing_address_apartment_is_tolerated(tmp_path: Path) -> None:

@@ -10,7 +10,7 @@ pura (sin Jinja ni Chromium) para poder testear el "los datos salen correctos" s
 from datetime import date, timedelta
 from decimal import Decimal
 
-from application.bills.bill_pdf_renderer_interface import BillPdfData
+from application.bills.bill_pdf_renderer_interface import BillPdfData, PaidConfirmation
 from infrastructure.documents.amount_to_words import amount_to_spanish_words
 
 
@@ -53,6 +53,15 @@ def _cost_label(cost: Decimal) -> str:
     return f"{cost:.2f}".replace(".", ",")
 
 
+def _confirmation_sentence(confirmation: PaidConfirmation) -> str:
+    """
+    Frase "Pago confirmado por <Nombre> el día DD/MM/YYYY a las HH:MM".
+    Port de format-confirmation.ts::paidConfirmationSentence.
+    """
+    moment = confirmation.confirmed_at.strftime("%d/%m/%Y a las %H:%M")
+    return f"Pago confirmado por {confirmation.name} el día {moment}"
+
+
 def build_receipt_context(data: BillPdfData, logo_uri: str) -> dict:
     """Transforma los datos de negocio en las variables de la plantilla del recibo."""
     rate_label = _decimal_label(data.hourly_rate) if data.hourly_rate is not None else ""
@@ -71,5 +80,5 @@ def build_receipt_context(data: BillPdfData, logo_uri: str) -> dict:
         "cost_words": amount_to_spanish_words(data.cost),
         "paid": data.paid,
         "paid_at_label": _format_date(data.paid_at) if data.paid_at else "",
-        "paid_confirmations": list(data.paid_confirmations),
+        "paid_confirmations": [_confirmation_sentence(c) for c in data.paid_confirmations],
     }

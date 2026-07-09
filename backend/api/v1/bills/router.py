@@ -23,7 +23,7 @@ from application.bills.generate_bill_document_use_case import GenerateBillDocume
 from application.bills.list_bills_use_cases import ListBillsUseCase, ListPendingBillsUseCase
 from application.bills.update_bill_use_case import UpdateBillStateUseCase
 from domain.auth.user_entity import User
-from domain.bills.entity import BILL_STATE_PENDING
+from domain.bills.entity import BILL_STATE_CANCELLED, BILL_STATE_PENDING
 
 logger = logging.getLogger(__name__)
 
@@ -100,12 +100,27 @@ async def update_bill_state(
     update_bill_state_use_case: Annotated[
         UpdateBillStateUseCase, Depends(get_update_bill_state_use_case)
     ],
+    generate_bill_document_use_case: Annotated[
+        GenerateBillDocumentUseCase, Depends(get_generate_bill_document_use_case)
+    ],
     current_user: User = Depends(require_cleaning),
 ):
-    return update_bill_state_use_case.execute(
+    bill = update_bill_state_use_case.execute(
         bill_id,
         payload.state,
         actor=current_user,
         paid_at=payload.paid_at,
         cancellation_note=payload.cancellation_note,
     )
+
+    # Se regenera el recibo PDF para reflejar el nuevo estado: al completarse el pago sale
+    # la versión "pagada" (sello, fecha e importe pagados), y las confirmaciones parciales
+    # aparecen aunque la factura siga en "Creada". Las canceladas no llevan recibo. Un fallo
+    # aquí no debe impedir el cambio de estado.
+    if bill.state != BILL_STATE_CANCELLED:
+        try:
+            generate_bill_document_use_case.execute(bill)
+        except Exception:
+            logger.exception("No se pudo regenerar el PDF de la factura %s", bill.bill_id)
+
+    return bill

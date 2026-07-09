@@ -4,12 +4,12 @@ Unit tests — construcción del contexto de la plantilla del recibo (etiquetas 
 Garantiza que "los datos salen correctos" en el PDF, espejo de bill-receipt.component.ts.
 """
 
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 
 import pytest
 
-from application.bills.bill_pdf_renderer_interface import BillPdfData
+from application.bills.bill_pdf_renderer_interface import BillPdfData, PaidConfirmation
 from infrastructure.documents.receipt_context import build_receipt_context
 
 pytestmark = pytest.mark.unit
@@ -55,14 +55,20 @@ def test_labels_paid_state() -> None:
         _data(
             paid=True,
             paid_at=date(2026, 7, 9),
-            paid_confirmations=("Pago confirmado por Ana el día 09/07/2026 a las 10:15",),
+            paid_confirmations=(
+                PaidConfirmation("María López", datetime(2026, 7, 9, 10, 15)),
+                PaidConfirmation("Ana García", datetime(2026, 7, 9, 12, 40)),
+            ),
         ),
         _LOGO,
     )
 
     assert ctx["paid"] is True
     assert ctx["paid_at_label"] == "09/07/2026"
-    assert ctx["paid_confirmations"] == ["Pago confirmado por Ana el día 09/07/2026 a las 10:15"]
+    assert ctx["paid_confirmations"] == [
+        "Pago confirmado por María López el día 09/07/2026 a las 10:15",
+        "Pago confirmado por Ana García el día 09/07/2026 a las 12:40",
+    ]
 
 
 def test_hours_singular() -> None:

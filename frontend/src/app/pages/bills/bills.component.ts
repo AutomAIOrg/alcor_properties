@@ -208,10 +208,13 @@ export class BillsComponent implements OnInit, OnDestroy {
   }
 
   // True si el rol del usuario actual ya registró su confirmación de pago.
+  // Se usa `!= null` (no `!== null`) para que un campo ausente/undefined —p. ej. una
+  // respuesta de un backend aún sin desplegar la doble confirmación— cuente como "sin
+  // confirmar" y no oculte por error el botón "Confirmar pago".
   hasConfirmedPaid(bill: Bill): boolean {
     return this.isAdmin()
-      ? bill.paid_confirmed_by_admin !== null
-      : bill.paid_confirmed_by_cleaner !== null;
+      ? bill.paid_confirmed_by_admin != null
+      : bill.paid_confirmed_by_cleaner != null;
   }
 
   // Transiciones disponibles para el usuario actual: oculta "Confirmar pago"

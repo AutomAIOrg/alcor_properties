@@ -7,8 +7,16 @@ La capa de aplicación depende de esta abstracción; la implementación concreta
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
+
+
+@dataclass(frozen=True)
+class PaidConfirmation:
+    """Confirmación de pago registrada: quién (nombre congelado) y cuándo (instante exacto)."""
+
+    name: str
+    confirmed_at: datetime
 
 
 @dataclass(frozen=True)
@@ -34,8 +42,9 @@ class BillPdfData:
     paid: bool
     # Fecha de pago; None si no está pagada.
     paid_at: date | None
-    # Frases "Pago confirmado por ... el día ..." ya formateadas (vacío en "Creada").
-    paid_confirmations: tuple[str, ...] = field(default_factory=tuple)
+    # Confirmaciones de pago ya registradas (administración y/o limpiadora), en orden.
+    # Se muestran aunque la factura siga en "Creada" (solo una parte confirmó).
+    paid_confirmations: tuple[PaidConfirmation, ...] = field(default_factory=tuple)
 
 
 class IBillPdfRenderer(ABC):
