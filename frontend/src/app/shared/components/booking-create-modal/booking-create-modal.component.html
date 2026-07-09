@@ -1,4 +1,4 @@
-<div class="modal-backdrop" (click)="onBackdropClick()">
+<div class="modal-backdrop" appDismissableBackdrop (backdropDismiss)="onBackdropClick()">
   <div class="modal-card" (click)="onModalCardClick($event)" role="dialog" aria-modal="true">
     <div class="modal-header">
       <h2 class="modal-title">Nueva reserva</h2>

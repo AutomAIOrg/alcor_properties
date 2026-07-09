@@ -386,10 +386,20 @@
   letter-spacing: 0.04em;
 }
 
-// Cabecera de la columna del número de semana.
+// Cabecera de la columna del número de semana (celda de esquina).
+// No es una cabecera de día, así que usa su propia clase pero comparte el
+// aspecto de la fila (fondo, centrado) para alinearse con los días.
 .week-number-header {
-  font-size: 0.65rem;
+  min-width: 0;
+  background: #f9fafb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.62rem;
+  font-weight: 600;
   color: #98a2b3;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 // ── Selector de vista (Mes / Semana / Día) ────────────────────────────────────

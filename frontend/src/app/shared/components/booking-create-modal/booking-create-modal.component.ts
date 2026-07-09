@@ -12,6 +12,7 @@ import { FormsModule } from '@angular/forms';
 import { Booking, BASE_STATUSES } from '../../../models/booking.model';
 import { BookingService } from '../../../services/booking.service';
 import { ApartmentService } from '../../../services/apartment.service';
+import { DismissableBackdropDirective } from '../../directives/dismissable-backdrop.directive';
 
 type BookingCreate = Omit<Booking, 'record_id' | 'electric_allowance'>;
 
@@ -46,7 +47,7 @@ type AvailabilityLoadOptions = {
 @Component({
   selector: 'app-booking-create-modal',
   standalone: true,
-  imports: [FormsModule],
+  imports: [FormsModule, DismissableBackdropDirective],
   templateUrl: './booking-create-modal.component.html',
   styleUrl: './booking-create-modal.component.scss',
 })

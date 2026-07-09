@@ -14,6 +14,7 @@ import {
   BillReceiptData,
   billToReceiptData,
 } from '../../shared/components/bill-receipt/bill-receipt.component';
+import { DismissableBackdropDirective } from '../../shared/directives/dismissable-backdrop.directive';
 
 interface CleaningWindow {
   apartmentId: string;
@@ -58,7 +59,7 @@ interface ToastMessage {
 @Component({
   selector: 'app-cleaning-organization',
   standalone: true,
-  imports: [CurrencyPipe, BillReceiptComponent],
+  imports: [CurrencyPipe, BillReceiptComponent, DismissableBackdropDirective],
   templateUrl: './cleaning-organization.component.html',
   styleUrl: './cleaning-organization.component.scss',
 })

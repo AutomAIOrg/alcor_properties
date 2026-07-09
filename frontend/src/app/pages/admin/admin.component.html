@@ -331,7 +331,12 @@
   }
 
   @if (isUserFormModalOpen()) {
-    <div class="modal-backdrop" role="presentation">
+    <div
+      class="modal-backdrop"
+      role="presentation"
+      appDismissableBackdrop
+      (backdropDismiss)="closeUserFormDialog()"
+    >
       <section
         class="confirm-dialog user-form-dialog"
         role="dialog"
@@ -430,7 +435,12 @@
   }
 
   @if (isPropertyFormModalOpen()) {
-    <div class="modal-backdrop" role="presentation">
+    <div
+      class="modal-backdrop"
+      role="presentation"
+      appDismissableBackdrop
+      (backdropDismiss)="closePropertyFormDialog()"
+    >
       <section
         class="confirm-dialog user-form-dialog property-form-dialog"
         role="dialog"
@@ -616,7 +626,12 @@
   }
 
   @if (userPendingDeletion()) {
-    <div class="modal-backdrop" role="presentation">
+    <div
+      class="modal-backdrop"
+      role="presentation"
+      appDismissableBackdrop
+      (backdropDismiss)="closeDeleteUserDialog()"
+    >
       <section
         class="confirm-dialog"
         role="dialog"
@@ -652,7 +667,12 @@
   }
 
   @if (propertyPendingDeletion()) {
-    <div class="modal-backdrop" role="presentation">
+    <div
+      class="modal-backdrop"
+      role="presentation"
+      appDismissableBackdrop
+      (backdropDismiss)="closeDeletePropertyDialog()"
+    >
       <section
         class="confirm-dialog"
         role="dialog"
@@ -688,7 +708,12 @@
   }
 
   @if (isCleaningTypeFormModalOpen()) {
-    <div class="modal-backdrop" role="presentation">
+    <div
+      class="modal-backdrop"
+      role="presentation"
+      appDismissableBackdrop
+      (backdropDismiss)="closeCleaningTypeFormDialog()"
+    >
       <section
         class="confirm-dialog user-form-dialog"
         role="dialog"
@@ -770,7 +795,12 @@
   }
 
   @if (cleaningTypePendingDeletion()) {
-    <div class="modal-backdrop" role="presentation">
+    <div
+      class="modal-backdrop"
+      role="presentation"
+      appDismissableBackdrop
+      (backdropDismiss)="closeDeleteCleaningTypeDialog()"
+    >
       <section
         class="confirm-dialog"
         role="dialog"
