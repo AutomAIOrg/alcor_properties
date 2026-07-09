@@ -69,6 +69,16 @@ class Settings(BaseSettings):
     # Contraseña por defecto para nuevos usuarios
     DEFAULT_PASSWORD: str = Field(...)
 
+    # NAS Synology — almacenamiento de documentos de factura (SFTP vía Tailscale/SSH)
+    NAS_HOST: str = ""
+    NAS_PORT: int = 22
+    NAS_USER: str = ""
+    NAS_PASSWORD: str = ""
+    NAS_BASE_PATH: str = "/facturas"
+    # Prefijo de volumen Synology para rutas SFTP (p. ej. /volume1/CarpetaCompartida/...)
+    NAS_VOLUME_PREFIX: str = "/volume1"
+    NAS_SSH_TIMEOUT: int = 30
+
     @model_validator(mode="after")
     def _resolve_db_aliases(self) -> "Settings":
         """Utiliza variables MYSQL_* cuando las variables canónicas DB_* no están presentes."""
