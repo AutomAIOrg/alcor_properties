@@ -134,6 +134,13 @@ class BillAlreadyExistsError(DomainException):
         super().__init__(f"Ya existe una factura para la reserva {record_id}")
 
 
+class BillDocumentRenderError(DomainException):
+    """Se lanza cuando falla la generación del PDF de una factura (plantilla o Chromium)."""
+
+    def __init__(self, message: str) -> None:
+        super().__init__(message)
+
+
 class CleaningTypeNotFoundError(DomainException):
     """Se lanza cuando no se puede encontrar un tipo de limpieza por su identificador."""
 

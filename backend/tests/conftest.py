@@ -173,6 +173,7 @@ def bills_api_client(
     from api.dependencies import (
         get_create_bill_use_case,
         get_current_user,
+        get_generate_bill_document_use_case,
         get_list_bills_use_case,
         get_list_pending_bills_use_case,
         get_update_bill_state_use_case,
@@ -190,6 +191,9 @@ def bills_api_client(
     )
 
     app.dependency_overrides[get_create_bill_use_case] = lambda: mock_create_bill_use_case
+    # La generación del PDF es un efecto secundario ajeno a la capa HTTP: se neutraliza
+    # con un mock para no tocar Chromium ni la base de datos en los tests de API.
+    app.dependency_overrides[get_generate_bill_document_use_case] = lambda: MagicMock()
     app.dependency_overrides[get_update_bill_state_use_case] = lambda: (
         mock_update_bill_state_use_case
     )
@@ -204,6 +208,7 @@ def bills_api_client(
             yield client
     finally:
         app.dependency_overrides.pop(get_create_bill_use_case, None)
+        app.dependency_overrides.pop(get_generate_bill_document_use_case, None)
         app.dependency_overrides.pop(get_update_bill_state_use_case, None)
         app.dependency_overrides.pop(get_list_bills_use_case, None)
         app.dependency_overrides.pop(get_list_pending_bills_use_case, None)

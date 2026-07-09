@@ -26,6 +26,14 @@ bcrypt==4.0.1
 # Data handling
 python-multipart==0.0.9
 
+# Generación de PDFs de factura (plantilla HTML del recibo)
+jinja2==3.1.6
+# NOTA: la conversión HTML→PDF usa Chromium/Chrome headless (subprocess --print-to-pdf),
+# que NO es un paquete pip sino un BINARIO DE SISTEMA. Debe instalarse en el entorno de
+# ejecución (en la imagen Docker de producción: `apt-get install -y chromium`). La ruta del
+# binario se puede fijar con la variable de entorno BILL_PDF_CHROMIUM_PATH; si se deja vacía,
+# el renderer autodetecta chromium/chromium-browser/google-chrome/chrome del PATH.
+
 # Testing
 pytest==8.4.2
 pytest-mock==3.15.1

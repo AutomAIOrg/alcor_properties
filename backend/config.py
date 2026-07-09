@@ -69,6 +69,14 @@ class Settings(BaseSettings):
     # Contraseña por defecto para nuevos usuarios
     DEFAULT_PASSWORD: str = Field(...)
 
+    # Generación del PDF de factura.
+    # BILL_PDF_CHROMIUM_PATH: ruta al binario de Chromium/Chrome usado para el render
+    #   (subprocess --print-to-pdf). Vacío = autodetección en el PATH.
+    # BILL_PDF_OUTPUT_DIR: carpeta donde se guardan los PDF generados. Vacío = la carpeta
+    #   backend/bill_templates (temporal; se cambiará por el NAS más adelante).
+    BILL_PDF_CHROMIUM_PATH: str = ""
+    BILL_PDF_OUTPUT_DIR: str = ""
+
     @model_validator(mode="after")
     def _resolve_db_aliases(self) -> "Settings":
         """Utiliza variables MYSQL_* cuando las variables canónicas DB_* no están presentes."""

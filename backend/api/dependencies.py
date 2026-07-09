@@ -4,6 +4,7 @@ Contenedor de inyección de dependencias para FastAPI.
 
 import logging
 from dataclasses import dataclass
+from pathlib import Path
 
 from fastapi import Depends, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -23,7 +24,9 @@ from application.auth.login_use_case import LoginUseCase
 from application.auth.refresh_token_use_case import RefreshTokenUseCase
 from application.auth.reset_password_use_case import ResetPasswordUseCase
 from application.auth.token_manager_interface import ITokenManager
+from application.bills.bill_pdf_renderer_interface import IBillPdfRenderer
 from application.bills.create_bill_use_case import CreateBillUseCase
+from application.bills.generate_bill_document_use_case import GenerateBillDocumentUseCase
 from application.bills.list_bills_use_cases import ListBillsUseCase, ListPendingBillsUseCase
 from application.bills.update_bill_use_case import UpdateBillStateUseCase
 from application.bookings.commands import (
@@ -62,6 +65,7 @@ from domain.bookings.repository import IBookingRepository
 from domain.cleaning_types.repository import ICleaningTypeRepository
 from domain.exceptions import InvalidToken
 from infrastructure.database.session import get_db
+from infrastructure.documents.chromium_bill_pdf_renderer import ChromiumBillPdfRenderer
 from infrastructure.email.smtp_email_sender import ConsoleEmailSender, SMTPEmailSender
 from infrastructure.repositories.sqlalchemy_apartment_repository import (
     SQLAlchemyApartmentRepository,
@@ -80,6 +84,10 @@ from infrastructure.security.passlib_password_manager import PasslibPasswordMana
 bearer_scheme = HTTPBearer(auto_error=False)  # Esquema de autenticación Bearer
 
 logger = logging.getLogger(__name__)
+
+# Carpeta por defecto donde se guardan los PDF de factura (temporal, hasta usar el NAS).
+# backend/api/ -> backend/bill_templates
+_BILL_PDF_DEFAULT_OUTPUT_DIR = Path(__file__).resolve().parents[1] / "bill_templates"
 
 # ---------------------------------------------------------------------------
 # Dependencias primitivas
@@ -349,6 +357,20 @@ def get_apartment_stats_use_case(
     return GetApartmentStatsUseCase(
         apartment_repository, booking_repository, electric_apartment_ids
     )
+
+
+def get_bill_pdf_renderer() -> IBillPdfRenderer:
+    """Renderer del PDF de factura (Chromium headless + plantilla del recibo)."""
+    return ChromiumBillPdfRenderer(chromium_path=settings.BILL_PDF_CHROMIUM_PATH)
+
+
+def get_generate_bill_document_use_case(
+    apartment_repository: IApartmentRepository = Depends(get_apartment_repository),
+    pdf_renderer: IBillPdfRenderer = Depends(get_bill_pdf_renderer),
+) -> GenerateBillDocumentUseCase:
+    """Inyección de dependencias para generar y guardar el PDF de una factura."""
+    output_dir = settings.BILL_PDF_OUTPUT_DIR or str(_BILL_PDF_DEFAULT_OUTPUT_DIR)
+    return GenerateBillDocumentUseCase(apartment_repository, pdf_renderer, output_dir)
 
 
 def get_create_bill_use_case(

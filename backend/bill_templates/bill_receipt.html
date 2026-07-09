@@ -1,0 +1,221 @@
+{#
+  Plantilla del recibo de factura de limpieza (Jinja2).
+
+  Reproduce EXACTAMENTE la previsualización del front
+  (frontend/src/app/shared/components/bill-receipt/bill-receipt.component.*),
+  para que el PDF generado en backend sea idéntico a lo que ve el usuario.
+  Los PDF de referencia factura_creada.pdf / factura_pagada.pdf de esta carpeta
+  son el resultado esperado de renderizar esta plantilla en cada estado.
+
+  Contexto esperado (el renderer construye estas etiquetas ya formateadas,
+  igual que bill-receipt.component.ts):
+    logo_uri            data URI (base64) del logo. Usa logo_limpieza.PNG de esta carpeta.
+    emission_label      Fecha de emisión "DD/MM/YYYY".
+    week_label          Semana natural, p. ej. "del 6 al 12".
+    apartment_id        Referencia del apartamento, p. ej. "R180".
+    address             Dirección (opcional; None/"" la oculta).
+    cleaning_date_label Fecha de la limpieza "DD/MM/YYYY".
+    cleaning_type_name  Tipo de limpieza (opcional; None/"" lo oculta).
+    hours_label         Horas con coma decimal y unidad, p. ej. "2,5 horas".
+    hourly_rate_label   Tarifa €/hora sin ceros sobrantes (opcional), p. ej. "15".
+    cost_label          Importe con coma decimal, p. ej. "37,50".
+    cost_words          Importe en letra, p. ej. "treinta y siete euros con cincuenta céntimos".
+    paid                True si la factura está pagada (activa sello, banda verde, etc.).
+    paid_at_label       Fecha de pago "DD/MM/YYYY" (solo si paid).
+    paid_confirmations  Lista de frases "Pago confirmado por ... el día ...".
+#}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<title>Recibo de factura</title>
+<style>
+  @page { size: A4 portrait; margin: 18mm; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: #f2f4f7;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  body { padding: 8px; }
+  .receipt-wrapper { max-width: 640px; margin: 0 auto; }
+
+  .receipt {
+    margin-top: 1rem;
+    padding: 1.75rem 2rem 2rem;
+    border: 1px solid #e4e7ec;
+    border-radius: 10px;
+    background: #fff;
+    box-shadow: 0 1px 3px rgba(16, 24, 40, 0.08);
+    color: #1d2939;
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 0.9rem;
+    line-height: 1.55;
+  }
+  .receipt-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    padding-bottom: 1.25rem;
+    border-bottom: 1px solid #eaecf0;
+  }
+  .receipt-logo { display: block; max-width: 110px; max-height: 110px; object-fit: contain; }
+  .receipt-heading { text-align: right; }
+  .receipt-title {
+    margin: 0 0 0.4rem;
+    color: #101828;
+    font-size: 1.15rem;
+    font-weight: 700;
+    letter-spacing: 0.3em;
+    margin-right: -0.3em;
+  }
+  .receipt-date { margin: 0; color: #344054; font-size: 0.86rem; font-weight: 700; }
+  .receipt-week { margin: 0.15rem 0 0; color: #667085; font-size: 0.8rem; }
+  .receipt-paid-badge {
+    display: inline-block;
+    margin-top: 0.5rem;
+    padding: 0.25rem 0.7rem;
+    border: 1px solid #abefc6;
+    border-radius: 999px;
+    background: #ecfdf3;
+    color: #027a48;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+  }
+  .receipt-label, .receipt-detail dt {
+    color: #667085;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+  .receipt-apartment { padding: 1.15rem 0; border-bottom: 1px solid #eaecf0; }
+  .receipt-apartment-name { margin: 0.35rem 0 0; font-size: 1rem; }
+  .receipt-apartment-name strong { color: #101828; font-size: 1.1rem; }
+  .receipt-address { color: #344054; }
+  .receipt-details {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.15rem 2rem;
+    margin: 0;
+    padding: 1.25rem 0 1.5rem;
+  }
+  .receipt-detail dd { margin: 0.35rem 0 0; color: #101828; font-size: 0.95rem; font-weight: 700; }
+  .receipt-total {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1.1rem 1.4rem;
+    border-radius: 10px;
+    background: #eff6ff;
+  }
+  .receipt-total.paid { background: #ecfdf3; }
+  .receipt-total.paid .receipt-total-label { color: #027a48; }
+  .receipt-paid-date { color: #027a48; font-size: 0.84rem; font-weight: 700; }
+  .receipt-total-text { display: flex; flex-direction: column; gap: 0.25rem; }
+  .receipt-total-label {
+    color: #1d4ed8;
+    font-size: 0.74rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .receipt-total-breakdown { color: #475467; font-size: 0.84rem; }
+  .receipt-total-figure { text-align: right; }
+  .receipt-amount {
+    display: block;
+    color: #101828;
+    font-size: 1.9rem;
+    font-weight: 800;
+    line-height: 1.15;
+    white-space: nowrap;
+  }
+  .receipt-amount-words {
+    display: block;
+    margin-top: 0.15rem;
+    color: #475467;
+    font-size: 0.8rem;
+    font-style: italic;
+  }
+  .receipt-amount-words::first-letter { text-transform: uppercase; }
+  .receipt-confirmations { margin-top: 0.9rem; padding-top: 0.9rem; border-top: 1px dashed #eaecf0; }
+  .receipt-confirmation-line { margin: 0.2rem 0; color: #475467; font-size: 0.8rem; }
+</style>
+</head>
+<body>
+<div class="receipt-wrapper">
+  <div class="receipt">
+    <header class="receipt-header">
+      <img class="receipt-logo" src="{{ logo_uri }}" alt="Servicios de Limpieza" />
+      <div class="receipt-heading">
+        <h3 class="receipt-title">RECIBO</h3>
+        <p class="receipt-date">FECHA {{ emission_label }}</p>
+        <p class="receipt-week">Semana {{ week_label }}</p>
+        {% if paid %}
+        <span class="receipt-paid-badge">PAGADA</span>
+        {% endif %}
+      </div>
+    </header>
+
+    <section class="receipt-apartment">
+      <span class="receipt-label">Apartamento</span>
+      <p class="receipt-apartment-name">
+        <strong>{{ apartment_id }}</strong>
+        {% if address %}<span class="receipt-address"> — {{ address }}</span>{% endif %}
+      </p>
+    </section>
+
+    <dl class="receipt-details">
+      <div class="receipt-detail">
+        <dt>Fecha limpieza</dt>
+        <dd>{{ cleaning_date_label }}</dd>
+      </div>
+      {% if cleaning_type_name %}
+      <div class="receipt-detail">
+        <dt>Tipo de limpieza</dt>
+        <dd>{{ cleaning_type_name }}</dd>
+      </div>
+      {% endif %}
+      <div class="receipt-detail">
+        <dt>Horas totales</dt>
+        <dd>{{ hours_label }}</dd>
+      </div>
+      {% if hourly_rate_label %}
+      <div class="receipt-detail">
+        <dt>Tarifa aplicada</dt>
+        <dd>{{ hourly_rate_label }} €/hora</dd>
+      </div>
+      {% endif %}
+    </dl>
+
+    <section class="receipt-total{% if paid %} paid{% endif %}">
+      <div class="receipt-total-text">
+        <span class="receipt-total-label">{% if paid %}Total pagado{% else %}Total a pagar{% endif %}</span>
+        {% if hourly_rate_label %}
+        <span class="receipt-total-breakdown">{{ hours_label }} × {{ hourly_rate_label }} €/hora</span>
+        {% endif %}
+        {% if paid and paid_at_label %}
+        <span class="receipt-paid-date">Pagada el {{ paid_at_label }}</span>
+        {% endif %}
+      </div>
+      <div class="receipt-total-figure">
+        <span class="receipt-amount">{{ cost_label }} €</span>
+        <span class="receipt-amount-words">{{ cost_words }}</span>
+      </div>
+    </section>
+
+    {% if paid_confirmations %}
+    <section class="receipt-confirmations">
+      {% for line in paid_confirmations %}
+      <p class="receipt-confirmation-line">{{ line }}</p>
+      {% endfor %}
+    </section>
+    {% endif %}
+  </div>
+</div>
+</body>
+</html>
