@@ -577,20 +577,36 @@ describe('BookingCreateModalComponent', () => {
       expect(aptOpts.length).toBe(3);
     });
 
-    it('click en .modal-backdrop emite close', () => {
+    it('pulsar y soltar en .modal-backdrop emite close', () => {
       const spy = jest.fn();
       component.close.subscribe(spy);
 
-      fixture.nativeElement.querySelector('.modal-backdrop').click();
+      const backdrop = fixture.nativeElement.querySelector('.modal-backdrop');
+      backdrop.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+      backdrop.click();
 
       expect(spy).toHaveBeenCalledTimes(1);
     });
 
-    it('click en .modal-card no emite close (stopPropagation)', () => {
+    it('click en .modal-card no emite close', () => {
       const spy = jest.fn();
       component.close.subscribe(spy);
 
-      fixture.nativeElement.querySelector('.modal-card').click();
+      const card = fixture.nativeElement.querySelector('.modal-card');
+      card.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+      card.click();
+
+      expect(spy).not.toHaveBeenCalled();
+    });
+
+    it('pulsar dentro del modal y soltar fuera no emite close', () => {
+      const spy = jest.fn();
+      component.close.subscribe(spy);
+
+      const backdrop = fixture.nativeElement.querySelector('.modal-backdrop');
+      const card = fixture.nativeElement.querySelector('.modal-card');
+      card.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+      backdrop.click();
 
       expect(spy).not.toHaveBeenCalled();
     });

@@ -33,6 +33,7 @@ import {
   paidConfirmationSentence,
   paidConfirmationsOf,
 } from '../../shared/utils/format-confirmation';
+import { DismissableBackdropDirective } from '../../shared/directives/dismissable-backdrop.directive';
 
 type ToastType = 'success' | 'error';
 
@@ -44,7 +45,13 @@ interface ToastMessage {
 @Component({
   selector: 'app-bills',
   standalone: true,
-  imports: [CurrencyPipe, RouterLink, BillReceiptComponent, DateRangePickerComponent],
+  imports: [
+    CurrencyPipe,
+    RouterLink,
+    BillReceiptComponent,
+    DateRangePickerComponent,
+    DismissableBackdropDirective,
+  ],
   templateUrl: './bills.component.html',
   styleUrl: './bills.component.scss',
 })

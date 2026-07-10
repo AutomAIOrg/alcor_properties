@@ -1,7 +1,6 @@
 <section class="cleaning-organization">
   <header class="cleaning-header">
     <div>
-      <span class="eyebrow">Organización Limpiezas</span>
       <h1>Organización Limpiezas</h1>
       <p>Planificación semanal de pisos disponibles para limpiar.</p>
     </div>
@@ -30,7 +29,7 @@
   <section class="week-card" aria-labelledby="cleaning-week-title">
     <div class="section-title-row">
       <div>
-        <h2 id="cleaning-week-title">Semana del {{ weekLabel() }}</h2>
+        <h2 id="cleaning-week-title">Semana {{ weekNumber() }} del {{ weekLabel() }}</h2>
         <p>{{ cleaningOpportunities().length }} limpiezas disponibles</p>
       </div>
     </div>
@@ -203,14 +202,18 @@
   </section>
 
   @if (selectedInvoiceOpportunity()) {
-    <div class="modal-backdrop" role="presentation" (click)="closeInvoiceModal()">
+    <div
+      class="modal-backdrop"
+      role="presentation"
+      appDismissableBackdrop
+      (backdropDismiss)="closeInvoiceModal()"
+    >
       <section
         class="comment-dialog invoice-dialog"
         [class.preview-mode]="showInvoicePreview()"
         role="dialog"
         aria-modal="true"
         aria-labelledby="invoice-dialog-title"
-        (click)="$event.stopPropagation()"
       >
         <h2 id="invoice-dialog-title">
           {{ showInvoicePreview() ? 'Revisar factura' : 'Generar factura' }}
@@ -349,13 +352,17 @@
   }
 
   @if (billReceiptView()) {
-    <div class="modal-backdrop" role="presentation" (click)="closeBillReceipt()">
+    <div
+      class="modal-backdrop"
+      role="presentation"
+      appDismissableBackdrop
+      (backdropDismiss)="closeBillReceipt()"
+    >
       <section
         class="comment-dialog invoice-dialog preview-mode"
         role="dialog"
         aria-modal="true"
         aria-labelledby="bill-receipt-title"
-        (click)="$event.stopPropagation()"
       >
         <h2 id="bill-receipt-title">Factura</h2>
 
@@ -369,13 +376,17 @@
   }
 
   @if (selectedCommentOpportunity()) {
-    <div class="modal-backdrop" role="presentation" (click)="closeCommentModal()">
+    <div
+      class="modal-backdrop"
+      role="presentation"
+      appDismissableBackdrop
+      (backdropDismiss)="closeCommentModal()"
+    >
       <section
         class="comment-dialog"
         role="dialog"
         aria-modal="true"
         aria-labelledby="comment-dialog-title"
-        (click)="$event.stopPropagation()"
       >
         <h2 id="comment-dialog-title">Editar comentario</h2>
         <p>

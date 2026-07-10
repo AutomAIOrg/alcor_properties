@@ -1,5 +1,5 @@
-<div class="modal-backdrop" (click)="close.emit()">
-  <div class="modal-card" (click)="$event.stopPropagation()" role="dialog" aria-modal="true">
+<div class="modal-backdrop" appDismissableBackdrop (backdropDismiss)="close.emit()">
+  <div class="modal-card" role="dialog" aria-modal="true">
     <!-- HERO HEADER -->
     <div class="modal-hero" [style.background]="booking().apartment_id | bookingColor">
       <button class="close-btn" (click)="close.emit()" aria-label="Cerrar">&#10005;</button>

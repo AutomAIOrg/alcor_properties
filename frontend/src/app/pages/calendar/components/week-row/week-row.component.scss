@@ -1,10 +1,33 @@
 .week-row {
-  position: relative;
+  // Columna izquierda fija para el nº de semana + resto para los 7 días.
+  display: grid;
+  grid-template-columns: var(--week-num-w, 34px) 1fr;
   border-bottom: 1px solid #eaecf0;
 
   &:last-child {
     border-bottom: none;
   }
+}
+
+// Gutter con el número de semana ISO. Alineado con la fila de números de día.
+.week-number {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 6px;
+  background: #f9fafb;
+  border-right: 1px solid #eaecf0;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #98a2b3;
+  font-variant-numeric: tabular-nums;
+}
+
+// Cuerpo de la fila: ancla el posicionamiento absoluto de grid y barras al
+// área de los 7 días (no al gutter), preservando el cálculo de % de las barras.
+.week-body {
+  position: relative;
+  min-width: 0;
 }
 
 .days-grid {

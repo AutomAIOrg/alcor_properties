@@ -32,14 +32,6 @@
   gap: 1rem;
 }
 
-.eyebrow {
-  color: #2563eb;
-  font-size: 0.76rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
 .filter-card,
 .detail-card {
   padding: 1rem 1.25rem;
@@ -231,27 +223,75 @@ button.bill-state-chip {
 }
 
 .action-btn {
-  padding: 0.3rem 0.55rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.7rem;
   border: 1px solid #d0d5dd;
   border-radius: 8px;
   background: #fff;
   color: #344054;
-  font-size: 0.75rem;
+  font-size: 0.78rem;
   font-weight: 700;
   cursor: pointer;
+  white-space: nowrap;
+  transition:
+    background 0.15s,
+    border-color 0.15s,
+    color 0.15s,
+    box-shadow 0.15s;
+
+  // Icono a la izquierda del texto (según la variante). Se implementa con un
+  // pseudo-elemento para no alterar el textContent del botón.
+  &::before {
+    font-size: 0.9rem;
+    line-height: 1;
+  }
 
   &:hover:not(:disabled) {
     background: #f9fafb;
   }
 
-  &.danger {
-    border-color: #fecaca;
-    color: #b42318;
-  }
-
   &:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+  }
+
+  // ── Confirmar pago: acción principal positiva, verde y destacada ──────────
+  &.pay {
+    border-color: #16a34a;
+    background: #16a34a;
+    color: #fff;
+    box-shadow: 0 1px 2px rgba(22, 163, 74, 0.25);
+
+    &::before {
+      content: '✓';
+    }
+
+    &:hover:not(:disabled) {
+      background: #15803d;
+      border-color: #15803d;
+    }
+  }
+
+  // ── Cancelar: acción destructiva ──────────────────────────────────────────
+  &.danger {
+    border-color: #fda29b;
+    color: #b42318;
+
+    &::before {
+      content: '✕';
+    }
+
+    &:hover:not(:disabled) {
+      background: #fef3f2;
+      border-color: #f04438;
+    }
+  }
+
+  // ── Revertir / Reactivar: deshacer, estilo neutro ─────────────────────────
+  &.revert::before {
+    content: '↩';
   }
 }
 

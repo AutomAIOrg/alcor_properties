@@ -395,7 +395,7 @@ describe('CleaningOrganizationComponent', () => {
     const referenceChip: HTMLSpanElement = fixture.nativeElement.querySelector('.reference-chip');
     const invoiceButton: HTMLButtonElement = fixture.nativeElement.querySelector('.invoice-btn');
 
-    expect(textContent).toContain('Semana del 01/06/2026 - 07/06/2026');
+    expect(textContent).toContain('Semana 23 del 01/06/2026 al 07/06/2026');
     expect(textContent).toContain('R180');
     expect(textContent).toContain('02/06/2026');
     expect(textContent).toContain('05/06/2026');
@@ -718,6 +718,8 @@ describe('CleaningOrganizationComponent', () => {
     expect(textarea.value).toBe('Comentario inicial');
 
     const backdrop: HTMLDivElement = fixture.nativeElement.querySelector('.modal-backdrop');
+    // Pulsar y soltar sobre el propio fondo cierra el modal (descartando cambios).
+    backdrop.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
     backdrop.click();
     fixture.detectChanges();
 

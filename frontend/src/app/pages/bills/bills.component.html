@@ -1,7 +1,6 @@
 <section class="bills-page">
   <header class="bills-header">
     <div>
-      <span class="eyebrow">Facturación</span>
       <h1>Gestión de facturas</h1>
       <p>Consulta y gestiona las facturas de limpieza.</p>
     </div>
@@ -196,6 +195,7 @@
                         <button
                           class="action-btn"
                           type="button"
+                          [class.pay]="targetState === 'Pagada'"
                           [disabled]="isUpdating()"
                           (click)="requestTransition(bill, targetState)"
                         >
@@ -226,13 +226,17 @@
   </section>
 
   @if (billReceiptView()) {
-    <div class="modal-backdrop" role="presentation" (click)="closeBillReceipt()">
+    <div
+      class="modal-backdrop"
+      role="presentation"
+      appDismissableBackdrop
+      (backdropDismiss)="closeBillReceipt()"
+    >
       <section
         class="confirm-dialog receipt-dialog"
         role="dialog"
         aria-modal="true"
         aria-labelledby="bill-receipt-title"
-        (click)="$event.stopPropagation()"
       >
         <h2 id="bill-receipt-title">Factura</h2>
 
@@ -246,13 +250,17 @@
   }
 
   @if (markPaidBill()) {
-    <div class="modal-backdrop" role="presentation" (click)="closeMarkPaidModal()">
+    <div
+      class="modal-backdrop"
+      role="presentation"
+      appDismissableBackdrop
+      (backdropDismiss)="closeMarkPaidModal()"
+    >
       <section
         class="confirm-dialog"
         role="dialog"
         aria-modal="true"
         aria-labelledby="mark-paid-title"
-        (click)="$event.stopPropagation()"
       >
         <h2 id="mark-paid-title">Confirmar pago</h2>
         <p>
@@ -296,13 +304,17 @@
   }
 
   @if (rectifyingBill()) {
-    <div class="modal-backdrop" role="presentation" (click)="closeRectifyModal()">
+    <div
+      class="modal-backdrop"
+      role="presentation"
+      appDismissableBackdrop
+      (backdropDismiss)="closeRectifyModal()"
+    >
       <section
         class="confirm-dialog"
         role="dialog"
         aria-modal="true"
         aria-labelledby="rectify-bill-title"
-        (click)="$event.stopPropagation()"
       >
         <h2 id="rectify-bill-title">Rectificar factura</h2>
         <p>
