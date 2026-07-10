@@ -11,6 +11,8 @@ from application.bookings.helpers import (
     compute_stats,
     count_days_without_bookings,
 )
+from domain.apartments.entity import Apartment
+from domain.apartments.repository import IApartmentRepository
 from domain.bills.repository import IBillRepository
 from domain.bookings.entity import Booking, CleaningOpportunity
 from domain.bookings.repository import IBookingRepository
@@ -351,10 +353,12 @@ def _build_cleaning_opportunities(
     billed_booking_ids: set[int] | None = None,
     reference_datetime: datetime | None = None,
     bill_states_by_booking: dict[int, str] | None = None,
+    apartments_by_id: dict[str, Apartment] | None = None,
 ) -> list[CleaningOpportunity]:
     """Calcula ventanas de limpieza a partir de reservas activas agrupadas por apartamento."""
     billed = billed_booking_ids or set()
     bill_states = bill_states_by_booking or {}
+    apartments = apartments_by_id or {}
     now = reference_datetime or datetime.now()
     active_bookings = [
         booking
@@ -377,6 +381,7 @@ def _build_cleaning_opportunities(
                 apartment_bookings[index + 1] if index + 1 < len(apartment_bookings) else None
             )
             bill_st = bill_states.get(booking.record_id)
+            apartment = apartments.get(booking.apartment_id)
             opportunities.append(
                 CleaningOpportunity(
                     source_booking_record_id=booking.record_id,
@@ -387,6 +392,8 @@ def _build_cleaning_opportunities(
                     has_bill=booking.record_id in billed,
                     can_bill=booking.is_cleanable(now),
                     bill_state=bill_st,
+                    address=apartment.address if apartment else None,
+                    apartment_description=(apartment.apartment_description if apartment else None),
                 )
             )
 
@@ -408,9 +415,11 @@ class GetCleaningOpportunitiesUseCase:
         self,
         repository: IBookingRepository,
         bill_repository: IBillRepository | None = None,
+        apartment_repository: IApartmentRepository | None = None,
     ) -> None:
         self._repo = repository
         self._bills = bill_repository
+        self._apartments = apartment_repository
 
     def execute(self, reference_date: date | None = None) -> list[CleaningOpportunity]:
         reference_datetime = (
@@ -428,8 +437,17 @@ class GetCleaningOpportunitiesUseCase:
         )
         billed_ids = self._bills.list_billed_booking_ids() if self._bills else set()
         bill_states = self._bills.get_bill_states_by_booking() if self._bills else {}
+        apartments_by_id = (
+            {apartment.apartment_id: apartment for apartment in self._apartments.get_all()}
+            if self._apartments
+            else {}
+        )
         opportunities = _build_cleaning_opportunities(
-            bookings, billed_ids, reference_datetime=now, bill_states_by_booking=bill_states
+            bookings,
+            billed_ids,
+            reference_datetime=now,
+            bill_states_by_booking=bill_states,
+            apartments_by_id=apartments_by_id,
         )
         return [
             opportunity

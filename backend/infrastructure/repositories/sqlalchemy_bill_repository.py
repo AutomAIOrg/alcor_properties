@@ -74,6 +74,10 @@ class SQLAlchemyBillRepository(IBillRepository):
         orm.state = bill.state
         orm.paid_at = bill.paid_at
         orm.cancellation_note = bill.cancellation_note
+        orm.paid_confirmed_by_admin = bill.paid_confirmed_by_admin
+        orm.paid_confirmed_by_admin_name = bill.paid_confirmed_by_admin_name
+        orm.paid_confirmed_by_cleaner = bill.paid_confirmed_by_cleaner
+        orm.paid_confirmed_by_cleaner_name = bill.paid_confirmed_by_cleaner_name
 
         self._db.commit()
         self._db.refresh(orm)
@@ -180,7 +184,12 @@ class SQLAlchemyBillRepository(IBillRepository):
             apartment_id=orm.apartment_id,
             state=orm.state,
             paid_at=orm.paid_at,
+            paid_confirmed_by_admin=orm.paid_confirmed_by_admin,
+            paid_confirmed_by_admin_name=orm.paid_confirmed_by_admin_name,
+            paid_confirmed_by_cleaner=orm.paid_confirmed_by_cleaner,
+            paid_confirmed_by_cleaner_name=orm.paid_confirmed_by_cleaner_name,
             cancellation_note=orm.cancellation_note,
+            created_at=orm.created_at,
         )
 
     @staticmethod
@@ -197,5 +206,10 @@ class SQLAlchemyBillRepository(IBillRepository):
             apartment_id=bill.apartment_id,
             state=bill.state,
             paid_at=bill.paid_at,
+            paid_confirmed_by_admin=bill.paid_confirmed_by_admin,
+            paid_confirmed_by_admin_name=bill.paid_confirmed_by_admin_name,
+            paid_confirmed_by_cleaner=bill.paid_confirmed_by_cleaner,
+            paid_confirmed_by_cleaner_name=bill.paid_confirmed_by_cleaner_name,
             cancellation_note=bill.cancellation_note,
+            created_at=bill.created_at,
         )

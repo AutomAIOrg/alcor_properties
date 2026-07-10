@@ -1,0 +1,222 @@
+// Recibo de limpieza: documento limpio con secciones separadas, datos en columnas
+// etiquetadas y el importe total destacado en una banda propia.
+.receipt {
+  margin-top: 1rem;
+  padding: 1.75rem 2rem 2rem;
+  border: 1px solid #e4e7ec;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(16, 24, 40, 0.08);
+  color: #1d2939;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 0.9rem;
+  line-height: 1.55;
+
+  @media (max-width: 640px) {
+    padding: 1.25rem;
+  }
+}
+
+// ── Cabecera: logo a la izquierda, título y fechas a la derecha ──────────────
+.receipt-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-bottom: 1.25rem;
+  border-bottom: 1px solid #eaecf0;
+}
+
+.receipt-logo {
+  display: block;
+  max-width: 110px;
+  max-height: 110px;
+  object-fit: contain;
+}
+
+.receipt-heading {
+  text-align: right;
+}
+
+.receipt-title {
+  margin: 0 0 0.4rem;
+  color: #101828;
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: 0.3em;
+  // Compensa el hueco que letter-spacing añade tras la última letra.
+  margin-right: -0.3em;
+}
+
+.receipt-date {
+  margin: 0;
+  color: #344054;
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+.receipt-week {
+  margin: 0.15rem 0 0;
+  color: #667085;
+  font-size: 0.8rem;
+}
+
+// Sello de factura pagada (mismo verde que los chips de estado de la app).
+.receipt-paid-badge {
+  display: inline-block;
+  margin-top: 0.5rem;
+  padding: 0.25rem 0.7rem;
+  border: 1px solid #abefc6;
+  border-radius: 999px;
+  background: #ecfdf3;
+  color: #027a48;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+// ── Etiquetas pequeñas en mayúsculas (mismo lenguaje que las tablas de la app) ─
+.receipt-label,
+.receipt-detail dt {
+  color: #667085;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+// ── Apartamento: referencia, dirección y descripción en línea ────────────────
+.receipt-apartment {
+  padding: 1.15rem 0;
+  border-bottom: 1px solid #eaecf0;
+}
+
+.receipt-apartment-name {
+  margin: 0.35rem 0 0;
+  font-size: 1rem;
+
+  strong {
+    color: #101828;
+    font-size: 1.1rem;
+  }
+}
+
+.receipt-address {
+  color: #344054;
+}
+
+// ── Detalles en columnas: cuadrícula 2×2 estable (evita columnas huérfanas
+// y soporta nombres de tipo de limpieza largos sin descuadrar filas) ─────────
+.receipt-details {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.15rem 2rem;
+  margin: 0;
+  padding: 1.25rem 0 1.5rem;
+
+  @media (max-width: 480px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.receipt-detail {
+  dd {
+    margin: 0.35rem 0 0;
+    color: #101828;
+    font-size: 0.95rem;
+    font-weight: 700;
+  }
+}
+
+// ── Total: banda destacada con el importe en grande y su desglose ────────────
+.receipt-total {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.1rem 1.4rem;
+  border-radius: 10px;
+  background: #eff6ff;
+
+  // Pagada: la banda pasa a verde para que el estado se lea de un vistazo.
+  &.paid {
+    background: #ecfdf3;
+
+    .receipt-total-label {
+      color: #027a48;
+    }
+  }
+
+  @media (max-width: 640px) {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+}
+
+.receipt-paid-date {
+  color: #027a48;
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
+.receipt-total-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.receipt-total-label {
+  color: #1d4ed8;
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.receipt-total-breakdown {
+  color: #475467;
+  font-size: 0.84rem;
+}
+
+.receipt-total-figure {
+  text-align: right;
+
+  @media (max-width: 640px) {
+    text-align: left;
+  }
+}
+
+.receipt-amount {
+  display: block;
+  color: #101828;
+  font-size: 1.9rem;
+  font-weight: 800;
+  line-height: 1.15;
+  white-space: nowrap;
+}
+
+.receipt-amount-words {
+  display: block;
+  margin-top: 0.15rem;
+  color: #475467;
+  font-size: 0.8rem;
+  font-style: italic;
+
+  &::first-letter {
+    text-transform: uppercase;
+  }
+}
+
+// ── Confirmaciones de pago: quién y cuándo confirmó cada parte ───────────────
+.receipt-confirmations {
+  margin-top: 0.9rem;
+  padding-top: 0.9rem;
+  border-top: 1px dashed #eaecf0;
+}
+
+.receipt-confirmation-line {
+  margin: 0.2rem 0;
+  color: #475467;
+  font-size: 0.8rem;
+}

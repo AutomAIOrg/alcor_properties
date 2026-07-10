@@ -105,6 +105,7 @@ async def update_bill_state(
     updated_bill = update_bill_state_use_case.execute(
         bill_id,
         payload.state,
+        actor=current_user,
         paid_at=payload.paid_at,
         cancellation_note=payload.cancellation_note,
     )

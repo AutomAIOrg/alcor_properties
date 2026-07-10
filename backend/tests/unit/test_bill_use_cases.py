@@ -9,8 +9,10 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from application.bills.create_bill_use_case import CreateBillData, CreateBillUseCase
-from application.bills.list_bills_use_cases import ListPendingBillsUseCase
+from application.bills.list_bills_use_cases import ListBillsUseCase, ListPendingBillsUseCase
 from application.bills.update_bill_use_case import UpdateBillStateUseCase
+from domain.apartments.repository import IApartmentRepository
+from domain.auth.user_entity import Role
 from domain.bills.repository import IBillRepository
 from domain.bookings.repository import IBookingRepository
 from domain.cleaning_types.repository import ICleaningTypeRepository
@@ -21,7 +23,7 @@ from domain.exceptions import (
     CleaningTypeNotFoundError,
     DomainValidationError,
 )
-from tests.helpers import make_bill, make_booking, make_cleaning_type
+from tests.helpers import make_apartment, make_bill, make_booking, make_cleaning_type, make_user
 
 pytestmark = pytest.mark.unit
 
@@ -75,6 +77,7 @@ class TestCreateBillUseCase:
         assert result.clean_hours == Decimal("1.50")
         assert result.cost == Decimal("22.50")
         assert result.state == "Creada"
+        assert result.created_at == date.today()
         bills.create.assert_called_once()
 
     def test_uses_cleaning_type_rate_and_freezes_snapshot(self):
@@ -201,6 +204,12 @@ class TestCreateBillUseCase:
 # ---------------------------------------------------------------------------
 
 
+_ADMIN_ACTOR = make_user(role=Role.ADMIN, name="Admin", lastname="User")
+_CLEANER_ACTOR = make_user(
+    id=2, username="limpiadora", role=Role.LIMPIADORA, name="Limpiadora", lastname="Test"
+)
+
+
 def _update_use_case(bills: MagicMock) -> UpdateBillStateUseCase:
     return UpdateBillStateUseCase(bills)
 
@@ -213,37 +222,172 @@ def _bills_with(bill) -> MagicMock:
 
 
 class TestUpdateBillStateUseCase:
-    def test_created_to_paid_sets_payment_date_today(self):
+    def test_first_confirmation_keeps_bill_created(self):
+        bills = _bills_with(make_bill(bill_id=1, state="Creada"))
+        frozen_now = datetime(2026, 5, 20, 14, 30)
+
+        with patch("application.bills.update_bill_use_case.datetime") as mock_datetime:
+            mock_datetime.now.return_value = frozen_now
+            result = _update_use_case(bills).execute(
+                1, "Pagada", actor=_ADMIN_ACTOR, paid_at=date(2026, 5, 20)
+            )
+
+        assert result.state == "Creada"
+        # La fecha de pago la declara la limpiadora: la que envíe administración se ignora.
+        assert result.paid_at is None
+        assert result.paid_confirmed_by_admin == frozen_now
+        assert result.paid_confirmed_by_admin_name == "Admin User"
+        assert result.paid_confirmed_by_cleaner is None
+        assert result.paid_confirmed_by_cleaner_name is None
+
+    def test_second_confirmation_marks_bill_as_paid(self):
+        bills = _bills_with(
+            make_bill(
+                bill_id=1,
+                state="Creada",
+                paid_at=date(2026, 5, 18),
+                paid_confirmed_by_cleaner=datetime(2026, 5, 18, 9, 15),
+                paid_confirmed_by_cleaner_name="Limpiadora Test",
+            )
+        )
+        frozen_now = datetime(2026, 5, 20, 14, 30)
+
+        with patch("application.bills.update_bill_use_case.datetime") as mock_datetime:
+            mock_datetime.now.return_value = frozen_now
+            result = _update_use_case(bills).execute(
+                1, "Pagada", actor=_ADMIN_ACTOR, paid_at=date(2026, 5, 20)
+            )
+
+        assert result.state == "Pagada"
+        # Se conserva la fecha declarada por la limpiadora; la de administración se ignora.
+        assert result.paid_at == date(2026, 5, 18)
+        assert result.paid_confirmed_by_admin == frozen_now
+        assert result.paid_confirmed_by_admin_name == "Admin User"
+        assert result.paid_confirmed_by_cleaner == datetime(2026, 5, 18, 9, 15)
+        assert result.paid_confirmed_by_cleaner_name == "Limpiadora Test"
+
+    def test_cleaner_confirmation_sets_payment_date(self):
+        bills = _bills_with(make_bill(bill_id=1, state="Creada"))
+        frozen_now = datetime(2026, 6, 15, 11, 5)
+
+        with patch("application.bills.update_bill_use_case.datetime") as mock_datetime:
+            mock_datetime.now.return_value = frozen_now
+            result = _update_use_case(bills).execute(
+                1, "Pagada", actor=_CLEANER_ACTOR, paid_at=date(2026, 6, 14)
+            )
+
+        assert result.state == "Creada"
+        assert result.paid_confirmed_by_cleaner == frozen_now
+        assert result.paid_confirmed_by_cleaner_name == "Limpiadora Test"
+        # La fecha de pago declarada por la limpiadora queda registrada ya, aunque la
+        # factura siga Creada a la espera de la confirmación de administración.
+        assert result.paid_at == date(2026, 6, 14)
+
+    def test_cleaner_payment_date_defaults_to_today(self):
         bills = _bills_with(make_bill(bill_id=1, state="Creada"))
         frozen_today = date(2026, 6, 15)
 
-        with patch("application.bills.update_bill_use_case.date") as mock_date:
+        with (
+            patch("application.bills.update_bill_use_case.date") as mock_date,
+            patch("application.bills.update_bill_use_case.datetime") as mock_datetime,
+        ):
             mock_date.today.return_value = frozen_today
-            result = _update_use_case(bills).execute(1, "Pagada")
+            mock_datetime.now.return_value = datetime(2026, 6, 15, 11, 5)
+            result = _update_use_case(bills).execute(1, "Pagada", actor=_CLEANER_ACTOR)
 
-        assert result.state == "Pagada"
         assert result.paid_at == frozen_today
 
-    def test_created_to_paid_uses_explicit_payment_date(self):
-        bills = _bills_with(make_bill(bill_id=1, state="Creada"))
+    def test_same_role_cannot_confirm_twice(self):
+        bills = _bills_with(
+            make_bill(
+                bill_id=1, state="Creada", paid_confirmed_by_admin=datetime(2026, 5, 18, 9, 0)
+            )
+        )
 
-        result = _update_use_case(bills).execute(1, "Pagada", paid_at=date(2026, 5, 20))
+        with pytest.raises(DomainValidationError, match="ya ha confirmado"):
+            _update_use_case(bills).execute(1, "Pagada", actor=_ADMIN_ACTOR)
 
-        assert result.paid_at == date(2026, 5, 20)
+        bills.update.assert_not_called()
 
-    def test_paid_to_created_clears_payment_date(self):
-        bills = _bills_with(make_bill(bill_id=1, state="Pagada", paid_at=date(2026, 5, 20)))
+    def test_cleaner_completes_confirmation_started_by_admin(self):
+        bills = _bills_with(
+            make_bill(
+                bill_id=1, state="Creada", paid_confirmed_by_admin=datetime(2026, 5, 18, 9, 0)
+            )
+        )
 
-        result = _update_use_case(bills).execute(1, "Creada")
+        result = _update_use_case(bills).execute(
+            1, "Pagada", actor=_CLEANER_ACTOR, paid_at=date(2026, 5, 21)
+        )
+
+        assert result.state == "Pagada"
+        assert result.paid_at == date(2026, 5, 21)
+
+    def test_response_is_enriched_with_apartment_address(self):
+        bills = _bills_with(
+            make_bill(
+                bill_id=1,
+                state="Creada",
+                apartment_id="R106",
+                paid_confirmed_by_cleaner=datetime(2026, 5, 18, 9, 0),
+            )
+        )
+        apartment_repo = MagicMock(spec=IApartmentRepository)
+        apartment_repo.get_all.return_value = [
+            make_apartment(
+                apartment_id="R106",
+                address="C/ Raquero 6 Bloque 3",
+                apartment_description="Porto Fino",
+            )
+        ]
+
+        result = UpdateBillStateUseCase(bills, apartment_repo).execute(
+            1, "Pagada", actor=_ADMIN_ACTOR, paid_at=date(2026, 5, 20)
+        )
+
+        assert result.address == "C/ Raquero 6 Bloque 3"
+        assert result.apartment_description == "Porto Fino"
+
+    def test_paid_to_created_clears_payment_date_and_confirmations(self):
+        bills = _bills_with(
+            make_bill(
+                bill_id=1,
+                state="Pagada",
+                paid_at=date(2026, 5, 20),
+                paid_confirmed_by_admin=datetime(2026, 5, 20, 14, 30),
+                paid_confirmed_by_admin_name="Admin User",
+                paid_confirmed_by_cleaner=datetime(2026, 5, 18, 9, 15),
+                paid_confirmed_by_cleaner_name="Limpiadora Test",
+            )
+        )
+
+        result = _update_use_case(bills).execute(1, "Creada", actor=_ADMIN_ACTOR)
 
         assert result.state == "Creada"
         assert result.paid_at is None
+        assert result.paid_confirmed_by_admin is None
+        assert result.paid_confirmed_by_admin_name is None
+        assert result.paid_confirmed_by_cleaner is None
+        assert result.paid_confirmed_by_cleaner_name is None
+
+    def test_cancelling_clears_partial_confirmation(self):
+        bills = _bills_with(
+            make_bill(
+                bill_id=1, state="Creada", paid_confirmed_by_admin=datetime(2026, 5, 20, 14, 30)
+            )
+        )
+
+        result = _update_use_case(bills).execute(1, "Cancelada", actor=_ADMIN_ACTOR)
+
+        assert result.state == "Cancelada"
+        assert result.paid_confirmed_by_admin is None
+        assert result.paid_confirmed_by_cleaner is None
 
     def test_created_to_cancelled_stores_note(self):
         bills = _bills_with(make_bill(bill_id=1, state="Creada"))
 
         result = _update_use_case(bills).execute(
-            1, "Cancelada", cancellation_note="Reserva duplicada"
+            1, "Cancelada", actor=_ADMIN_ACTOR, cancellation_note="Reserva duplicada"
         )
 
         assert result.state == "Cancelada"
@@ -252,7 +396,9 @@ class TestUpdateBillStateUseCase:
     def test_cancelled_without_note_stores_none(self):
         bills = _bills_with(make_bill(bill_id=1, state="Creada"))
 
-        result = _update_use_case(bills).execute(1, "Cancelada", cancellation_note="   ")
+        result = _update_use_case(bills).execute(
+            1, "Cancelada", actor=_ADMIN_ACTOR, cancellation_note="   "
+        )
 
         assert result.state == "Cancelada"
         assert result.cancellation_note is None
@@ -262,16 +408,20 @@ class TestUpdateBillStateUseCase:
             make_bill(bill_id=1, state="Cancelada", cancellation_note="Motivo previo")
         )
 
-        result = _update_use_case(bills).execute(1, "Creada")
+        result = _update_use_case(bills).execute(1, "Creada", actor=_ADMIN_ACTOR)
 
         assert result.state == "Creada"
         assert result.cancellation_note is None
 
-    def test_note_ignored_when_not_cancelling(self):
-        bills = _bills_with(make_bill(bill_id=1, state="Creada"))
+    def test_note_ignored_when_confirming_payment(self):
+        bills = _bills_with(
+            make_bill(
+                bill_id=1, state="Creada", paid_confirmed_by_cleaner=datetime(2026, 5, 18, 9, 0)
+            )
+        )
 
         result = _update_use_case(bills).execute(
-            1, "Pagada", cancellation_note="No debería guardarse"
+            1, "Pagada", actor=_ADMIN_ACTOR, cancellation_note="No debería guardarse"
         )
 
         assert result.state == "Pagada"
@@ -281,7 +431,7 @@ class TestUpdateBillStateUseCase:
         bills = _bills_with(make_bill(bill_id=1, state="Pagada"))
 
         with pytest.raises(DomainValidationError):
-            _update_use_case(bills).execute(1, "Cancelada")
+            _update_use_case(bills).execute(1, "Cancelada", actor=_ADMIN_ACTOR)
 
         bills.update.assert_not_called()
 
@@ -290,9 +440,52 @@ class TestUpdateBillStateUseCase:
         bills.get_by_id.side_effect = BillNotFoundError(99)
 
         with pytest.raises(BillNotFoundError):
-            _update_use_case(bills).execute(99, "Pagada")
+            _update_use_case(bills).execute(99, "Pagada", actor=_ADMIN_ACTOR)
 
         bills.update.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# ListBillsUseCase
+# ---------------------------------------------------------------------------
+
+
+class TestListBillsUseCase:
+    def test_enriches_bills_with_apartment_address_and_description(self):
+        bill_repo = MagicMock(spec=IBillRepository)
+        bill_repo.list.return_value = [make_bill(apartment_id="R106")]
+        apartment_repo = MagicMock(spec=IApartmentRepository)
+        apartment_repo.get_all.return_value = [
+            make_apartment(
+                apartment_id="R106",
+                address="C/ Raquero 6 Bloque 3",
+                apartment_description="Porto Fino",
+            )
+        ]
+
+        result = ListBillsUseCase(bill_repo, apartment_repo).execute()
+
+        assert result[0].address == "C/ Raquero 6 Bloque 3"
+        assert result[0].apartment_description == "Porto Fino"
+
+    def test_bill_keeps_none_when_apartment_missing(self):
+        bill_repo = MagicMock(spec=IBillRepository)
+        bill_repo.list.return_value = [make_bill(apartment_id="R999")]
+        apartment_repo = MagicMock(spec=IApartmentRepository)
+        apartment_repo.get_all.return_value = []
+
+        result = ListBillsUseCase(bill_repo, apartment_repo).execute()
+
+        assert result[0].address is None
+        assert result[0].apartment_description is None
+
+    def test_works_without_apartment_repository(self):
+        bill_repo = MagicMock(spec=IBillRepository)
+        bill_repo.list.return_value = [make_bill(apartment_id="R106")]
+
+        result = ListBillsUseCase(bill_repo).execute()
+
+        assert result[0].address is None
 
 
 # ---------------------------------------------------------------------------

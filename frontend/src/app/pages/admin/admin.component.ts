@@ -1,6 +1,7 @@
 import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
+import { DismissableBackdropDirective } from '../../shared/directives/dismissable-backdrop.directive';
 import { AuthService } from '../../auth/auth.service';
 import { Role } from '../../models/user.model';
 import { ApartmentColorService, autoApartmentColor } from '../../services/apartment-color.service';
@@ -82,7 +83,7 @@ interface AdminCleaningTypeDraft {
 @Component({
   selector: 'app-admin',
   standalone: true,
-  imports: [FormsModule],
+  imports: [FormsModule, DismissableBackdropDirective],
   templateUrl: './admin.component.html',
   styleUrl: './admin.component.scss',
 })
@@ -182,16 +183,29 @@ export class AdminComponent implements OnInit, OnDestroy {
     });
   }
 
+  // Acordeón exclusivo: al abrir una sección se cierran las demás para que
+  // solo haya una abierta a la vez.
+  private closeAllSections(): void {
+    this.isUsersSectionOpen.set(false);
+    this.isPropertiesSectionOpen.set(false);
+    this.isCleaningTypesSectionOpen.set(false);
+  }
+
   toggleUsersSection(): void {
-    this.isUsersSectionOpen.update(isOpen => !isOpen);
+    const willOpen = !this.isUsersSectionOpen();
+    this.closeAllSections();
+    this.isUsersSectionOpen.set(willOpen);
   }
 
   togglePropertiesSection(): void {
-    this.isPropertiesSectionOpen.update(isOpen => !isOpen);
+    const willOpen = !this.isPropertiesSectionOpen();
+    this.closeAllSections();
+    this.isPropertiesSectionOpen.set(willOpen);
   }
 
   toggleCleaningTypesSection(): void {
     const willOpen = !this.isCleaningTypesSectionOpen();
+    this.closeAllSections();
     this.isCleaningTypesSectionOpen.set(willOpen);
     if (willOpen && !this.cleaningTypes().length) {
       this.loadCleaningTypes();

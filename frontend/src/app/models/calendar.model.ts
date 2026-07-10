@@ -20,4 +20,7 @@ export interface CalendarWeek {
   days: CalendarDay[];
   bars: WeekBar[];
   totalLanes: number;
+  // Número de semana ISO-8601 (1..53) al que pertenece esta fila. Las semanas
+  // empiezan en lunes, coherente con la cabecera Lun…Dom del calendario.
+  weekNumber: number;
 }

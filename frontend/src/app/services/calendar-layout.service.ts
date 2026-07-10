@@ -104,8 +104,9 @@ export class CalendarLayoutService {
         laneIndex: laneRemap.get(bar.laneIndex)!,
       }));
       const totalLanes = uniqueLanes.length;
+      const weekNumber = this.isoWeekNumber(weekDates[0].date);
 
-      result.push({ days, bars, totalLanes });
+      result.push({ days, bars, totalLanes, weekNumber });
     }
 
     return result;
@@ -192,6 +193,28 @@ export class CalendarLayoutService {
       return `linear-gradient(to right, ${color} 0%, ${color} ${r}%, #fd0202 ${r}%, #fd0202 100%)`;
     }
     return color;
+  }
+
+  /**
+   * Número de semana según ISO-8601 (1..53). La semana 1 es la que contiene el
+   * primer jueves del año (equivalente: la que contiene el 4 de enero) y las
+   * semanas empiezan en lunes. Cualquier día de la semana devuelve el mismo
+   * número porque el cálculo se normaliza al jueves de esa semana.
+   */
+  isoWeekNumber(date: Date): number {
+    // Copia en UTC para evitar desfases por husos horarios / horario de verano.
+    const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+    // Día de la semana con lunes=0 … domingo=6.
+    const dayNr = (d.getUTCDay() + 6) % 7;
+    // Desplazar al jueves de esta semana: define el año ISO al que pertenece.
+    d.setUTCDate(d.getUTCDate() - dayNr + 3);
+    const isoThursday = d.getTime();
+    // Jueves de la semana 1 = jueves de la semana que contiene el 4 de enero.
+    const firstThursday = new Date(Date.UTC(d.getUTCFullYear(), 0, 4));
+    const firstDayNr = (firstThursday.getUTCDay() + 6) % 7;
+    firstThursday.setUTCDate(firstThursday.getUTCDate() - firstDayNr + 3);
+    const msPerWeek = 7 * 24 * 60 * 60 * 1000;
+    return 1 + Math.round((isoThursday - firstThursday.getTime()) / msPerWeek);
   }
 
   toIso(date: Date): string {

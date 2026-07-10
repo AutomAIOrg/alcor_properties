@@ -287,20 +287,40 @@ describe('BookingModalComponent', () => {
   // ── DOM — backdrop ────────────────────────────────────────────────────────────
 
   describe('DOM — backdrop', () => {
-    it('click en .modal-backdrop emite close', () => {
+    // Simula el inicio de la pulsación del ratón (mousedown) sobre un elemento.
+    const press = (el: HTMLElement) =>
+      el.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+
+    it('pulsar y soltar en .modal-backdrop emite close', () => {
       const spy = jest.fn();
       component.close.subscribe(spy);
 
-      fixture.nativeElement.querySelector('.modal-backdrop').click();
+      const backdrop = fixture.nativeElement.querySelector('.modal-backdrop');
+      press(backdrop);
+      backdrop.click();
 
       expect(spy).toHaveBeenCalledTimes(1);
     });
 
-    it('click en .modal-card no emite close (stopPropagation)', () => {
+    it('click en .modal-card no emite close', () => {
       const spy = jest.fn();
       component.close.subscribe(spy);
 
-      fixture.nativeElement.querySelector('.modal-card').click();
+      const card = fixture.nativeElement.querySelector('.modal-card');
+      press(card);
+      card.click();
+
+      expect(spy).not.toHaveBeenCalled();
+    });
+
+    it('pulsar dentro del modal y soltar fuera no emite close', () => {
+      const spy = jest.fn();
+      component.close.subscribe(spy);
+
+      const backdrop = fixture.nativeElement.querySelector('.modal-backdrop');
+      const card = fixture.nativeElement.querySelector('.modal-card');
+      press(card); // la pulsación empieza dentro del modal
+      backdrop.click(); // ...y se suelta sobre el fondo
 
       expect(spy).not.toHaveBeenCalled();
     });
