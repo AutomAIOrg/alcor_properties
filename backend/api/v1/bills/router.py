@@ -4,6 +4,7 @@ Enrutador de facturas.
 
 import logging
 from datetime import date
+from decimal import Decimal
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query, status
@@ -145,7 +146,9 @@ async def rectify_bill(
     bill = rectify_bill_use_case.execute(
         bill_id,
         cleaning_date=payload.cleaning_date,
-        clean_hours=payload.clean_hours,
+        # El DTO trae las horas como float (JSON); el dominio trabaja con Decimal. str()
+        # evita el ruido binario del float (Decimal(str(2.5)) == Decimal("2.5")).
+        clean_hours=Decimal(str(payload.clean_hours)),
         cleaning_type_id=payload.cleaning_type_id,
     )
 
