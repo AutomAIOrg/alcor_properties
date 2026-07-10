@@ -237,9 +237,7 @@ class TestBillRectification:
         assert data["cleaning_type_id"] == new_type_id
         assert data["cleaning_type_name"] == "Limpieza profunda RECT"
 
-    def test_cannot_rectify_a_paid_bill(
-        self, e2e_client, admin_auth_headers, cleaner_auth_headers
-    ):
+    def test_cannot_rectify_a_paid_bill(self, e2e_client, admin_auth_headers, cleaner_auth_headers):
         bill_id = _create_booking_and_bill(e2e_client, admin_auth_headers, "RECT-002")
 
         # Pago completo (ambas confirmaciones): la factura pasa a Pagada.

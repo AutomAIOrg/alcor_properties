@@ -450,7 +450,9 @@ class TestUpdateBillStateUseCase:
 def _rectify_use_case(bills: MagicMock, cleaning_type=None) -> RectifyBillUseCase:
     cleaning_types = MagicMock(spec=ICleaningTypeRepository)
     cleaning_types.get_by_id.return_value = (
-        cleaning_type if cleaning_type is not None else make_cleaning_type(hourly_rate=Decimal("20"))
+        cleaning_type
+        if cleaning_type is not None
+        else make_cleaning_type(hourly_rate=Decimal("20"))
     )
     return RectifyBillUseCase(bills, cleaning_types)
 
