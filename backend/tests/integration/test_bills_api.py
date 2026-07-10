@@ -86,6 +86,7 @@ class TestUpdateBillState:
     def test_mark_as_paid_returns_200(
         self,
         bills_api_client,
+        bills_cleaning_user,
         mock_update_bill_state_use_case,
         mock_move_paid_bill_document_use_case,
     ):
@@ -104,7 +105,11 @@ class TestUpdateBillState:
         assert response.status_code == 200
         assert response.json()["state"] == "Pagada"
         mock_update_bill_state_use_case.execute.assert_called_once_with(
-            1, "Pagada", paid_at=date(2026, 6, 1), cancellation_note=None
+            1,
+            "Pagada",
+            actor=bills_cleaning_user,
+            paid_at=date(2026, 6, 1),
+            cancellation_note=None,
         )
         mock_move_paid_bill_document_use_case.execute.assert_called_once_with(1, uploaded_by=2)
 
@@ -133,6 +138,7 @@ class TestUpdateBillState:
     def test_cancel_with_note_passes_note_to_use_case(
         self,
         bills_api_client,
+        bills_cleaning_user,
         mock_update_bill_state_use_case,
         mock_move_paid_bill_document_use_case,
     ):
@@ -148,7 +154,11 @@ class TestUpdateBillState:
         assert response.status_code == 200
         assert response.json()["cancellation_note"] == "Reserva duplicada"
         mock_update_bill_state_use_case.execute.assert_called_once_with(
-            1, "Cancelada", paid_at=None, cancellation_note="Reserva duplicada"
+            1,
+            "Cancelada",
+            actor=bills_cleaning_user,
+            paid_at=None,
+            cancellation_note="Reserva duplicada",
         )
         mock_move_paid_bill_document_use_case.execute.assert_not_called()
 
