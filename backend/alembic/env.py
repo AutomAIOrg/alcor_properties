@@ -35,6 +35,7 @@ db_url: URL = URL.create(
 # ---------------------------------------------------------------------------
 import infrastructure.models.apartment  # noqa: E402, F401
 import infrastructure.models.bill  # noqa: E402, F401
+import infrastructure.models.bill_document  # noqa: E402, F401
 import infrastructure.models.booking  # noqa: E402, F401
 import infrastructure.models.cleaning_type  # noqa: E402, F401
 import infrastructure.models.user  # noqa: E402, F401

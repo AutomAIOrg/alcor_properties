@@ -20,6 +20,7 @@ from starlette.testclient import TestClient
 
 import infrastructure.models.apartment  # noqa: F401 — registra ApartmentORM en Base.metadata
 import infrastructure.models.bill  # noqa: F401 — registra BillORM en Base.metadata
+import infrastructure.models.bill_document  # noqa: F401 — registra BillDocumentORM en Base.metadata
 import infrastructure.models.booking  # noqa: F401 — registra BookingORM en Base.metadata
 import infrastructure.models.cleaning_type  # noqa: F401 — registra CleaningTypeORM en Base.metadata
 import infrastructure.models.user  # noqa: F401 — registra UserORM en Base.metadata
@@ -159,27 +160,19 @@ def mock_list_pending_bills_use_case() -> MagicMock:
 
 
 @pytest.fixture
-def bills_api_client(
-    mock_create_bill_use_case: MagicMock,
-    mock_update_bill_state_use_case: MagicMock,
-    mock_list_bills_use_case: MagicMock,
-    mock_list_pending_bills_use_case: MagicMock,
-) -> Iterator[TestClient]:
-    """
-    TestClient de FastAPI con casos de uso de facturas inyectados como mock.
+def mock_generate_bill_document_use_case() -> MagicMock:
+    return MagicMock()
 
-    Autentica como usuario con rol LIMPIADORA (mínimo requerido por require_cleaning).
-    """
-    from api.dependencies import (
-        get_create_bill_use_case,
-        get_current_user,
-        get_list_bills_use_case,
-        get_list_pending_bills_use_case,
-        get_update_bill_state_use_case,
-    )
-    from main import app
 
-    cleaning_user = User(
+@pytest.fixture
+def mock_move_paid_bill_document_use_case() -> MagicMock:
+    return MagicMock()
+
+
+@pytest.fixture
+def bills_cleaning_user() -> User:
+    """Usuario limpiadora usado en tests de API de facturas."""
+    return User(
         id=2,
         username="limpiadora",
         password="limpiadora-password",
@@ -189,6 +182,33 @@ def bills_api_client(
         role=Role.LIMPIADORA,
     )
 
+
+@pytest.fixture
+def bills_api_client(
+    mock_create_bill_use_case: MagicMock,
+    mock_update_bill_state_use_case: MagicMock,
+    mock_list_bills_use_case: MagicMock,
+    mock_list_pending_bills_use_case: MagicMock,
+    mock_generate_bill_document_use_case: MagicMock,
+    mock_move_paid_bill_document_use_case: MagicMock,
+    bills_cleaning_user: User,
+) -> Iterator[TestClient]:
+    """
+    TestClient de FastAPI con casos de uso de facturas inyectados como mock.
+
+    Autentica como usuario con rol LIMPIADORA (mínimo requerido por require_cleaning).
+    """
+    from api.dependencies import (
+        get_create_bill_use_case,
+        get_current_user,
+        get_generate_and_store_bill_document_use_case,
+        get_list_bills_use_case,
+        get_list_pending_bills_use_case,
+        get_move_paid_bill_document_use_case,
+        get_update_bill_state_use_case,
+    )
+    from main import app
+
     app.dependency_overrides[get_create_bill_use_case] = lambda: mock_create_bill_use_case
     app.dependency_overrides[get_update_bill_state_use_case] = lambda: (
         mock_update_bill_state_use_case
@@ -197,7 +217,13 @@ def bills_api_client(
     app.dependency_overrides[get_list_pending_bills_use_case] = lambda: (
         mock_list_pending_bills_use_case
     )
-    app.dependency_overrides[get_current_user] = lambda: cleaning_user
+    app.dependency_overrides[get_generate_and_store_bill_document_use_case] = lambda: (
+        mock_generate_bill_document_use_case
+    )
+    app.dependency_overrides[get_move_paid_bill_document_use_case] = lambda: (
+        mock_move_paid_bill_document_use_case
+    )
+    app.dependency_overrides[get_current_user] = lambda: bills_cleaning_user
 
     try:
         with TestClient(app, raise_server_exceptions=True) as client:
@@ -207,6 +233,8 @@ def bills_api_client(
         app.dependency_overrides.pop(get_update_bill_state_use_case, None)
         app.dependency_overrides.pop(get_list_bills_use_case, None)
         app.dependency_overrides.pop(get_list_pending_bills_use_case, None)
+        app.dependency_overrides.pop(get_generate_and_store_bill_document_use_case, None)
+        app.dependency_overrides.pop(get_move_paid_bill_document_use_case, None)
         app.dependency_overrides.pop(get_current_user, None)
 
 
@@ -405,13 +433,27 @@ def apartment_api_client(
 
 
 @pytest.fixture
-def e2e_client(sqlite_engine):
+def mock_e2e_file_storage() -> MagicMock:
+    """Almacenamiento NAS simulado para e2e sin credenciales reales."""
+    storage = MagicMock()
+    storage.upload_bytes.side_effect = (
+        lambda remote_folder, filename, content, content_type="application/octet-stream": (
+            f"{remote_folder}/{filename}"
+        )
+    )
+    storage.delete.return_value = None
+    return storage
+
+
+@pytest.fixture
+def e2e_client(sqlite_engine, mock_e2e_file_storage):
     """
     TestClient sin mocks de use cases.
 
     Solo sobreescribe get_db para apuntar a SQLite en lugar de MySQL.
     El stack completo (use cases + repositorio) es real.
     """
+    from api.dependencies import get_file_storage
     from infrastructure.database.session import get_db
     from main import app
 
@@ -425,12 +467,14 @@ def e2e_client(sqlite_engine):
             session.close()
 
     app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[get_file_storage] = lambda: mock_e2e_file_storage
 
     try:
         with TestClient(app, raise_server_exceptions=True) as client:
             yield client
     finally:
         app.dependency_overrides.pop(get_db, None)
+        app.dependency_overrides.pop(get_file_storage, None)
 
 
 @pytest.fixture

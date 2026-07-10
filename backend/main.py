@@ -15,12 +15,17 @@ from api.error_handlers import (
     apartment_has_bookings_error_handler,
     apartment_not_found_error_handler,
     bill_already_exists_error_handler,
+    bill_document_already_exists_error_handler,
+    bill_document_not_found_error_handler,
+    bill_document_not_updated_error_handler,
+    bill_document_render_error_handler,
     bill_not_found_error_handler,
     booking_conflict_handler,
     booking_not_found_handler,
     cleaning_type_already_exists_error_handler,
     cleaning_type_not_found_error_handler,
     domain_validation_error_handler,
+    file_storage_error_handler,
     integrity_error_handler,
     invalid_credentials_handler,
     invalid_token_handler,
@@ -37,12 +42,17 @@ from domain.exceptions import (
     ApartmentHasBookingsError,
     ApartmentNotFoundError,
     BillAlreadyExistsError,
+    BillDocumentAlreadyExistsError,
+    BillDocumentNotFoundError,
+    BillDocumentNotUpdatedError,
+    BillDocumentRenderError,
     BillNotFoundError,
     BookingConflict,
     BookingNotFound,
     CleaningTypeAlreadyExistsError,
     CleaningTypeNotFoundError,
     DomainValidationError,
+    FileStorageError,
     IntegrityError,
     InvalidCredentials,
     InvalidToken,
@@ -102,7 +112,13 @@ app.add_exception_handler(CleaningTypeNotFoundError, cleaning_type_not_found_err
 app.add_exception_handler(
     CleaningTypeAlreadyExistsError, cleaning_type_already_exists_error_handler
 )
-
+app.add_exception_handler(FileStorageError, file_storage_error_handler)
+app.add_exception_handler(BillDocumentRenderError, bill_document_render_error_handler)
+app.add_exception_handler(BillDocumentNotFoundError, bill_document_not_found_error_handler)
+app.add_exception_handler(BillDocumentNotUpdatedError, bill_document_not_updated_error_handler)
+app.add_exception_handler(
+    BillDocumentAlreadyExistsError, bill_document_already_exists_error_handler
+)
 # Rutas de la API
 app.include_router(v1_router)
 

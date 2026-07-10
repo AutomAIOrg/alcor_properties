@@ -23,8 +23,14 @@ from application.auth.login_use_case import LoginUseCase
 from application.auth.refresh_token_use_case import RefreshTokenUseCase
 from application.auth.reset_password_use_case import ResetPasswordUseCase
 from application.auth.token_manager_interface import ITokenManager
+from application.bills.bill_pdf_renderer_interface import IBillPdfRenderer
 from application.bills.create_bill_use_case import CreateBillUseCase
+from application.bills.generate_and_store_bill_document_use_case import (
+    GenerateAndStoreBillDocumentUseCase,
+)
 from application.bills.list_bills_use_cases import ListBillsUseCase, ListPendingBillsUseCase
+from application.bills.move_paid_bill_document_use_case import MovePaidBillDocumentUseCase
+from application.bills.retry_bill_document_sync_use_case import RetryBillDocumentSyncUseCase
 from application.bills.update_bill_use_case import UpdateBillStateUseCase
 from application.bookings.commands import (
     CreateBookingUseCase,
@@ -48,6 +54,7 @@ from application.cleaning_types.use_cases import (
     UpdateCleaningTypeUseCase,
 )
 from application.shared.email_sender_interface import IEmailSender
+from application.shared.file_storage_interface import IFileStorage
 from application.shared.password_manager_interface import IPasswordManager
 from application.shared.user_repository_interface import IUserRepository
 from application.users.create_user_use_case import CreateUserUseCase
@@ -57,14 +64,19 @@ from application.users.update_user_use_case import UpdateUserUseCase
 from config import settings
 from domain.apartments.repository import IApartmentRepository
 from domain.auth.user_entity import Role, User
+from domain.bills.bill_document_repository import IBillDocumentRepository
 from domain.bills.repository import IBillRepository
 from domain.bookings.repository import IBookingRepository
 from domain.cleaning_types.repository import ICleaningTypeRepository
 from domain.exceptions import InvalidToken
 from infrastructure.database.session import get_db
+from infrastructure.documents.stub_bill_pdf_renderer import StubBillPdfRenderer
 from infrastructure.email.smtp_email_sender import ConsoleEmailSender, SMTPEmailSender
 from infrastructure.repositories.sqlalchemy_apartment_repository import (
     SQLAlchemyApartmentRepository,
+)
+from infrastructure.repositories.sqlalchemy_bill_document_repository import (
+    SQLAlchemyBillDocumentRepository,
 )
 from infrastructure.repositories.sqlalchemy_bill_repository import SQLAlchemyBillRepository
 from infrastructure.repositories.sqlalchemy_booking_repository import (
@@ -76,6 +88,7 @@ from infrastructure.repositories.sqlalchemy_cleaning_type_repository import (
 from infrastructure.repositories.sqlalchemy_user_repository import SQLAlchemyUserRepository
 from infrastructure.security.jwt_token_manager import JwtTokenManager
 from infrastructure.security.passlib_password_manager import PasslibPasswordManager
+from infrastructure.storage.synology_file_storage import SynologyFileStorage
 
 bearer_scheme = HTTPBearer(auto_error=False)  # Esquema de autenticación Bearer
 
@@ -181,6 +194,32 @@ def get_apartment_repository(db: Session = Depends(get_db)) -> IApartmentReposit
 def get_bill_repository(db: Session = Depends(get_db)) -> IBillRepository:
     """Repositorio de facturas."""
     return SQLAlchemyBillRepository(db)
+
+
+def get_bill_document_repository(db: Session = Depends(get_db)) -> IBillDocumentRepository:
+    """Repositorio de documentos de factura."""
+    return SQLAlchemyBillDocumentRepository(db)
+
+
+def get_file_storage() -> IFileStorage:
+    """Almacenamiento remoto en NAS Synology."""
+    if not settings.NAS_HOST or not settings.NAS_USER:
+        raise RuntimeError(
+            "NAS no configurado: defina NAS_HOST, NAS_USER y NAS_PASSWORD en el entorno."
+        )
+    return SynologyFileStorage(
+        host=settings.NAS_HOST,
+        port=settings.NAS_PORT,
+        username=settings.NAS_USER,
+        password=settings.NAS_PASSWORD,
+        volume_prefix=settings.NAS_VOLUME_PREFIX,
+        connect_timeout=settings.NAS_SSH_TIMEOUT,
+    )
+
+
+def get_bill_pdf_renderer() -> IBillPdfRenderer:
+    """Renderer PDF de facturas (stub hasta implementar plantilla real)."""
+    return StubBillPdfRenderer()
 
 
 def get_cleaning_type_repository(db: Session = Depends(get_db)) -> ICleaningTypeRepository:
@@ -414,3 +453,51 @@ def get_delete_cleaning_type_use_case(
 ) -> DeleteCleaningTypeUseCase:
     """Inyección de dependencias para eliminar un tipo de limpieza."""
     return DeleteCleaningTypeUseCase(repository)
+
+
+def get_generate_and_store_bill_document_use_case(
+    bill_repository: IBillRepository = Depends(get_bill_repository),
+    document_repository: IBillDocumentRepository = Depends(get_bill_document_repository),
+    pdf_renderer: IBillPdfRenderer = Depends(get_bill_pdf_renderer),
+    file_storage: IFileStorage = Depends(get_file_storage),
+) -> GenerateAndStoreBillDocumentUseCase:
+    """Inyección de dependencias para generar y almacenar documento de factura en NAS."""
+    return GenerateAndStoreBillDocumentUseCase(
+        bill_repository,
+        document_repository,
+        pdf_renderer,
+        file_storage,
+        settings.NAS_BASE_PATH,
+    )
+
+
+def get_move_paid_bill_document_use_case(
+    bill_repository: IBillRepository = Depends(get_bill_repository),
+    document_repository: IBillDocumentRepository = Depends(get_bill_document_repository),
+    pdf_renderer: IBillPdfRenderer = Depends(get_bill_pdf_renderer),
+    file_storage: IFileStorage = Depends(get_file_storage),
+) -> MovePaidBillDocumentUseCase:
+    """Inyección de dependencias para mover documento de factura pagada en NAS."""
+    return MovePaidBillDocumentUseCase(
+        bill_repository,
+        document_repository,
+        pdf_renderer,
+        file_storage,
+        settings.NAS_BASE_PATH,
+    )
+
+
+def get_retry_bill_document_sync_use_case(
+    bill_repository: IBillRepository = Depends(get_bill_repository),
+    document_repository: IBillDocumentRepository = Depends(get_bill_document_repository),
+    pdf_renderer: IBillPdfRenderer = Depends(get_bill_pdf_renderer),
+    file_storage: IFileStorage = Depends(get_file_storage),
+) -> RetryBillDocumentSyncUseCase:
+    """Inyección de dependencias para reintentar sincronizaciones documentales con NAS."""
+    return RetryBillDocumentSyncUseCase(
+        bill_repository,
+        document_repository,
+        pdf_renderer,
+        file_storage,
+        settings.NAS_BASE_PATH,
+    )

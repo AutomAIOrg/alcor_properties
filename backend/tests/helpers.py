@@ -42,14 +42,35 @@ def make_user(**overrides) -> User:
 def make_bill(**overrides) -> Bill:
     """Devuelve una Bill válida con valores por defecto, aplicando los overrides dados."""
     defaults: dict = {
+        "bill_id": 1,
         "apartment_id": "TEST-001",
         "record_id": 1,
         "cleaning_date": date(2026, 6, 1),
         "clean_hours": Decimal("2.00"),
         "cost": Decimal("30.00"),
+        "hourly_rate": Decimal("15.00"),
         "state": "Creada",
     }
     return Bill(**{**defaults, **overrides})
+
+
+def make_bill_document(**overrides):
+    """Devuelve un BillDocument válido con valores por defecto."""
+    from datetime import UTC, datetime
+
+    from domain.bills.bill_document import BillDocument
+
+    defaults: dict = {
+        "id": 1,
+        "bill_id": 1,
+        "filename": "bill_1_20260601_a1b2c3d4.pdf",
+        "nas_path": "/facturas/2026-06-01/bill_1_20260601_a1b2c3d4.pdf",
+        "content_type": "application/pdf",
+        "size_bytes": 256,
+        "uploaded_by": 2,
+        "uploaded_at": datetime(2026, 6, 1, 12, 0, tzinfo=UTC),
+    }
+    return BillDocument(**{**defaults, **overrides})
 
 
 def make_cleaning_type(**overrides) -> CleaningType:
