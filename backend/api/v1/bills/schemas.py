@@ -2,7 +2,7 @@
 DTOs (Data Transfer Objects) para la API de facturas.
 """
 
-from datetime import date, time
+from datetime import date, datetime, time
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -40,8 +40,15 @@ class BillResponse(BaseModel):
     cleaning_type_name: str | None = None
     state: str
     paid_at: date | None = None
+    paid_confirmed_by_admin: datetime | None = None
+    paid_confirmed_by_admin_name: str | None = None
+    paid_confirmed_by_cleaner: datetime | None = None
+    paid_confirmed_by_cleaner_name: str | None = None
     cancellation_note: str | None = None
     previously_cancelled: bool = False
+    address: str | None = None
+    apartment_description: str | None = None
+    created_at: date | None = None
 
 
 class BillUpdateStateRequest(BaseModel):
@@ -50,7 +57,10 @@ class BillUpdateStateRequest(BaseModel):
     state: str = Field(..., description="Nuevo estado (Creada, Pagada, Cancelada)")
     paid_at: date | None = Field(
         default=None,
-        description="Fecha de pago. Solo aplica al pasar a 'Pagada'; por defecto, hoy.",
+        description=(
+            "Fecha de pago. Solo la tiene en cuenta la confirmación de la limpiadora "
+            "(por defecto, hoy); la confirmación de administración la ignora."
+        ),
     )
     cancellation_note: str | None = Field(
         default=None,

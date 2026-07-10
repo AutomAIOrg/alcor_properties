@@ -1,7 +1,6 @@
 <section class="cleaning-organization">
   <header class="cleaning-header">
     <div>
-      <span class="eyebrow">Organización Limpiezas</span>
       <h1>Organización Limpiezas</h1>
       <p>Planificación semanal de pisos disponibles para limpiar.</p>
     </div>
@@ -30,7 +29,7 @@
   <section class="week-card" aria-labelledby="cleaning-week-title">
     <div class="section-title-row">
       <div>
-        <h2 id="cleaning-week-title">Semana del {{ weekLabel() }}</h2>
+        <h2 id="cleaning-week-title">Semana {{ weekNumber() }} del {{ weekLabel() }}</h2>
         <p>{{ cleaningOpportunities().length }} limpiezas disponibles</p>
       </div>
     </div>
@@ -173,9 +172,16 @@
                       <span class="muted-text">Sin permiso</span>
                     }
                   } @else if (opportunity.hasBill) {
-                    <span class="bill-state-chip" [class.paid]="opportunity.billState === 'Pagada'">
+                    <button
+                      class="bill-state-chip"
+                      [class.paid]="opportunity.billState === 'Pagada'"
+                      type="button"
+                      title="Ver factura"
+                      [disabled]="isLoadingBillReceipt()"
+                      (click)="openBillReceipt(opportunity)"
+                    >
                       {{ opportunity.billState || 'Creada' }}
-                    </span>
+                    </button>
                   } @else {
                     <button
                       class="invoice-btn"
@@ -196,15 +202,22 @@
   </section>
 
   @if (selectedInvoiceOpportunity()) {
-    <div class="modal-backdrop" role="presentation" (click)="closeInvoiceModal()">
+    <div
+      class="modal-backdrop"
+      role="presentation"
+      appDismissableBackdrop
+      (backdropDismiss)="closeInvoiceModal()"
+    >
       <section
         class="comment-dialog invoice-dialog"
+        [class.preview-mode]="showInvoicePreview()"
         role="dialog"
         aria-modal="true"
         aria-labelledby="invoice-dialog-title"
-        (click)="$event.stopPropagation()"
       >
-        <h2 id="invoice-dialog-title">Generar factura</h2>
+        <h2 id="invoice-dialog-title">
+          {{ showInvoicePreview() ? 'Revisar factura' : 'Generar factura' }}
+        </h2>
         <p>
           Piso <strong>{{ selectedInvoiceOpportunity()!.apartmentId }}</strong> · Salida
           {{ formatDate(selectedInvoiceOpportunity()!.availableFromDate) }}
@@ -214,109 +227,166 @@
           }
         </p>
 
-        @if (selectedInvoiceOpportunity()!.billState === 'Cancelada') {
-          <div class="notice warning-notice">
-            Esta limpieza tuvo una factura cancelada. Se generará una nueva factura.
-          </div>
-        }
+        @if (!showInvoicePreview()) {
+          @if (selectedInvoiceOpportunity()!.billState === 'Cancelada') {
+            <div class="notice warning-notice">
+              Esta limpieza tuvo una factura cancelada. Se generará una nueva factura.
+            </div>
+          }
 
-        @if (selectedInvoiceOpportunity()!.comments) {
-          <p class="invoice-comments">
-            <strong>Comentarios:</strong> {{ selectedInvoiceOpportunity()!.comments }}
-          </p>
-        }
-
-        <label class="comment-field cleaning-type-field">
-          Tipo de limpieza
-          <select
-            class="type-select"
-            [value]="selectedCleaningTypeId() ?? ''"
-            required
-            [disabled]="isLoadingCleaningTypes() || !cleaningTypes().length"
-            (change)="updateSelectedCleaningType($event)"
-          >
-            <option value="" disabled>
-              {{
-                isLoadingCleaningTypes() ? 'Cargando tipos...' : 'Selecciona un tipo de limpieza'
-              }}
-            </option>
-            @for (cleaningType of cleaningTypes(); track cleaningType.cleaning_type_id) {
-              <option [value]="cleaningType.cleaning_type_id">
-                {{ cleaningType.name }} ·
-                {{ cleaningType.hourly_rate | currency: 'EUR' : 'symbol' : '1.2-2' }}/h
-              </option>
-            }
-          </select>
-        </label>
-
-        <div class="invoice-form-grid">
-          <label class="comment-field">
-            Fecha de limpieza
-            <input
-              type="date"
-              [value]="cleaningDate()"
-              [min]="selectedInvoiceOpportunity()!.availableFromDate"
-              (input)="updateCleaningDate($event)"
-            />
-          </label>
-
-          <label class="comment-field">
-            Hora inicio
-            <input type="time" [value]="startTime()" required (input)="updateStartTime($event)" />
-          </label>
-
-          <label class="comment-field">
-            Hora fin
-            <input type="time" [value]="endTime()" required (input)="updateEndTime($event)" />
-          </label>
-        </div>
-
-        @if (invoiceFormError()) {
-          <div class="notice error-notice">{{ invoiceFormError() }}</div>
-        }
-
-        <div class="invoice-summary">
-          @if (selectedCleaningType() !== null) {
-            <p>
-              <strong>Tarifa:</strong> {{ selectedCleaningType()!.hourly_rate }} €/h
-              @if (previewHours() !== null) {
-                · <strong>Horas:</strong> {{ previewHours() }} · <strong>Total:</strong>
-                {{ previewCost() }} €
-              }
+          @if (selectedInvoiceOpportunity()!.comments) {
+            <p class="invoice-comments">
+              <strong>Comentarios:</strong> {{ selectedInvoiceOpportunity()!.comments }}
             </p>
           }
-        </div>
+
+          <label class="comment-field cleaning-type-field">
+            Tipo de limpieza
+            <select
+              class="type-select"
+              [value]="selectedCleaningTypeId() ?? ''"
+              required
+              [disabled]="isLoadingCleaningTypes() || !cleaningTypes().length"
+              (change)="updateSelectedCleaningType($event)"
+            >
+              <option value="" disabled>
+                {{
+                  isLoadingCleaningTypes() ? 'Cargando tipos...' : 'Selecciona un tipo de limpieza'
+                }}
+              </option>
+              @for (cleaningType of cleaningTypes(); track cleaningType.cleaning_type_id) {
+                <option [value]="cleaningType.cleaning_type_id">
+                  {{ cleaningType.name }} ·
+                  {{ cleaningType.hourly_rate | currency: 'EUR' : 'symbol' : '1.2-2' }}/h
+                </option>
+              }
+            </select>
+          </label>
+
+          <div class="invoice-form-grid">
+            <label class="comment-field">
+              Fecha de limpieza
+              <input
+                type="date"
+                [value]="cleaningDate()"
+                [min]="selectedInvoiceOpportunity()!.availableFromDate"
+                (input)="updateCleaningDate($event)"
+              />
+            </label>
+
+            <label class="comment-field">
+              Hora inicio
+              <input type="time" [value]="startTime()" required (input)="updateStartTime($event)" />
+            </label>
+
+            <label class="comment-field">
+              Hora fin
+              <input type="time" [value]="endTime()" required (input)="updateEndTime($event)" />
+            </label>
+          </div>
+
+          @if (invoiceFormError()) {
+            <div class="notice error-notice">{{ invoiceFormError() }}</div>
+          }
+
+          <div class="invoice-summary">
+            @if (selectedCleaningType() !== null) {
+              <p>
+                <strong>Tarifa:</strong> {{ selectedCleaningType()!.hourly_rate }} €/h
+                @if (previewHours() !== null) {
+                  · <strong>Horas:</strong> {{ previewHours() }} · <strong>Total:</strong>
+                  {{ previewCost() }} €
+                }
+              </p>
+            }
+          </div>
+
+          <div class="dialog-actions">
+            <button
+              class="primary-btn preview-btn"
+              type="button"
+              [disabled]="isCreatingBill() || !isInvoiceFormValid()"
+              (click)="openInvoicePreview()"
+            >
+              Previsualizar factura
+            </button>
+            <button
+              class="secondary-btn"
+              type="button"
+              [disabled]="isCreatingBill()"
+              (click)="closeInvoiceModal()"
+            >
+              Cancelar
+            </button>
+          </div>
+        } @else {
+          <p class="preview-hint">
+            Revisa que los datos son correctos. Al aceptar se guardará la factura.
+          </p>
+
+          @if (invoiceReceiptData(); as receipt) {
+            <app-bill-receipt [data]="receipt" />
+          }
+
+          <div class="dialog-actions">
+            <button
+              class="primary-btn confirm-btn"
+              type="button"
+              [disabled]="isCreatingBill()"
+              (click)="submitInvoice()"
+            >
+              {{ isCreatingBill() ? 'Guardando...' : 'Aceptar y guardar' }}
+            </button>
+            <button
+              class="secondary-btn"
+              type="button"
+              [disabled]="isCreatingBill()"
+              (click)="backToInvoiceForm()"
+            >
+              Volver a editar
+            </button>
+          </div>
+        }
+      </section>
+    </div>
+  }
+
+  @if (billReceiptView()) {
+    <div
+      class="modal-backdrop"
+      role="presentation"
+      appDismissableBackdrop
+      (backdropDismiss)="closeBillReceipt()"
+    >
+      <section
+        class="comment-dialog invoice-dialog preview-mode"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="bill-receipt-title"
+      >
+        <h2 id="bill-receipt-title">Factura</h2>
+
+        <app-bill-receipt [data]="billReceiptView()!" />
 
         <div class="dialog-actions">
-          <button
-            class="primary-btn"
-            type="button"
-            [disabled]="isCreatingBill() || !isInvoiceFormValid()"
-            (click)="submitInvoice()"
-          >
-            {{ isCreatingBill() ? 'Generando...' : 'Generar factura' }}
-          </button>
-          <button
-            class="secondary-btn"
-            type="button"
-            [disabled]="isCreatingBill()"
-            (click)="closeInvoiceModal()"
-          >
-            Cancelar
-          </button>
+          <button class="secondary-btn" type="button" (click)="closeBillReceipt()">Cerrar</button>
         </div>
       </section>
     </div>
   }
 
   @if (selectedCommentOpportunity()) {
-    <div class="modal-backdrop" role="presentation" (click)="closeCommentModal()">
+    <div
+      class="modal-backdrop"
+      role="presentation"
+      appDismissableBackdrop
+      (backdropDismiss)="closeCommentModal()"
+    >
       <section
         class="comment-dialog"
         role="dialog"
         aria-modal="true"
         aria-labelledby="comment-dialog-title"
-        (click)="$event.stopPropagation()"
       >
         <h2 id="comment-dialog-title">Editar comentario</h2>
         <p>

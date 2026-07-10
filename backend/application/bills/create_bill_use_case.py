@@ -93,6 +93,7 @@ class CreateBillUseCase:
             cleaning_type_id=cleaning_type.cleaning_type_id,
             cleaning_type_name=cleaning_type.name,
             state=BILL_STATE_CREATED,
+            created_at=date.today(),
         )
         return self._bill_repository.create(bill)
 

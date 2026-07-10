@@ -4,10 +4,10 @@ Modelo ORM de SQLAlchemy para la tabla 'bills'.
 Una factura representa la limpieza realizada en un apartamento tras una reserva.
 """
 
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 
-from sqlalchemy import Date, ForeignKey, Integer, Numeric, String
+from sqlalchemy import Date, DateTime, ForeignKey, Integer, Numeric, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from infrastructure.database.base import Base
@@ -56,10 +56,33 @@ class BillORM(Base):
     # Estado
     state: Mapped[str] = mapped_column("State", String(100), nullable=False, default="Creada")
 
-    # Fecha de pago (solo cuando el estado es "Pagada")
+    # Fecha de pago declarada por la limpiadora al confirmar (puede constar ya con la
+    # factura aún en "Creada", a la espera de la confirmación de administración)
     paid_at: Mapped[date | None] = mapped_column("Paid At", Date, nullable=True)
+
+    # Confirmaciones de pago por rol. La factura solo pasa a "Pagada" cuando ambas
+    # partes (administración y limpiadora) han confirmado; cada columna guarda el
+    # instante exacto (fecha + hora) en que esa parte confirmó, junto con el nombre
+    # completo de quien confirmó (congelado, como snapshot histórico) para mostrar
+    # "Pago confirmado por <Nombre Apellidos> el día <fecha> a las <hora>".
+    paid_confirmed_by_admin: Mapped[datetime | None] = mapped_column(
+        "Paid Confirmed By Admin", DateTime, nullable=True
+    )
+    paid_confirmed_by_admin_name: Mapped[str | None] = mapped_column(
+        "Paid Confirmed By Admin Name", String(200), nullable=True
+    )
+    paid_confirmed_by_cleaner: Mapped[datetime | None] = mapped_column(
+        "Paid Confirmed By Cleaner", DateTime, nullable=True
+    )
+    paid_confirmed_by_cleaner_name: Mapped[str | None] = mapped_column(
+        "Paid Confirmed By Cleaner Name", String(200), nullable=True
+    )
 
     # Nota explicativa (solo cuando el estado es "Cancelada")
     cancellation_note: Mapped[str | None] = mapped_column(
         "Cancellation Note", String(500), nullable=True
     )
+
+    # Fecha de generación de la factura (congelada). El nombre físico evita colisión
+    # con la columna heredada "Created At", que en realidad almacena cleaning_date.
+    created_at: Mapped[date | None] = mapped_column("Bill Created At", Date, nullable=True)

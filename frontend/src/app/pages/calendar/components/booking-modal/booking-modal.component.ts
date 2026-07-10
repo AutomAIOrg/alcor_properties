@@ -5,6 +5,7 @@ import { Booking, BASE_STATUSES } from '../../../../models/booking.model';
 import { BookingColorPipe } from '../../../../pipes/booking-color.pipe';
 import { BookingService } from '../../../../services/booking.service';
 import { AuthService } from '../../../../auth/auth.service';
+import { DismissableBackdropDirective } from '../../../../shared/directives/dismissable-backdrop.directive';
 
 type DraftInputField =
   | 'guest_name'
@@ -25,7 +26,7 @@ type DraftSelectField = 'status';
 @Component({
   selector: 'app-booking-modal',
   standalone: true,
-  imports: [CurrencyPipe, DatePipe, BookingColorPipe, FormsModule],
+  imports: [CurrencyPipe, DatePipe, BookingColorPipe, FormsModule, DismissableBackdropDirective],
   templateUrl: './booking-modal.component.html',
   styleUrl: './booking-modal.component.scss',
 })

@@ -92,18 +92,40 @@ class TestCleaningTypeDrivenBillCreation:
 
 
 class TestBillStateLifecycle:
-    def test_full_state_cycle(self, e2e_client, admin_auth_headers):
+    def test_full_state_cycle(self, e2e_client, admin_auth_headers, cleaner_auth_headers):
         bill_id = _create_booking_and_bill(e2e_client, admin_auth_headers, "STATE-001")
 
+        # Primera confirmación (admin): la factura sigue Creada, con la confirmación anotada.
+        # La fecha de pago que envía administración se ignora (la declara la limpiadora).
+        r = e2e_client.put(
+            f"/api/v1/bills/{bill_id}",
+            json={"state": "Pagada", "paid_at": "2026-08-05"},
+            headers=admin_auth_headers,
+        )
+        assert r.status_code == 200
+        assert r.json()["state"] == "Creada"
+        assert r.json()["paid_at"] is None
+        # La confirmación registra el instante exacto (fecha + hora), no la fecha de pago.
+        admin_confirmation = r.json()["paid_confirmed_by_admin"]
+        assert admin_confirmation is not None and "T" in admin_confirmation
+        assert r.json()["paid_confirmed_by_admin_name"] == "Admin User"
+        assert r.json()["paid_confirmed_by_cleaner"] is None
+
+        # Segunda confirmación (limpiadora): la factura pasa a Pagada con la fecha de
+        # pago que declara la limpiadora.
         r = e2e_client.put(
             f"/api/v1/bills/{bill_id}",
             json={"state": "Pagada", "paid_at": "2026-08-06"},
-            headers=admin_auth_headers,
+            headers=cleaner_auth_headers,
         )
         assert r.status_code == 200
         assert r.json()["state"] == "Pagada"
         assert r.json()["paid_at"] == "2026-08-06"
+        cleaner_confirmation = r.json()["paid_confirmed_by_cleaner"]
+        assert cleaner_confirmation is not None and "T" in cleaner_confirmation
+        assert r.json()["paid_confirmed_by_cleaner_name"] == "Limpiadora Test"
 
+        # Revertir a Creada limpia la fecha de pago y ambas confirmaciones.
         r = e2e_client.put(
             f"/api/v1/bills/{bill_id}",
             json={"state": "Creada"},
@@ -111,6 +133,8 @@ class TestBillStateLifecycle:
         )
         assert r.status_code == 200
         assert r.json()["paid_at"] is None
+        assert r.json()["paid_confirmed_by_admin"] is None
+        assert r.json()["paid_confirmed_by_cleaner"] is None
 
         r = e2e_client.put(
             f"/api/v1/bills/{bill_id}",
@@ -127,6 +151,25 @@ class TestBillStateLifecycle:
         )
         assert r.status_code == 200
         assert r.json()["state"] == "Creada"
+
+    def test_same_role_cannot_confirm_payment_twice(self, e2e_client, admin_auth_headers):
+        bill_id = _create_booking_and_bill(e2e_client, admin_auth_headers, "STATE-DOUBLE-001")
+
+        r = e2e_client.put(
+            f"/api/v1/bills/{bill_id}",
+            json={"state": "Pagada"},
+            headers=admin_auth_headers,
+        )
+        assert r.status_code == 200
+        assert r.json()["state"] == "Creada"
+
+        r = e2e_client.put(
+            f"/api/v1/bills/{bill_id}",
+            json={"state": "Pagada"},
+            headers=admin_auth_headers,
+        )
+        assert r.status_code == 422
+        assert "ya ha confirmado" in r.json()["detail"]
 
     def test_cancel_with_note_stores_and_clears_on_reactivation(
         self, e2e_client, admin_auth_headers
@@ -151,14 +194,23 @@ class TestBillStateLifecycle:
         assert r.status_code == 200
         assert r.json()["cancellation_note"] is None
 
-    def test_invalid_transition_returns_422(self, e2e_client, admin_auth_headers):
+    def test_invalid_transition_returns_422(
+        self, e2e_client, admin_auth_headers, cleaner_auth_headers
+    ):
         bill_id = _create_booking_and_bill(e2e_client, admin_auth_headers, "STATE-002")
 
+        # Pago completo: confirman ambas partes.
         e2e_client.put(
             f"/api/v1/bills/{bill_id}",
             json={"state": "Pagada"},
             headers=admin_auth_headers,
         )
+        r = e2e_client.put(
+            f"/api/v1/bills/{bill_id}",
+            json={"state": "Pagada"},
+            headers=cleaner_auth_headers,
+        )
+        assert r.json()["state"] == "Pagada"
 
         r = e2e_client.put(
             f"/api/v1/bills/{bill_id}",

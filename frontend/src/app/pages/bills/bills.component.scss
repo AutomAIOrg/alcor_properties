@@ -32,14 +32,6 @@
   gap: 1rem;
 }
 
-.eyebrow {
-  color: #2563eb;
-  font-size: 0.76rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
 .filter-card,
 .detail-card {
   padding: 1rem 1.25rem;
@@ -162,6 +154,26 @@ table {
   }
 }
 
+// El chip de estado es un botón que abre el recibo de la factura ya creada.
+button.bill-state-chip {
+  border: none;
+  font-family: inherit;
+  cursor: pointer;
+
+  &:hover {
+    filter: brightness(0.95);
+  }
+
+  // Mismo tamaño que .invoice-btn de Organización Limpiezas cuando la factura
+  // está Creada o Pagada; conserva sus colores. Las canceladas mantienen el
+  // tamaño de chip pequeño.
+  &:not(.cancelled) {
+    padding: 0.4rem 0.7rem;
+    border-radius: 8px;
+    font-size: 0.8rem;
+  }
+}
+
 .cancellation-note {
   margin: 0.3rem 0 0;
   max-width: 220px;
@@ -171,6 +183,22 @@ table {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.paid-confirmation-hint {
+  margin: 0.3rem 0 0;
+  max-width: 220px;
+  color: #b54708;
+  font-size: 0.76rem;
+  // La frase completa ("Pago confirmado por <Nombre> el día <fecha>") debe leerse
+  // entera: envuelve en varias líneas en vez de truncarse con puntos suspensivos.
+  overflow-wrap: anywhere;
+}
+
+.dialog-hint {
+  margin: 0.5rem 0 0;
+  color: #667085;
+  font-size: 0.82rem;
 }
 
 .refactored-badge {
@@ -195,27 +223,75 @@ table {
 }
 
 .action-btn {
-  padding: 0.3rem 0.55rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.7rem;
   border: 1px solid #d0d5dd;
   border-radius: 8px;
   background: #fff;
   color: #344054;
-  font-size: 0.75rem;
+  font-size: 0.78rem;
   font-weight: 700;
   cursor: pointer;
+  white-space: nowrap;
+  transition:
+    background 0.15s,
+    border-color 0.15s,
+    color 0.15s,
+    box-shadow 0.15s;
+
+  // Icono a la izquierda del texto (según la variante). Se implementa con un
+  // pseudo-elemento para no alterar el textContent del botón.
+  &::before {
+    font-size: 0.9rem;
+    line-height: 1;
+  }
 
   &:hover:not(:disabled) {
     background: #f9fafb;
   }
 
-  &.danger {
-    border-color: #fecaca;
-    color: #b42318;
-  }
-
   &:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+  }
+
+  // ── Confirmar pago: acción principal positiva, verde y destacada ──────────
+  &.pay {
+    border-color: #16a34a;
+    background: #16a34a;
+    color: #fff;
+    box-shadow: 0 1px 2px rgba(22, 163, 74, 0.25);
+
+    &::before {
+      content: '✓';
+    }
+
+    &:hover:not(:disabled) {
+      background: #15803d;
+      border-color: #15803d;
+    }
+  }
+
+  // ── Cancelar: acción destructiva ──────────────────────────────────────────
+  &.danger {
+    border-color: #fda29b;
+    color: #b42318;
+
+    &::before {
+      content: '✕';
+    }
+
+    &:hover:not(:disabled) {
+      background: #fef3f2;
+      border-color: #f04438;
+    }
+  }
+
+  // ── Revertir / Reactivar: deshacer, estilo neutro ─────────────────────────
+  &.revert::before {
+    content: '↩';
   }
 }
 
@@ -301,6 +377,13 @@ table {
   justify-content: center;
   padding: 1rem;
   background: rgba(16, 24, 40, 0.48);
+}
+
+// El recibo necesita más ancho que un diálogo de confirmación y scroll propio.
+.confirm-dialog.receipt-dialog {
+  max-width: 680px;
+  max-height: calc(100vh - 2rem);
+  overflow-y: auto;
 }
 
 .confirm-dialog {

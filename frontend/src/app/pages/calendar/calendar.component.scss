@@ -20,9 +20,16 @@
 // El borde redondeado y el overflow:hidden están en el wrapper para que
 // las celdas internas puedan tener overflow:visible sin romper el recorte.
 .calendar-grid-wrapper {
+  // Ancho del gutter de número de semana. Se hereda por los week-row hijos
+  // (las custom properties atraviesan la encapsulación de componentes).
+  --week-num-w: 34px;
   border-radius: 8px;
   overflow: hidden;
   border: 1px solid #eaecf0;
+
+  @media (max-width: 768px) {
+    --week-num-w: 26px;
+  }
 }
 
 .calendar-error,
@@ -360,7 +367,8 @@
 // en el padre simula los separadores verticales entre celdas.
 .weekday-header-row {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
+  // Primera columna = gutter del nº de semana; alineada con los week-row.
+  grid-template-columns: var(--week-num-w) repeat(7, 1fr);
   column-gap: 1px;
   background: #eaecf0;
   border-bottom: 1px solid #eaecf0;
@@ -374,6 +382,22 @@
   font-weight: 600;
   color: #667085;
   padding: 0.5rem 0;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+// Cabecera de la columna del número de semana (celda de esquina).
+// No es una cabecera de día, así que usa su propia clase pero comparte el
+// aspecto de la fila (fondo, centrado) para alinearse con los días.
+.week-number-header {
+  min-width: 0;
+  background: #f9fafb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.62rem;
+  font-weight: 600;
+  color: #98a2b3;
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
