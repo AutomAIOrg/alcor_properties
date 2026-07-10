@@ -1,0 +1,69 @@
+# Orquestación de producción en VPS.
+# MySQL NO se incluye: usar la base de datos externa del cliente.
+#
+# Uso:
+#   cp .env.production.example .env.production   # rellenar valores reales
+#   docker compose -f docker-compose.prod.yml config
+#   docker compose -f docker-compose.prod.yml up -d --build
+
+name: alcor-prod
+
+services:
+  migrate:
+    image: alcor-backend:${IMAGE_TAG:-latest}
+    env_file:
+      - .env.production
+    environment:
+      ALCOR_IGNORE_ENV_FILE: "1"
+    entrypoint: ["alembic"]
+    command: ["upgrade", "head"]
+    restart: "no"
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    image: alcor-backend:${IMAGE_TAG:-latest}
+    env_file:
+      - .env.production
+    environment:
+      ALCOR_IGNORE_ENV_FILE: "1"
+    expose:
+      - "8000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  web:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    image: alcor-web:${IMAGE_TAG:-latest}
+    env_file:
+      - .env.production
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  caddy_data:
+  caddy_config:

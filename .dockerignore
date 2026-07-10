@@ -1,0 +1,44 @@
+# Exclusiones globales para builds Docker (contexto: raíz del repo)
+
+.git
+.gitignore
+.cursor
+agent-transcripts
+
+# Entornos virtuales y cachés Python
+**/.venv
+**/venv
+**/env
+**/__pycache__
+**/.pytest_cache
+**/.mypy_cache
+**/.ruff_cache
+**/.coverage
+**/htmlcov
+**/*.pyc
+
+# Node / Angular
+**/node_modules
+frontend/dist
+frontend/.angular
+frontend/coverage
+frontend/tmp
+frontend/out-tsc
+
+# Secretos y configuración local
+.env
+.env.*
+!.env.production.example
+backend/.env
+**/.env
+
+# Datos locales de desarrollo (no necesarios en imagen)
+db/init/*.sql
+
+# Artefactos IDE
+**/.vscode
+**/.idea
+
+# Documentación y planes (no afectan al runtime)
+**/*.md
+!README.md

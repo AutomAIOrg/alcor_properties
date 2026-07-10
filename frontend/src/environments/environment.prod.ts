@@ -1,4 +1,5 @@
 export const environment = {
   production: true,
-  apiUrl: 'https://tu-api.com', // TODO: reemplazar con la URL real del backend en producción
+  // Vacío = mismo origen; Caddy enruta /api/* al backend en producción.
+  apiUrl: '',
 };
