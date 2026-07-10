@@ -124,3 +124,13 @@ async def bill_document_already_exists_error_handler(
 ) -> JSONResponse:
     """Devuelve un error 409 cuando el documento de factura ya existe."""
     return JSONResponse(status_code=409, content={"detail": str(exc)})
+
+
+async def bill_document_not_found_error_handler(request: Request, exc: Exception) -> JSONResponse:
+    """Devuelve un error 404 cuando no se encuentra el documento de factura."""
+    return JSONResponse(status_code=404, content={"detail": str(exc)})
+
+
+async def bill_document_not_updated_error_handler(request: Request, exc: Exception) -> JSONResponse:
+    """Devuelve un error 409 cuando no se puede actualizar el documento de factura."""
+    return JSONResponse(status_code=409, content={"detail": str(exc)})

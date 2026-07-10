@@ -16,6 +16,8 @@ from api.error_handlers import (
     apartment_not_found_error_handler,
     bill_already_exists_error_handler,
     bill_document_already_exists_error_handler,
+    bill_document_not_found_error_handler,
+    bill_document_not_updated_error_handler,
     bill_document_render_error_handler,
     bill_not_found_error_handler,
     booking_conflict_handler,
@@ -41,6 +43,8 @@ from domain.exceptions import (
     ApartmentNotFoundError,
     BillAlreadyExistsError,
     BillDocumentAlreadyExistsError,
+    BillDocumentNotFoundError,
+    BillDocumentNotUpdatedError,
     BillDocumentRenderError,
     BillNotFoundError,
     BookingConflict,
@@ -110,6 +114,8 @@ app.add_exception_handler(
 )
 app.add_exception_handler(FileStorageError, file_storage_error_handler)
 app.add_exception_handler(BillDocumentRenderError, bill_document_render_error_handler)
+app.add_exception_handler(BillDocumentNotFoundError, bill_document_not_found_error_handler)
+app.add_exception_handler(BillDocumentNotUpdatedError, bill_document_not_updated_error_handler)
 app.add_exception_handler(
     BillDocumentAlreadyExistsError, bill_document_already_exists_error_handler
 )

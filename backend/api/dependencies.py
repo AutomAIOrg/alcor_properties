@@ -29,6 +29,8 @@ from application.bills.generate_and_store_bill_document_use_case import (
     GenerateAndStoreBillDocumentUseCase,
 )
 from application.bills.list_bills_use_cases import ListBillsUseCase, ListPendingBillsUseCase
+from application.bills.move_paid_bill_document_use_case import MovePaidBillDocumentUseCase
+from application.bills.retry_bill_document_sync_use_case import RetryBillDocumentSyncUseCase
 from application.bills.update_bill_use_case import UpdateBillStateUseCase
 from application.bookings.commands import (
     CreateBookingUseCase,
@@ -455,6 +457,38 @@ def get_generate_and_store_bill_document_use_case(
 ) -> GenerateAndStoreBillDocumentUseCase:
     """Inyección de dependencias para generar y almacenar documento de factura en NAS."""
     return GenerateAndStoreBillDocumentUseCase(
+        bill_repository,
+        document_repository,
+        pdf_renderer,
+        file_storage,
+        settings.NAS_BASE_PATH,
+    )
+
+
+def get_move_paid_bill_document_use_case(
+    bill_repository: IBillRepository = Depends(get_bill_repository),
+    document_repository: IBillDocumentRepository = Depends(get_bill_document_repository),
+    pdf_renderer: IBillPdfRenderer = Depends(get_bill_pdf_renderer),
+    file_storage: IFileStorage = Depends(get_file_storage),
+) -> MovePaidBillDocumentUseCase:
+    """Inyección de dependencias para mover documento de factura pagada en NAS."""
+    return MovePaidBillDocumentUseCase(
+        bill_repository,
+        document_repository,
+        pdf_renderer,
+        file_storage,
+        settings.NAS_BASE_PATH,
+    )
+
+
+def get_retry_bill_document_sync_use_case(
+    bill_repository: IBillRepository = Depends(get_bill_repository),
+    document_repository: IBillDocumentRepository = Depends(get_bill_document_repository),
+    pdf_renderer: IBillPdfRenderer = Depends(get_bill_pdf_renderer),
+    file_storage: IFileStorage = Depends(get_file_storage),
+) -> RetryBillDocumentSyncUseCase:
+    """Inyección de dependencias para reintentar sincronizaciones documentales con NAS."""
+    return RetryBillDocumentSyncUseCase(
         bill_repository,
         document_repository,
         pdf_renderer,
