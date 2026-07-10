@@ -1,5 +1,8 @@
 """baseline
 
+Esquema heredado: apartamentos, reservas y columnas de notas/color añadidas
+posteriormente en desarrollo, consolidadas aquí para el despliegue inicial.
+
 Revision ID: c796a5e365dc
 Revises:
 Create Date: 2026-05-17 18:12:37.452783
@@ -21,7 +24,7 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
-    """Create the empty legacy app schema used as Alembic baseline."""
+    """Create the legacy core schema (apartments and bookings)."""
     op.create_table(
         "Apartamentos",
         sa.Column("Booking ID", mysql.CHAR(10), nullable=False),
@@ -35,6 +38,7 @@ def upgrade() -> None:
         sa.Column("Owner Name", sa.String(50), nullable=True),
         sa.Column("Email", sa.String(35), nullable=True),
         sa.Column("Nº Telefono", sa.String(15), nullable=True),
+        sa.Column("Color", sa.String(length=7), nullable=True),
         sa.PrimaryKeyConstraint("Booking ID"),
         mysql_engine="InnoDB",
         mysql_charset="utf8mb4",
@@ -67,6 +71,8 @@ def upgrade() -> None:
             "Comm y Cargos", sa.Numeric(10, 2), server_default=sa.text("0.00"), nullable=True
         ),
         sa.Column("Precio", sa.Numeric(10, 2), server_default=sa.text("0.00"), nullable=True),
+        sa.Column("Notes", sa.Text(), nullable=True),
+        sa.Column("Notes_Cleaning", sa.Text(), nullable=True),
         sa.PrimaryKeyConstraint("ID"),
         sa.UniqueConstraint("ID", name="ID"),
         mysql_engine="InnoDB",
