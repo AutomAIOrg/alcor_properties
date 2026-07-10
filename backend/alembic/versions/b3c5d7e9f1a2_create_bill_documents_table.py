@@ -1,7 +1,7 @@
 """create_bill_documents_table
 
 Revision ID: b3c5d7e9f1a2
-Revises: a1c3e5d7b9f2
+Revises: b8d0f2a4c6e8
 Create Date: 2026-07-06 19:45:00.000000
 
 """
@@ -13,7 +13,7 @@ import sqlalchemy as sa
 from alembic import op
 
 revision: str = "b3c5d7e9f1a2"
-down_revision: str | Sequence[str] | None = "a1c3e5d7b9f2"
+down_revision: str | Sequence[str] | None = "b8d0f2a4c6e8"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
