@@ -349,10 +349,10 @@
             [value]="rectifyCleaningTypeId() ?? ''"
             (change)="updateRectifyCleaningType($event)"
           >
-            <option value="" disabled>Selecciona un tipo</option>
+            <option value="" disabled>Selecciona un tipo de limpieza</option>
             @for (type of cleaningTypes(); track type.cleaning_type_id) {
               <option [value]="type.cleaning_type_id">
-                {{ type.name }} ({{ type.hourly_rate | currency: 'EUR' : 'symbol' : '1.2-2' }}/h)
+                {{ type.name }} · {{ type.hourly_rate | currency: 'EUR' : 'symbol' : '1.2-2' }}/h
               </option>
             }
           </select>

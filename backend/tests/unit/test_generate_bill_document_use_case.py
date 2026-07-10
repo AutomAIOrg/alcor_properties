@@ -55,6 +55,8 @@ def test_generates_pdf_and_saves_to_output_dir(tmp_path: Path) -> None:
     assert output_path.exists()
     assert output_path.read_bytes().startswith(b"%PDF")
     assert output_path.parent == tmp_path
+    # Nombre del archivo: <PISO>_LIMPIEZA_<DD_MM_AAAA>.pdf con la fecha de la limpieza.
+    assert output_path.name == "R180_LIMPIEZA_01_06_2026.pdf"
     # La dirección se resuelve desde el repositorio de apartamentos.
     assert renderer.received is not None
     assert renderer.received.address == "Calle Glaucio 15"

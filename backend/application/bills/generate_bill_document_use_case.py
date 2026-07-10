@@ -96,5 +96,7 @@ class GenerateBillDocumentUseCase:
 
     @staticmethod
     def _filename(bill: Bill) -> str:
-        date_part = bill.cleaning_date.strftime("%Y%m%d") if bill.cleaning_date else "sinfecha"
-        return f"factura_{bill.bill_id}_{bill.apartment_id}_{date_part}.pdf"
+        # Formato: <PISO>_LIMPIEZA_<DD_MM_AAAA>.pdf  (p. ej. R180_LIMPIEZA_10_07_2026.pdf).
+        # La fecha es la de la limpieza facturada.
+        date_part = bill.cleaning_date.strftime("%d_%m_%Y") if bill.cleaning_date else "sinfecha"
+        return f"{bill.apartment_id}_LIMPIEZA_{date_part}.pdf"

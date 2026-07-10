@@ -416,7 +416,8 @@ button.bill-state-chip {
   font-weight: 700;
 
   input,
-  textarea {
+  textarea,
+  select {
     padding: 0.55rem 0.7rem;
     border: 1px solid #d0d5dd;
     border-radius: 8px;
@@ -426,6 +427,26 @@ button.bill-state-chip {
 
     &:focus {
       border-color: #2563eb;
+    }
+  }
+
+  // El desplegable de tipo de limpieza se muestra con el mismo formato que en el modal
+  // de generar factura (Organización Limpiezas): fondo blanco, foco resaltado y estados.
+  select {
+    width: 100%;
+    background: #fff;
+    color: #101828;
+    font-weight: 500;
+    cursor: pointer;
+
+    &:focus {
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+    }
+
+    &:disabled {
+      background: #f2f4f7;
+      color: #98a2b3;
+      cursor: not-allowed;
     }
   }
 
