@@ -94,7 +94,8 @@ export class BillsComponent implements OnInit, OnDestroy {
   cleaningTypes = signal<CleaningType[]>([]);
   rectifyingBill = signal<Bill | null>(null);
   rectifyDate = signal('');
-  rectifyHours = signal('');
+  rectifyStartTime = signal('');
+  rectifyEndTime = signal('');
   rectifyCleaningTypeId = signal<number | null>(null);
 
   // Tipo de limpieza seleccionado en el modal de rectificación (para mostrar la tarifa).
@@ -104,15 +105,28 @@ export class BillsComponent implements OnInit, OnDestroy {
       null
   );
 
+  // Horas derivadas del intervalo inicio–fin, igual que en el modal de crear factura
+  // (no se teclean a mano); null si el intervalo no es válido.
+  rectifyHours = computed<number | null>(() =>
+    this.computeHours(this.rectifyDate(), this.rectifyStartTime(), this.rectifyEndTime())
+  );
+
   // Coste recalculado (horas × tarifa) mientras se rectifica; null si faltan datos válidos.
   rectifyCost = computed<number | null>(() => {
-    const hours = this.parseOptionalNumber(this.rectifyHours());
+    const hours = this.rectifyHours();
     const type = this.rectifySelectedType();
-    if (hours === null || hours <= 0 || type === null) return null;
+    if (hours === null || type === null) return null;
     return Math.round(hours * type.hourly_rate * 100) / 100;
   });
 
-  isRectifyValid = computed<boolean>(() => this.rectifyCost() !== null && !!this.rectifyDate());
+  isRectifyValid = computed<boolean>(
+    () =>
+      !!this.rectifyDate() &&
+      !!this.rectifyStartTime() &&
+      !!this.rectifyEndTime() &&
+      this.rectifyHours() !== null &&
+      this.rectifySelectedType() !== null
+  );
 
   readonly billTransitionLabel = billTransitionLabel;
   readonly billStateLabel = billStateLabel;
@@ -357,13 +371,18 @@ export class BillsComponent implements OnInit, OnDestroy {
     this.applyTransition(bill, 'Pagada', this.paidAtDate());
   }
 
-  // Abre el modal de rectificación con los datos actuales de la factura.
+  // Abre el modal de rectificación con los datos actuales de la factura (mismo aspecto que
+  // el modal de crear factura). La factura solo almacena el total de horas —no el intervalo
+  // original—, así que se reconstruye un tramo desde las 10:00 que produce esas mismas horas
+  // para prerrellenar "Hora inicio"/"Hora fin".
   openRectify(bill: Bill): void {
     if (!this.canRectifyBill(bill) || this.isUpdating()) return;
     this.rectifyingBill.set(bill);
     this.rectifyDate.set(bill.cleaning_date ?? '');
-    this.rectifyHours.set(bill.clean_hours != null ? String(bill.clean_hours) : '');
     this.rectifyCleaningTypeId.set(bill.cleaning_type_id);
+    const hours = bill.clean_hours ?? 0;
+    this.rectifyStartTime.set('10:00');
+    this.rectifyEndTime.set(this.addHoursToTime('10:00', hours));
   }
 
   closeRectifyModal(): void {
@@ -375,8 +394,12 @@ export class BillsComponent implements OnInit, OnDestroy {
     this.rectifyDate.set((event.target as HTMLInputElement).value);
   }
 
-  updateRectifyHours(event: Event): void {
-    this.rectifyHours.set((event.target as HTMLInputElement).value);
+  updateRectifyStartTime(event: Event): void {
+    this.rectifyStartTime.set((event.target as HTMLInputElement).value);
+  }
+
+  updateRectifyEndTime(event: Event): void {
+    this.rectifyEndTime.set((event.target as HTMLInputElement).value);
   }
 
   updateRectifyCleaningType(event: Event): void {
@@ -386,14 +409,13 @@ export class BillsComponent implements OnInit, OnDestroy {
 
   confirmRectify(): void {
     const bill = this.rectifyingBill();
-    const hours = this.parseOptionalNumber(this.rectifyHours());
+    const hours = this.rectifyHours();
     const cleaningTypeId = this.rectifyCleaningTypeId();
     if (
       !bill?.bill_id ||
       this.isUpdating() ||
-      !this.rectifyDate() ||
+      !this.isRectifyValid() ||
       hours === null ||
-      hours <= 0 ||
       cleaningTypeId === null
     ) {
       return;
@@ -425,8 +447,28 @@ export class BillsComponent implements OnInit, OnDestroy {
   private resetRectify(): void {
     this.rectifyingBill.set(null);
     this.rectifyDate.set('');
-    this.rectifyHours.set('');
+    this.rectifyStartTime.set('');
+    this.rectifyEndTime.set('');
     this.rectifyCleaningTypeId.set(null);
+  }
+
+  // Horas del intervalo inicio–fin (mismo cálculo que el modal de crear factura).
+  private computeHours(cleaningDate: string, startTime: string, endTime: string): number | null {
+    if (!cleaningDate || !startTime || !endTime) return null;
+    const start = new Date(`${cleaningDate}T${startTime}`);
+    const end = new Date(`${cleaningDate}T${endTime}`);
+    if (end <= start) return null;
+    const seconds = (end.getTime() - start.getTime()) / 1000;
+    return Math.round((seconds / 3600) * 100) / 100;
+  }
+
+  // Suma un número de horas (admite fracciones) a una hora "HH:MM" y devuelve "HH:MM".
+  private addHoursToTime(time: string, hours: number): string {
+    const [h, m] = time.split(':').map(Number);
+    const total = h * 60 + m + Math.round(hours * 60);
+    const hh = Math.floor(total / 60) % 24;
+    const mm = total % 60;
+    return `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
   }
 
   private applyTransition(bill: Bill, targetState: BillState, paidAt?: string): void {

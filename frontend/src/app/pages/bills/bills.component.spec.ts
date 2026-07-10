@@ -372,12 +372,18 @@ describe('BillsComponent', () => {
     component.openRectify(makeBill());
     fixture.detectChanges();
 
-    // El modal precarga los datos actuales de la factura.
+    // El modal precarga los datos actuales de la factura: la factura base tiene 2 h, por lo
+    // que el intervalo reconstruido es 10:00–12:00.
     expect(fixture.nativeElement.querySelector('#rectify-bill-title')).not.toBeNull();
+    expect(component.rectifyStartTime()).toBe('10:00');
+    expect(component.rectifyEndTime()).toBe('12:00');
 
+    // Las horas se derivan del intervalo inicio–fin, no se teclean a mano.
     component.rectifyDate.set('2026-07-01');
-    component.rectifyHours.set('3');
+    component.rectifyStartTime.set('10:00');
+    component.rectifyEndTime.set('13:00');
     component.rectifyCleaningTypeId.set(2);
+    expect(component.rectifyHours()).toBe(3);
     // Coste recalculado: 3 h × 25 €/h = 75 €.
     expect(component.rectifyCost()).toBe(75);
 
@@ -402,7 +408,8 @@ describe('BillsComponent', () => {
 
     component.openRectify(makeBill());
     component.rectifyDate.set('2026-07-01');
-    component.rectifyHours.set('3');
+    component.rectifyStartTime.set('10:00');
+    component.rectifyEndTime.set('13:00');
     component.rectifyCleaningTypeId.set(2);
     component.confirmRectify();
     fixture.detectChanges();

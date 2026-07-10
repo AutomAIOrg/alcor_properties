@@ -327,23 +327,6 @@
         </p>
 
         <label class="dialog-field">
-          Fecha de limpieza
-          <input type="date" [value]="rectifyDate()" (input)="updateRectifyDate($event)" />
-        </label>
-
-        <label class="dialog-field">
-          Horas de limpieza
-          <input
-            type="number"
-            min="0"
-            step="0.01"
-            placeholder="0"
-            [value]="rectifyHours()"
-            (input)="updateRectifyHours($event)"
-          />
-        </label>
-
-        <label class="dialog-field">
           Tipo de limpieza
           <select
             [value]="rectifyCleaningTypeId() ?? ''"
@@ -358,16 +341,38 @@
           </select>
         </label>
 
-        <p class="dialog-hint">
-          Coste:
-          <strong>
-            @if (rectifyCost() !== null) {
-              {{ rectifyCost() | currency: 'EUR' : 'symbol' : '1.2-2' }}
-            } @else {
-              —
-            }
-          </strong>
-        </p>
+        <div class="rectify-form-grid">
+          <label class="dialog-field">
+            Fecha de limpieza
+            <input type="date" [value]="rectifyDate()" (input)="updateRectifyDate($event)" />
+          </label>
+
+          <label class="dialog-field">
+            Hora inicio
+            <input
+              type="time"
+              [value]="rectifyStartTime()"
+              (input)="updateRectifyStartTime($event)"
+            />
+          </label>
+
+          <label class="dialog-field">
+            Hora fin
+            <input type="time" [value]="rectifyEndTime()" (input)="updateRectifyEndTime($event)" />
+          </label>
+        </div>
+
+        <div class="dialog-summary">
+          @if (rectifySelectedType() !== null) {
+            <p>
+              <strong>Tarifa:</strong> {{ rectifySelectedType()!.hourly_rate }} €/h
+              @if (rectifyHours() !== null) {
+                · <strong>Horas:</strong> {{ rectifyHours() }} · <strong>Total:</strong>
+                {{ rectifyCost() }} €
+              }
+            </p>
+          }
+        </div>
 
         <div class="dialog-actions">
           <button
