@@ -12,13 +12,13 @@ from starlette.testclient import TestClient
 
 from api.dependencies import get_current_user
 from domain.auth.user_entity import Role
+from domain.bills.bill_document import BILL_DOCUMENT_STATUS_ERROR
 from domain.bills.entity import BILL_STATE_PENDING
 from domain.exceptions import (
     BillAlreadyExistsError,
     BillNotFoundError,
     BookingNotFound,
     DomainValidationError,
-    FileStorageError,
 )
 from main import app
 from tests.helpers import make_bill, make_bill_document, make_user
@@ -53,20 +53,21 @@ class TestCreateBill:
         mock_create_bill_use_case.execute.assert_called_once()
         mock_generate_bill_document_use_case.execute.assert_called_once_with(1, uploaded_by=2)
 
-    def test_nas_failure_returns_502_after_bill_created(
+    def test_nas_failure_returns_201_with_document_error_recorded(
         self,
         bills_api_client,
         mock_create_bill_use_case,
         mock_generate_bill_document_use_case,
     ):
         mock_create_bill_use_case.execute.return_value = make_bill(bill_id=1)
-        mock_generate_bill_document_use_case.execute.side_effect = FileStorageError(
-            "No se pudo almacenar el documento de factura en el NAS."
+        mock_generate_bill_document_use_case.execute.return_value = make_bill_document(
+            status=BILL_DOCUMENT_STATUS_ERROR,
+            last_error="No se pudo almacenar el documento de factura en el NAS.",
         )
 
         response = bills_api_client.post("/api/v1/bills/", json=_VALID_PAYLOAD)
 
-        assert response.status_code == 502
+        assert response.status_code == 201
         mock_create_bill_use_case.execute.assert_called_once()
         mock_generate_bill_document_use_case.execute.assert_called_once_with(1, uploaded_by=2)
 
@@ -82,9 +83,18 @@ class TestCreateBill:
 
 
 class TestUpdateBillState:
-    def test_mark_as_paid_returns_200(self, bills_api_client, mock_update_bill_state_use_case):
+    def test_mark_as_paid_returns_200(
+        self,
+        bills_api_client,
+        mock_update_bill_state_use_case,
+        mock_move_paid_bill_document_use_case,
+    ):
         mock_update_bill_state_use_case.execute.return_value = make_bill(
             bill_id=1, state="Pagada", paid_at=date(2026, 6, 1)
+        )
+        mock_move_paid_bill_document_use_case.execute.return_value = make_bill_document(
+            id=10,
+            nas_path="/facturas/1FACTURAS PAGADAS/TEST-001 LIMPIEZA 01.06.2026.pdf",
         )
 
         response = bills_api_client.put(
@@ -96,9 +106,35 @@ class TestUpdateBillState:
         mock_update_bill_state_use_case.execute.assert_called_once_with(
             1, "Pagada", paid_at=date(2026, 6, 1), cancellation_note=None
         )
+        mock_move_paid_bill_document_use_case.execute.assert_called_once_with(1, uploaded_by=2)
+
+    def test_nas_failure_on_paid_returns_200_with_document_error_recorded(
+        self,
+        bills_api_client,
+        mock_update_bill_state_use_case,
+        mock_move_paid_bill_document_use_case,
+    ):
+        mock_update_bill_state_use_case.execute.return_value = make_bill(
+            bill_id=1, state="Pagada", paid_at=date(2026, 6, 1)
+        )
+        mock_move_paid_bill_document_use_case.execute.return_value = make_bill_document(
+            status=BILL_DOCUMENT_STATUS_ERROR,
+            last_error="No se pudo almacenar el documento de factura pagada en el NAS.",
+        )
+
+        response = bills_api_client.put(
+            "/api/v1/bills/1", json={"state": "Pagada", "paid_at": "2026-06-01"}
+        )
+
+        assert response.status_code == 200
+        mock_update_bill_state_use_case.execute.assert_called_once()
+        mock_move_paid_bill_document_use_case.execute.assert_called_once_with(1, uploaded_by=2)
 
     def test_cancel_with_note_passes_note_to_use_case(
-        self, bills_api_client, mock_update_bill_state_use_case
+        self,
+        bills_api_client,
+        mock_update_bill_state_use_case,
+        mock_move_paid_bill_document_use_case,
     ):
         mock_update_bill_state_use_case.execute.return_value = make_bill(
             bill_id=1, state="Cancelada", cancellation_note="Reserva duplicada"
@@ -114,6 +150,21 @@ class TestUpdateBillState:
         mock_update_bill_state_use_case.execute.assert_called_once_with(
             1, "Cancelada", paid_at=None, cancellation_note="Reserva duplicada"
         )
+        mock_move_paid_bill_document_use_case.execute.assert_not_called()
+
+    def test_reactivate_to_created_does_not_move_document(
+        self,
+        bills_api_client,
+        mock_update_bill_state_use_case,
+        mock_move_paid_bill_document_use_case,
+    ):
+        mock_update_bill_state_use_case.execute.return_value = make_bill(bill_id=1, state="Creada")
+
+        response = bills_api_client.put("/api/v1/bills/1", json={"state": "Creada"})
+
+        assert response.status_code == 200
+        assert response.json()["state"] == "Creada"
+        mock_move_paid_bill_document_use_case.execute.assert_not_called()
 
     def test_invalid_transition_returns_422(
         self, bills_api_client, mock_update_bill_state_use_case
@@ -236,12 +287,14 @@ class TestPermissions:
             get_generate_and_store_bill_document_use_case,
             get_list_bills_use_case,
             get_list_pending_bills_use_case,
+            get_move_paid_bill_document_use_case,
             get_update_bill_state_use_case,
         )
 
         deps = (
             get_create_bill_use_case,
             get_generate_and_store_bill_document_use_case,
+            get_move_paid_bill_document_use_case,
             get_update_bill_state_use_case,
             get_list_bills_use_case,
             get_list_pending_bills_use_case,

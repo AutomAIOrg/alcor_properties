@@ -7,7 +7,7 @@ from datetime import UTC, datetime
 import pytest
 from passlib.context import CryptContext
 
-from domain.bills.bill_document import BillDocument
+from domain.bills.bill_document import BILL_DOCUMENT_STATUS_ERROR, BillDocument
 from domain.exceptions import BillDocumentAlreadyExistsError
 from infrastructure.models.bill import BillORM
 from infrastructure.models.user import UserORM
@@ -94,3 +94,64 @@ class TestSQLAlchemyBillDocumentRepository:
 
         with pytest.raises(BillDocumentAlreadyExistsError, match=str(bill_id)):
             repo.create(duplicate)
+
+    def test_update_changes_nas_path(self, sqlite_session):
+        bill_id, user_id = _seed_bill_and_user(sqlite_session)
+        repo = SQLAlchemyBillDocumentRepository(sqlite_session)
+
+        created = repo.create(
+            BillDocument(
+                bill_id=bill_id,
+                filename="bill_1.pdf",
+                nas_path="/facturas/1FACTURAS PENDIENTE/bill_1.pdf",
+                content_type="application/pdf",
+                size_bytes=128,
+                uploaded_by=user_id,
+                uploaded_at=datetime(2026, 6, 1, 10, 0, tzinfo=UTC),
+            )
+        )
+
+        updated = repo.update(
+            created.model_copy(
+                update={
+                    "filename": "bill_1_paid.pdf",
+                    "nas_path": "/facturas/1FACTURAS PAGADAS/bill_1_paid.pdf",
+                    "size_bytes": 256,
+                    "uploaded_at": datetime(2026, 6, 2, 10, 0, tzinfo=UTC),
+                }
+            )
+        )
+
+        assert updated.filename == "bill_1_paid.pdf"
+        assert updated.nas_path == "/facturas/1FACTURAS PAGADAS/bill_1_paid.pdf"
+        assert updated.size_bytes == 256
+        listed = repo.list_by_bill_id(bill_id)
+        assert len(listed) == 1
+        assert listed[0].nas_path == "/facturas/1FACTURAS PAGADAS/bill_1_paid.pdf"
+
+    def test_list_retryable_returns_due_error_documents(self, sqlite_session):
+        bill_id, user_id = _seed_bill_and_user(sqlite_session)
+        repo = SQLAlchemyBillDocumentRepository(sqlite_session)
+
+        retry_at = datetime(2026, 6, 1, 11, 0, tzinfo=UTC)
+        repo.create(
+            BillDocument(
+                bill_id=bill_id,
+                filename="bill_1.pdf",
+                nas_path="/facturas/1FACTURAS PENDIENTE/bill_1.pdf",
+                content_type="application/pdf",
+                size_bytes=0,
+                uploaded_by=user_id,
+                uploaded_at=datetime(2026, 6, 1, 10, 0, tzinfo=UTC),
+                status=BILL_DOCUMENT_STATUS_ERROR,
+                attempts=1,
+                last_error="NAS caído",
+                next_retry_at=retry_at,
+            )
+        )
+
+        retryable = repo.list_retryable(datetime(2026, 6, 1, 12, 0, tzinfo=UTC))
+
+        assert len(retryable) == 1
+        assert retryable[0].status == BILL_DOCUMENT_STATUS_ERROR
+        assert retryable[0].next_retry_at == retry_at.replace(tzinfo=None)

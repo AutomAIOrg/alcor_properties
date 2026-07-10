@@ -165,12 +165,18 @@ def mock_generate_bill_document_use_case() -> MagicMock:
 
 
 @pytest.fixture
+def mock_move_paid_bill_document_use_case() -> MagicMock:
+    return MagicMock()
+
+
+@pytest.fixture
 def bills_api_client(
     mock_create_bill_use_case: MagicMock,
     mock_update_bill_state_use_case: MagicMock,
     mock_list_bills_use_case: MagicMock,
     mock_list_pending_bills_use_case: MagicMock,
     mock_generate_bill_document_use_case: MagicMock,
+    mock_move_paid_bill_document_use_case: MagicMock,
 ) -> Iterator[TestClient]:
     """
     TestClient de FastAPI con casos de uso de facturas inyectados como mock.
@@ -183,6 +189,7 @@ def bills_api_client(
         get_generate_and_store_bill_document_use_case,
         get_list_bills_use_case,
         get_list_pending_bills_use_case,
+        get_move_paid_bill_document_use_case,
         get_update_bill_state_use_case,
     )
     from main import app
@@ -208,6 +215,9 @@ def bills_api_client(
     app.dependency_overrides[get_generate_and_store_bill_document_use_case] = lambda: (
         mock_generate_bill_document_use_case
     )
+    app.dependency_overrides[get_move_paid_bill_document_use_case] = lambda: (
+        mock_move_paid_bill_document_use_case
+    )
     app.dependency_overrides[get_current_user] = lambda: cleaning_user
 
     try:
@@ -219,6 +229,7 @@ def bills_api_client(
         app.dependency_overrides.pop(get_list_bills_use_case, None)
         app.dependency_overrides.pop(get_list_pending_bills_use_case, None)
         app.dependency_overrides.pop(get_generate_and_store_bill_document_use_case, None)
+        app.dependency_overrides.pop(get_move_paid_bill_document_use_case, None)
         app.dependency_overrides.pop(get_current_user, None)
 
 

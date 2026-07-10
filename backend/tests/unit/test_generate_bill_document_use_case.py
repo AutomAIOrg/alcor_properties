@@ -11,10 +11,10 @@ from application.bills.bill_pdf_renderer_interface import BillPdfData
 from application.bills.generate_and_store_bill_document_use_case import (
     GenerateAndStoreBillDocumentUseCase,
 )
+from domain.bills.bill_document import BILL_DOCUMENT_STATUS_COMPLETED, BILL_DOCUMENT_STATUS_ERROR
 from domain.bills.bill_document_repository import IBillDocumentRepository
 from domain.bills.repository import IBillRepository
 from domain.exceptions import (
-    BillDocumentAlreadyExistsError,
     BillNotFoundError,
     DomainValidationError,
     FileStorageError,
@@ -38,6 +38,7 @@ def _use_case(
         bills.get_by_id.return_value = make_bill(bill_id=1)
     if documents is None:
         documents = MagicMock(spec=IBillDocumentRepository)
+        documents.get_by_bill_id.return_value = None
         documents.list_by_bill_id.return_value = []
         documents.create.side_effect = lambda doc: doc
     if renderer is None:
@@ -56,16 +57,9 @@ class TestGenerateAndStoreBillDocumentUseCase:
         bills = MagicMock(spec=IBillRepository)
         bills.get_by_id.return_value = bill
         documents = MagicMock(spec=IBillDocumentRepository)
+        documents.get_by_bill_id.return_value = None
         documents.list_by_bill_id.return_value = []
-        documents.create.side_effect = lambda doc: make_bill_document(
-            id=10,
-            bill_id=doc.bill_id,
-            filename=doc.filename,
-            nas_path=doc.nas_path,
-            size_bytes=doc.size_bytes,
-            uploaded_by=doc.uploaded_by,
-            uploaded_at=doc.uploaded_at,
-        )
+        documents.create.side_effect = lambda doc: doc.model_copy(update={"id": 10})
         renderer = MagicMock()
         renderer.render.return_value = _PDF_BYTES
         storage = MagicMock()
@@ -75,6 +69,7 @@ class TestGenerateAndStoreBillDocumentUseCase:
 
         assert result.id == 10
         assert result.bill_id == 1
+        assert result.status == BILL_DOCUMENT_STATUS_COMPLETED
         assert result.nas_path.endswith(".pdf")
         renderer.render.assert_called_once_with(
             BillPdfData(
@@ -87,7 +82,7 @@ class TestGenerateAndStoreBillDocumentUseCase:
         )
         storage.upload_bytes.assert_called_once()
         call_kwargs = storage.upload_bytes.call_args.kwargs
-        assert call_kwargs["remote_folder"] == "/facturas/TEST-001 LIMPIEZAS/2026"
+        assert call_kwargs["remote_folder"] == "/facturas/1FACTURAS PENDIENTE"
         assert call_kwargs["content"] == _PDF_BYTES
         documents.create.assert_called_once()
 
@@ -119,15 +114,22 @@ class TestGenerateAndStoreBillDocumentUseCase:
         with pytest.raises(DomainValidationError, match="tarifa"):
             _use_case(bills=bills).execute(1, uploaded_by=2)
 
-    def test_raises_when_nas_upload_fails(self):
+    def test_marks_document_as_error_when_nas_upload_fails(self):
+        documents = MagicMock(spec=IBillDocumentRepository)
+        documents.get_by_bill_id.return_value = None
+        documents.create.side_effect = lambda doc: doc.model_copy(update={"id": 10})
         storage = MagicMock()
         storage.upload_bytes.side_effect = FileStorageError("NAS caído")
 
-        with pytest.raises(FileStorageError, match="NAS"):
-            _use_case(storage=storage).execute(1, uploaded_by=2)
+        result = _use_case(documents=documents, storage=storage).execute(1, uploaded_by=2)
+
+        assert result.status == BILL_DOCUMENT_STATUS_ERROR
+        assert result.last_error is not None
+        assert result.next_retry_at is not None
 
     def test_raises_and_deletes_nas_file_when_db_persist_fails(self):
         documents = MagicMock(spec=IBillDocumentRepository)
+        documents.get_by_bill_id.return_value = None
         documents.list_by_bill_id.return_value = []
         documents.create.side_effect = RuntimeError("db down")
         storage = MagicMock()
@@ -140,6 +142,7 @@ class TestGenerateAndStoreBillDocumentUseCase:
 
     def test_raises_even_when_nas_delete_fails_after_db_persist_error(self):
         documents = MagicMock(spec=IBillDocumentRepository)
+        documents.get_by_bill_id.return_value = None
         documents.list_by_bill_id.return_value = []
         documents.create.side_effect = RuntimeError("db down")
         storage = MagicMock()
@@ -151,21 +154,23 @@ class TestGenerateAndStoreBillDocumentUseCase:
 
         storage.delete.assert_called_once_with("/facturas/2026-06-01/bill_1.pdf")
 
-    def test_raises_when_document_already_exists(self):
+    def test_returns_existing_document_when_document_already_exists(self):
+        existing = make_bill_document()
         documents = MagicMock(spec=IBillDocumentRepository)
-        documents.list_by_bill_id.return_value = [make_bill_document()]
+        documents.get_by_bill_id.return_value = existing
 
-        with pytest.raises(BillDocumentAlreadyExistsError, match="1"):
-            _use_case(documents=documents).execute(1, uploaded_by=2)
+        result = _use_case(documents=documents).execute(1, uploaded_by=2)
 
-    def test_deletes_nas_file_when_document_already_exists_on_persist(self):
+        assert result == existing
+
+    def test_returns_error_document_when_nas_fails_before_persist(self):
         documents = MagicMock(spec=IBillDocumentRepository)
-        documents.list_by_bill_id.return_value = []
-        documents.create.side_effect = BillDocumentAlreadyExistsError(1)
+        documents.get_by_bill_id.return_value = None
+        documents.create.side_effect = lambda doc: doc
         storage = MagicMock()
-        storage.upload_bytes.return_value = "/facturas/2026-06-01/bill_1.pdf"
+        storage.upload_bytes.side_effect = FileStorageError("NAS caído")
 
-        with pytest.raises(BillDocumentAlreadyExistsError):
-            _use_case(documents=documents, storage=storage).execute(1, uploaded_by=2)
+        result = _use_case(documents=documents, storage=storage).execute(1, uploaded_by=2)
 
-        storage.delete.assert_called_once_with("/facturas/2026-06-01/bill_1.pdf")
+        assert result.status == BILL_DOCUMENT_STATUS_ERROR
+        storage.delete.assert_not_called()
