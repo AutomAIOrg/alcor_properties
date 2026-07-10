@@ -58,9 +58,7 @@ def _use_case(
         apartments = MagicMock(spec=IApartmentRepository)
         apartments.get_by_apartment_id.return_value = make_apartment()
 
-    return RetryBillDocumentSyncUseCase(
-        bills, documents, apartments, renderer, storage, _NAS_BASE
-    )
+    return RetryBillDocumentSyncUseCase(bills, documents, apartments, renderer, storage, _NAS_BASE)
 
 
 class TestRetryBillDocumentSyncUseCase:

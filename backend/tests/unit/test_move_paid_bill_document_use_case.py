@@ -46,9 +46,7 @@ def _use_case(
         storage = MagicMock()
         storage.upload_bytes.return_value = _PAID_PATH
 
-    return MovePaidBillDocumentUseCase(
-        bills, documents, apartments, renderer, storage, _NAS_BASE
-    )
+    return MovePaidBillDocumentUseCase(bills, documents, apartments, renderer, storage, _NAS_BASE)
 
 
 class TestMovePaidBillDocumentUseCase:

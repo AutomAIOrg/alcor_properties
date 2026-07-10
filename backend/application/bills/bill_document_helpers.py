@@ -96,8 +96,6 @@ def validate_bill_for_document(bill: Bill) -> None:
     if bill.hourly_rate < 0:
         raise DomainValidationError("La tarifa por hora no puede ser negativa.")
     if bill.cost is None:
-        raise DomainValidationError(
-            "La factura no tiene coste; no se puede generar el documento."
-        )
+        raise DomainValidationError("La factura no tiene coste; no se puede generar el documento.")
     if not bill.apartment_id.strip():
         raise DomainValidationError("El apartamento es obligatorio.")

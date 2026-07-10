@@ -18,6 +18,7 @@ import shutil
 import subprocess
 import tempfile
 from pathlib import Path
+from typing import cast
 
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
@@ -80,7 +81,7 @@ class ChromiumBillPdfRenderer(IBillPdfRenderer):
             ) from exc
 
         context = build_receipt_context(data, self._logo_uri())
-        return template.render(**context)
+        return cast(str, template.render(**context))
 
     def _logo_uri(self) -> str:
         logo_path = self._template_dir / _LOGO_NAME
