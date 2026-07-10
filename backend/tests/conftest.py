@@ -414,9 +414,11 @@ def e2e_client(sqlite_engine):
     """
     TestClient sin mocks de use cases.
 
-    Solo sobreescribe get_db para apuntar a SQLite en lugar de MySQL.
-    El stack completo (use cases + repositorio) es real.
+    Sobreescribe get_db para apuntar a SQLite en lugar de MySQL, y neutraliza la
+    generación del PDF (efecto secundario de infraestructura). El resto del stack
+    (use cases + repositorio) es real.
     """
+    from api.dependencies import get_generate_bill_document_use_case
     from infrastructure.database.session import get_db
     from main import app
 
@@ -430,12 +432,16 @@ def e2e_client(sqlite_engine):
             session.close()
 
     app.dependency_overrides[get_db] = override_get_db
+    # La generación del PDF invoca Chromium (dependencia de sistema): en los tests se
+    # neutraliza con un mock para no depender del navegador ni colgar CI en headless.
+    app.dependency_overrides[get_generate_bill_document_use_case] = lambda: MagicMock()
 
     try:
         with TestClient(app, raise_server_exceptions=True) as client:
             yield client
     finally:
         app.dependency_overrides.pop(get_db, None)
+        app.dependency_overrides.pop(get_generate_bill_document_use_case, None)
 
 
 @pytest.fixture
