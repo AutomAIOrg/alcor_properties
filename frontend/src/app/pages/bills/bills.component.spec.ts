@@ -9,6 +9,7 @@ import { Bill } from '../../models/bill.model';
 import { ApartmentService } from '../../services/apartment.service';
 import { BillService } from '../../services/bill.service';
 import { CalendarLayoutService } from '../../services/calendar-layout.service';
+import { CleaningTypeService } from '../../services/cleaning-type.service';
 
 function makeBill(overrides: Partial<Bill> = {}): Bill {
   return {
@@ -41,13 +42,24 @@ describe('BillsComponent', () => {
   let component: BillsComponent;
   let billServiceSpy: jest.Mocked<BillService>;
   let authServiceSpy: jest.Mocked<AuthService>;
+  let cleaningTypeServiceSpy: jest.Mocked<CleaningTypeService>;
 
   beforeEach(async () => {
     billServiceSpy = {
       listBills: jest.fn().mockReturnValue(of([makeBill()])),
       updateBillState: jest.fn(),
+      rectifyBill: jest.fn(),
       createBill: jest.fn(),
     } as unknown as jest.Mocked<BillService>;
+
+    cleaningTypeServiceSpy = {
+      list: jest.fn().mockReturnValue(
+        of([
+          { cleaning_type_id: 1, name: 'Limpieza normal', hourly_rate: 15, active: true },
+          { cleaning_type_id: 2, name: 'Limpieza profunda', hourly_rate: 25, active: true },
+        ])
+      ),
+    } as unknown as jest.Mocked<CleaningTypeService>;
 
     authServiceSpy = {
       hasPermission: jest.fn().mockReturnValue(true),
@@ -67,6 +79,7 @@ describe('BillsComponent', () => {
             getAllApartmentIds: jest.fn().mockReturnValue(of(['R180', 'R181'])),
           },
         },
+        { provide: CleaningTypeService, useValue: cleaningTypeServiceSpy },
         CalendarLayoutService,
       ],
     }).compileComponents();
@@ -92,7 +105,36 @@ describe('BillsComponent', () => {
     });
   });
 
-  it('muestra acciones para factura creada', () => {
+  it('busca automáticamente al cambiar el desplegable de estado', () => {
+    billServiceSpy.listBills.mockClear();
+
+    const select = fixture.nativeElement.querySelector('.filter-field select') as HTMLSelectElement;
+    select.value = 'Pagada';
+    select.dispatchEvent(new Event('change'));
+
+    expect(billServiceSpy.listBills).toHaveBeenCalledTimes(1);
+    expect(billServiceSpy.listBills).toHaveBeenLastCalledWith({ state: 'Pagada' });
+  });
+
+  it('busca automáticamente con retardo al escribir en un campo de texto', () => {
+    jest.useFakeTimers();
+    billServiceSpy.listBills.mockClear();
+
+    component.updateFilterApartmentId({ target: { value: 'R18' } } as unknown as Event);
+    component.updateFilterApartmentId({ target: { value: 'R180' } } as unknown as Event);
+
+    // Aún no se ha lanzado la petición: el debounce sigue pendiente.
+    expect(billServiceSpy.listBills).not.toHaveBeenCalled();
+
+    jest.advanceTimersByTime(400);
+
+    expect(billServiceSpy.listBills).toHaveBeenCalledTimes(1);
+    expect(billServiceSpy.listBills).toHaveBeenLastCalledWith({ apartment_id: 'R180' });
+
+    jest.useRealTimers();
+  });
+
+  it('muestra acciones para factura creada: confirmar pago y rectificar (ya no cancelar)', () => {
     fixture.detectChanges();
 
     const buttons = [...fixture.nativeElement.querySelectorAll('.action-btn')].map(
@@ -100,7 +142,66 @@ describe('BillsComponent', () => {
     );
 
     expect(buttons).toContain('Confirmar pago');
-    expect(buttons).toContain('Cancelar');
+    expect(buttons).toContain('Rectificar factura');
+    expect(buttons).not.toContain('Cancelar');
+  });
+
+  it('el filtro ofrece los estados esperados (con las etiquetas correctas y sin "Cancelada")', () => {
+    const options = [...fixture.nativeElement.querySelectorAll('.filter-field select option')].map(
+      (option: HTMLOptionElement) => option.textContent?.trim()
+    );
+
+    expect(options).toEqual([
+      'Pendiente',
+      'Pendiente de facturar',
+      'Pendiente de pago',
+      'Pagada',
+      'Todas',
+    ]);
+  });
+
+  it('al entrar filtra por defecto a "Pendiente" (pendiente de facturar + de pago; oculta pagadas)', () => {
+    // El filtro arranca en el combinado "Pendiente".
+    expect(component.filterState()).toBe('unpaid');
+
+    billServiceSpy.listBills.mockReturnValue(
+      of([
+        makeBill({ bill_id: 1, state: 'Creada' }),
+        makeBill({ bill_id: 2, state: 'Pagada', paid_at: '2026-06-05' }),
+        makeBill({ bill_id: null, state: 'Pendiente', record_id: 3, cost: null }),
+      ])
+    );
+    component.searchBills();
+    fixture.detectChanges();
+
+    // Se piden todas al backend (sin estado) y se filtran en cliente.
+    expect(billServiceSpy.listBills).toHaveBeenLastCalledWith({});
+    const states = component.bills().map(bill => bill.state);
+    expect(states).toContain('Creada');
+    expect(states).toContain('Pendiente');
+    expect(states).not.toContain('Pagada');
+  });
+
+  it('muestra el estado "Creada" como "Pendiente de pago" en el chip', () => {
+    fixture.detectChanges();
+
+    const chip: HTMLElement = fixture.nativeElement.querySelector('.bill-state-chip');
+    expect(chip.textContent?.trim()).toBe('Pendiente de pago');
+  });
+
+  it('una factura pagada no muestra acciones: queda solo para previsualización', () => {
+    billServiceSpy.listBills.mockReturnValue(
+      of([makeBill({ state: 'Pagada', paid_at: '2026-06-05' })])
+    );
+    component.filterState.set('Pagada');
+    component.searchBills();
+    fixture.detectChanges();
+
+    // Sin botones de acción (no se puede revertir ni modificar una factura pagada)...
+    expect(fixture.nativeElement.querySelector('.action-btn')).toBeNull();
+    expect(fixture.nativeElement.textContent).not.toContain('Revertir a creada');
+    // ...pero el chip de estado sigue permitiendo abrir el recibo.
+    expect(fixture.nativeElement.querySelector('button.bill-state-chip')).not.toBeNull();
   });
 
   it('oculta "Confirmar pago" cuando el rol actual ya confirmó el pago y muestra quién y cuándo', () => {
@@ -120,7 +221,7 @@ describe('BillsComponent', () => {
     );
 
     expect(buttons).not.toContain('Confirmar pago');
-    expect(buttons).toContain('Cancelar');
+    expect(buttons).toContain('Rectificar factura');
     expect(fixture.nativeElement.textContent).toContain(
       'Pago confirmado por Admin User el día 03/06/2026 a las 14:30'
     );
@@ -139,6 +240,7 @@ describe('BillsComponent', () => {
         }),
       ])
     );
+    component.filterState.set('Pagada');
     component.searchBills();
     fixture.detectChanges();
 
@@ -211,6 +313,7 @@ describe('BillsComponent', () => {
     billServiceSpy.listBills.mockReturnValue(
       of([makeBill({ state: 'Pagada', paid_at: '2026-06-05' })])
     );
+    component.filterState.set('Pagada');
     component.searchBills();
     fixture.detectChanges();
 
@@ -238,6 +341,7 @@ describe('BillsComponent', () => {
         }),
       ])
     );
+    component.filterState.set('Pagada');
     component.searchBills();
     fixture.detectChanges();
 
@@ -278,61 +382,128 @@ describe('BillsComponent', () => {
     expect(component.bills()[0].state).toBe('Pagada');
   });
 
-  it('cancela una factura con nota explicativa desde el modal', () => {
-    billServiceSpy.updateBillState.mockReturnValue(
-      of(makeBill({ state: 'Cancelada', cancellation_note: 'Reserva duplicada' }))
-    );
-
-    component.requestTransition(makeBill(), 'Cancelada');
-    fixture.detectChanges();
-
-    component.cancelNote.set('Reserva duplicada');
-    component.confirmCancel();
-    fixture.detectChanges();
-
-    expect(billServiceSpy.updateBillState).toHaveBeenCalledWith(1, {
-      state: 'Cancelada',
-      cancellation_note: 'Reserva duplicada',
-    });
-    expect(component.bills()[0].state).toBe('Cancelada');
-    expect(component.bills()[0].cancellation_note).toBe('Reserva duplicada');
-  });
-
-  it('cancela sin nota cuando el campo se deja vacío', () => {
-    billServiceSpy.updateBillState.mockReturnValue(of(makeBill({ state: 'Cancelada' })));
-
-    component.requestTransition(makeBill(), 'Cancelada');
-    fixture.detectChanges();
-    component.confirmCancel();
-    fixture.detectChanges();
-
-    expect(billServiceSpy.updateBillState).toHaveBeenCalledWith(1, { state: 'Cancelada' });
-  });
-
-  it('muestra toast de error si falla la actualización de estado', () => {
-    billServiceSpy.updateBillState.mockReturnValue(
-      throwError(
-        () => new HttpErrorResponse({ status: 422, error: { detail: 'Transición inválida' } })
+  it('rectifica una factura creada recalculando el coste y manteniéndola creada', () => {
+    billServiceSpy.rectifyBill.mockReturnValue(
+      of(
+        makeBill({
+          state: 'Creada',
+          cleaning_date: '2026-07-01',
+          clean_hours: 3,
+          hourly_rate: 25,
+          cost: 75,
+          cleaning_type_id: 2,
+          cleaning_type_name: 'Limpieza profunda',
+        })
       )
     );
 
-    component.requestTransition(makeBill(), 'Cancelada');
-    fixture.detectChanges();
-    component.confirmCancel();
+    component.openRectify(makeBill());
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.textContent).toContain('Transición inválida');
+    // El modal precarga los datos actuales de la factura: la factura base tiene 2 h, por lo
+    // que el intervalo reconstruido es 10:00–12:00.
+    expect(fixture.nativeElement.querySelector('#rectify-bill-title')).not.toBeNull();
+    expect(component.rectifyStartTime()).toBe('10:00');
+    expect(component.rectifyEndTime()).toBe('12:00');
+
+    // Las horas se derivan del intervalo inicio–fin, no se teclean a mano.
+    component.rectifyDate.set('2026-07-01');
+    component.rectifyStartTime.set('10:00');
+    component.rectifyEndTime.set('13:00');
+    component.rectifyCleaningTypeId.set(2);
+    expect(component.rectifyHours()).toBe(3);
+    // Coste recalculado: 3 h × 25 €/h = 75 €.
+    expect(component.rectifyCost()).toBe(75);
+
+    component.confirmRectify();
+    fixture.detectChanges();
+
+    expect(billServiceSpy.rectifyBill).toHaveBeenCalledWith(1, {
+      cleaning_date: '2026-07-01',
+      clean_hours: 3,
+      cleaning_type_id: 2,
+    });
+    expect(component.bills()[0].cost).toBe(75);
+    expect(component.bills()[0].state).toBe('Creada');
+    // El modal se cierra tras rectificar.
+    expect(component.rectifyingBill()).toBeNull();
+  });
+
+  it('muestra toast de error si falla la rectificación', () => {
+    billServiceSpy.rectifyBill.mockReturnValue(
+      throwError(() => new HttpErrorResponse({ status: 422, error: { detail: 'Datos inválidos' } }))
+    );
+
+    component.openRectify(makeBill());
+    component.rectifyDate.set('2026-07-01');
+    component.rectifyStartTime.set('10:00');
+    component.rectifyEndTime.set('13:00');
+    component.rectifyCleaningTypeId.set(2);
+    component.confirmRectify();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('Datos inválidos');
     expect(fixture.nativeElement.querySelector('.toast.error')).not.toBeNull();
   });
 
-  it('no muestra acciones en facturas pendientes virtuales', () => {
+  it('ofrece "Generar factura" en las filas pendientes (con permiso de creación)', () => {
     billServiceSpy.listBills.mockReturnValue(
       of([makeBill({ bill_id: null, state: 'Pendiente', cost: null, hourly_rate: null })])
     );
     component.searchBills();
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.querySelector('.action-btn')).toBeNull();
-    expect(fixture.nativeElement.textContent).toContain('Generar desde Org. Limpiezas');
+    const buttons = [...fixture.nativeElement.querySelectorAll('.action-btn')].map(
+      (button: HTMLButtonElement) => button.textContent?.trim()
+    );
+    expect(buttons).toContain('Generar factura');
+  });
+
+  it('genera una factura desde la pestaña de facturas (formulario → previsualización → guardar)', () => {
+    billServiceSpy.listBills.mockReturnValue(
+      of([
+        makeBill({
+          bill_id: null,
+          state: 'Pendiente',
+          record_id: 9,
+          cost: null,
+          hourly_rate: null,
+        }),
+      ])
+    );
+    billServiceSpy.createBill.mockReturnValue(of(makeBill({ bill_id: 7, apartment_id: 'R180' })));
+    component.searchBills();
+    fixture.detectChanges();
+
+    component.openCreateBill(component.bills()[0]);
+    component.createDate.set('2026-07-01');
+    component.createStartTime.set('10:00');
+    component.createEndTime.set('12:00');
+    component.createCleaningTypeId.set(2); // tipo con tarifa 25 €/h
+    fixture.detectChanges();
+
+    // Las horas y el coste se derivan del intervalo y del tipo (2 h × 25 €/h = 50 €).
+    expect(component.createHours()).toBe(2);
+    expect(component.createCost()).toBe(50);
+
+    component.openCreatePreview();
+    fixture.detectChanges();
+
+    // Paso de previsualización: se muestra el recibo antes de guardar.
+    expect(component.showCreatePreview()).toBe(true);
+    expect(fixture.nativeElement.querySelector('.receipt')).not.toBeNull();
+
+    component.submitCreateBill();
+    fixture.detectChanges();
+
+    expect(billServiceSpy.createBill).toHaveBeenCalledWith({
+      record_id: 9,
+      cleaning_date: '2026-07-01',
+      start_time: '10:00',
+      end_time: '12:00',
+      cleaning_type_id: 2,
+    });
+    // El modal se cierra tras generar.
+    expect(component.creatingBillFor()).toBeNull();
   });
 });

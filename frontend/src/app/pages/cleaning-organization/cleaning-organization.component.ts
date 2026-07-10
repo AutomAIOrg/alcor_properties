@@ -15,6 +15,7 @@ import {
   billToReceiptData,
 } from '../../shared/components/bill-receipt/bill-receipt.component';
 import { DismissableBackdropDirective } from '../../shared/directives/dismissable-backdrop.directive';
+import { billStateLabel } from '../../shared/utils/bill-transitions';
 
 interface CleaningWindow {
   apartmentId: string;
@@ -74,6 +75,7 @@ export class CleaningOrganizationComponent implements OnInit, OnDestroy {
 
   readonly weekdays = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
   readonly pendingTime = 'Pendiente';
+  readonly billStateLabel = billStateLabel;
   readonly barHeight = 22;
 
   private readonly barGap = 4;
@@ -210,6 +212,19 @@ export class CleaningOrganizationComponent implements OnInit, OnDestroy {
         billState: opportunity.bill_state,
         address: opportunity.address,
       }))
+      // Se ordenan por la próxima entrada (check-in) más cercana; las limpiezas sin próxima
+      // entrada (sin reserva siguiente) quedan al final. Empate → por piso, para estabilidad.
+      .sort((a, b) => {
+        if (a.availableUntilDate === null && b.availableUntilDate === null) {
+          return a.apartmentId.localeCompare(b.apartmentId);
+        }
+        if (a.availableUntilDate === null) return 1;
+        if (b.availableUntilDate === null) return -1;
+        return (
+          a.availableUntilDate.localeCompare(b.availableUntilDate) ||
+          a.apartmentId.localeCompare(b.apartmentId)
+        );
+      })
   );
 
   cleaningBars = computed<CleaningBar[]>(() => {

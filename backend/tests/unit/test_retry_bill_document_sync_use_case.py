@@ -8,6 +8,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from application.bills.retry_bill_document_sync_use_case import RetryBillDocumentSyncUseCase
+from domain.apartments.repository import IApartmentRepository
 from domain.bills.bill_document import (
     BILL_DOCUMENT_OPERATION_GENERATE_PENDING,
     BILL_DOCUMENT_OPERATION_MOVE_TO_PAID,
@@ -17,7 +18,7 @@ from domain.bills.bill_document import (
 from domain.bills.bill_document_repository import IBillDocumentRepository
 from domain.bills.repository import IBillRepository
 from domain.exceptions import FileStorageError
-from tests.helpers import make_bill, make_bill_document
+from tests.helpers import make_apartment, make_bill, make_bill_document
 
 pytestmark = pytest.mark.unit
 
@@ -30,6 +31,7 @@ def _use_case(
     documents: MagicMock | None = None,
     renderer: MagicMock | None = None,
     storage: MagicMock | None = None,
+    apartments: MagicMock | None = None,
 ) -> RetryBillDocumentSyncUseCase:
     if bills is None:
         bills = MagicMock(spec=IBillRepository)
@@ -52,8 +54,13 @@ def _use_case(
     if storage is None:
         storage = MagicMock()
         storage.upload_bytes.return_value = "/facturas/1FACTURAS PENDIENTE/bill_1.pdf"
+    if apartments is None:
+        apartments = MagicMock(spec=IApartmentRepository)
+        apartments.get_by_apartment_id.return_value = make_apartment()
 
-    return RetryBillDocumentSyncUseCase(bills, documents, renderer, storage, _NAS_BASE)
+    return RetryBillDocumentSyncUseCase(
+        bills, documents, apartments, renderer, storage, _NAS_BASE
+    )
 
 
 class TestRetryBillDocumentSyncUseCase:

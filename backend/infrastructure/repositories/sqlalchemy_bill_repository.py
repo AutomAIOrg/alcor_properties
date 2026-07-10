@@ -60,7 +60,9 @@ class SQLAlchemyBillRepository(IBillRepository):
 
     def update(self, bill: Bill) -> Bill:
         """
-        Persiste los cambios de estado/pago de una factura existente.
+        Persiste los cambios de una factura existente: estado/pago y, al rectificar, los
+        datos de la limpieza (fecha, horas, tarifa, coste y tipo). No toca la identidad ni
+        el origen de la factura (bill_id, record_id, apartment_id, created_at).
 
         Excepciones:
             BillNotFoundError: si no existe una factura con *bill.bill_id*.
@@ -78,6 +80,14 @@ class SQLAlchemyBillRepository(IBillRepository):
         orm.paid_confirmed_by_admin_name = bill.paid_confirmed_by_admin_name
         orm.paid_confirmed_by_cleaner = bill.paid_confirmed_by_cleaner
         orm.paid_confirmed_by_cleaner_name = bill.paid_confirmed_by_cleaner_name
+        # Datos de la limpieza: se corrigen al rectificar; en los cambios de estado
+        # llegan sin variación respecto a la factura existente.
+        orm.cleaning_date = bill.cleaning_date
+        orm.clean_hours = bill.clean_hours
+        orm.cost = bill.cost
+        orm.hourly_rate = bill.hourly_rate
+        orm.cleaning_type_id = bill.cleaning_type_id
+        orm.cleaning_type_name = bill.cleaning_type_name
 
         self._db.commit()
         self._db.refresh(orm)

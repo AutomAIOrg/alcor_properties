@@ -1,37 +1,61 @@
 """
-Interfaz abstracta para la generación de PDFs de factura.
+Puerto (interfaz) para la generación del PDF de una factura.
+
+La capa de aplicación depende de esta abstracción; la implementación concreta
+(Chromium headless) vive en infrastructure/documents.
 """
 
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
-from datetime import date
+from dataclasses import dataclass, field
+from datetime import date, datetime
 from decimal import Decimal
 
 
 @dataclass(frozen=True)
+class PaidConfirmation:
+    """Confirmación de pago registrada: quién (nombre congelado) y cuándo (instante exacto)."""
+
+    name: str
+    confirmed_at: datetime
+
+
+@dataclass(frozen=True)
 class BillPdfData:
-    """Datos de negocio necesarios para renderizar una factura PDF."""
+    """
+    Datos de negocio necesarios para renderizar el recibo de una factura.
+
+    Son los mismos que consume la previsualización del front (BillReceiptData); el
+    renderer los transforma en las etiquetas ya formateadas de la plantilla.
+    """
 
     bill_id: int
+    # Fecha de emisión del recibo. En el flujo de creación es el día en que se genera.
+    emission_date: date
     cleaning_date: date
     apartment_id: str
+    address: str | None
+    cleaning_type_name: str | None
     clean_hours: Decimal
-    hourly_rate: Decimal
-
-    @property
-    def total_cost(self) -> Decimal:
-        return (self.clean_hours * self.hourly_rate).quantize(Decimal("0.01"))
+    hourly_rate: Decimal | None
+    cost: Decimal
+    # True si la factura está pagada (activa sello PAGADA, banda verde, etc.).
+    paid: bool
+    # Fecha de pago; None si no está pagada.
+    paid_at: date | None
+    # Confirmaciones de pago ya registradas (administración y/o limpiadora), en orden.
+    # Se muestran aunque la factura siga en "Creada" (solo una parte confirmó).
+    paid_confirmations: tuple[PaidConfirmation, ...] = field(default_factory=tuple)
 
 
 class IBillPdfRenderer(ABC):
-    """Puerto para generar el contenido binario de una factura PDF."""
+    """Puerto para generar el contenido binario (PDF) del recibo de una factura."""
 
     @abstractmethod
     def render(self, data: BillPdfData) -> bytes:
         """
-        Genera el PDF de factura a partir de los datos de negocio.
+        Genera el PDF de la factura a partir de los datos de negocio.
 
-        Raises:
-            BillDocumentRenderError: si la generación falla.
+        Excepciones:
+            BillDocumentRenderError: si la generación falla (plantilla o Chromium).
         """
-        pass
+        raise NotImplementedError

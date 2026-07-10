@@ -125,32 +125,21 @@ class TestBillStateLifecycle:
         assert cleaner_confirmation is not None and "T" in cleaner_confirmation
         assert r.json()["paid_confirmed_by_cleaner_name"] == "Limpiadora Test"
 
-        # Revertir a Creada limpia la fecha de pago y ambas confirmaciones.
+        # Una factura ya "Pagada" es terminal: no puede revertirse a "Creada"...
         r = e2e_client.put(
             f"/api/v1/bills/{bill_id}",
             json={"state": "Creada"},
             headers=admin_auth_headers,
         )
-        assert r.status_code == 200
-        assert r.json()["paid_at"] is None
-        assert r.json()["paid_confirmed_by_admin"] is None
-        assert r.json()["paid_confirmed_by_cleaner"] is None
+        assert r.status_code == 422
 
+        # ...ni cancelarse. Queda solo para consulta del recibo.
         r = e2e_client.put(
             f"/api/v1/bills/{bill_id}",
             json={"state": "Cancelada"},
             headers=admin_auth_headers,
         )
-        assert r.status_code == 200
-        assert r.json()["state"] == "Cancelada"
-
-        r = e2e_client.put(
-            f"/api/v1/bills/{bill_id}",
-            json={"state": "Creada"},
-            headers=admin_auth_headers,
-        )
-        assert r.status_code == 200
-        assert r.json()["state"] == "Creada"
+        assert r.status_code == 422
 
     def test_same_role_cannot_confirm_payment_twice(self, e2e_client, admin_auth_headers):
         bill_id = _create_booking_and_bill(e2e_client, admin_auth_headers, "STATE-DOUBLE-001")
@@ -215,6 +204,61 @@ class TestBillStateLifecycle:
         r = e2e_client.put(
             f"/api/v1/bills/{bill_id}",
             json={"state": "Cancelada"},
+            headers=admin_auth_headers,
+        )
+        assert r.status_code == 422
+
+
+class TestBillRectification:
+    def test_rectify_recomputes_cost_and_keeps_created(self, e2e_client, admin_auth_headers):
+        bill_id = _create_booking_and_bill(e2e_client, admin_auth_headers, "RECT-001")
+
+        # Un tipo de limpieza nuevo con otra tarifa con el que rectificar la factura.
+        new_type_id = _create_cleaning_type(
+            e2e_client, admin_auth_headers, name="Limpieza profunda RECT", rate="25.00"
+        )
+
+        r = e2e_client.put(
+            f"/api/v1/bills/{bill_id}/rectify",
+            json={
+                "cleaning_date": "2026-06-03",
+                "clean_hours": 3,
+                "cleaning_type_id": new_type_id,
+            },
+            headers=admin_auth_headers,
+        )
+        assert r.status_code == 200, r.text
+        data = r.json()
+        assert data["state"] == "Creada"
+        assert data["cleaning_date"] == "2026-06-03"
+        assert data["clean_hours"] == 3.0
+        assert data["hourly_rate"] == 25.0
+        assert data["cost"] == 75.0
+        assert data["cleaning_type_id"] == new_type_id
+        assert data["cleaning_type_name"] == "Limpieza profunda RECT"
+
+    def test_cannot_rectify_a_paid_bill(self, e2e_client, admin_auth_headers, cleaner_auth_headers):
+        bill_id = _create_booking_and_bill(e2e_client, admin_auth_headers, "RECT-002")
+
+        # Pago completo (ambas confirmaciones): la factura pasa a Pagada.
+        e2e_client.put(
+            f"/api/v1/bills/{bill_id}", json={"state": "Pagada"}, headers=admin_auth_headers
+        )
+        r = e2e_client.put(
+            f"/api/v1/bills/{bill_id}", json={"state": "Pagada"}, headers=cleaner_auth_headers
+        )
+        assert r.json()["state"] == "Pagada"
+
+        new_type_id = _create_cleaning_type(
+            e2e_client, admin_auth_headers, name="Tipo RECT-002b", rate="25.00"
+        )
+        r = e2e_client.put(
+            f"/api/v1/bills/{bill_id}/rectify",
+            json={
+                "cleaning_date": "2026-06-03",
+                "clean_hours": 3,
+                "cleaning_type_id": new_type_id,
+            },
             headers=admin_auth_headers,
         )
         assert r.status_code == 422

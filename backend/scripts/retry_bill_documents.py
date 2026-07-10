@@ -48,7 +48,10 @@ def main(argv: list[str] | None = None) -> int:
     from config import settings
     from domain.bills.bill_document import BILL_DOCUMENT_STATUS_COMPLETED
     from infrastructure.database.session import SessionLocal
-    from infrastructure.documents.stub_bill_pdf_renderer import StubBillPdfRenderer
+    from infrastructure.documents.chromium_bill_pdf_renderer import ChromiumBillPdfRenderer
+    from infrastructure.repositories.sqlalchemy_apartment_repository import (
+        SQLAlchemyApartmentRepository,
+    )
     from infrastructure.repositories.sqlalchemy_bill_document_repository import (
         SQLAlchemyBillDocumentRepository,
     )
@@ -62,7 +65,8 @@ def main(argv: list[str] | None = None) -> int:
         use_case = RetryBillDocumentSyncUseCase(
             bill_repository=SQLAlchemyBillRepository(session),
             document_repository=SQLAlchemyBillDocumentRepository(session),
-            pdf_renderer=StubBillPdfRenderer(),
+            apartment_repository=SQLAlchemyApartmentRepository(session),
+            pdf_renderer=ChromiumBillPdfRenderer(chromium_path=settings.BILL_PDF_CHROMIUM_PATH),
             file_storage=_build_file_storage(),
             nas_base_path=settings.NAS_BASE_PATH,
         )

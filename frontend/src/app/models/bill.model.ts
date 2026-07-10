@@ -49,3 +49,9 @@ export interface BillUpdateStateRequest {
   paid_at?: string;
   cancellation_note?: string;
 }
+
+export interface BillRectifyRequest {
+  cleaning_date: string;
+  clean_hours: number;
+  cleaning_type_id: number;
+}

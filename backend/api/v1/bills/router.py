@@ -2,7 +2,9 @@
 Enrutador de facturas.
 """
 
+import logging
 from datetime import date
+from decimal import Decimal
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query, status
@@ -14,19 +16,27 @@ from api.dependencies import (
     get_list_bills_use_case,
     get_list_pending_bills_use_case,
     get_move_paid_bill_document_use_case,
+    get_rectify_bill_use_case,
     get_update_bill_state_use_case,
     require_cleaning,
 )
-from api.v1.bills.schemas import BillCreateRequest, BillResponse, BillUpdateStateRequest
+from api.v1.bills.schemas import (
+    BillCreateRequest,
+    BillRectifyRequest,
+    BillResponse,
+    BillUpdateStateRequest,
+)
 from application.bills.create_bill_use_case import CreateBillData, CreateBillUseCase
 from application.bills.generate_and_store_bill_document_use_case import (
     GenerateAndStoreBillDocumentUseCase,
 )
 from application.bills.list_bills_use_cases import ListBillsUseCase, ListPendingBillsUseCase
 from application.bills.move_paid_bill_document_use_case import MovePaidBillDocumentUseCase
-from application.bills.update_bill_use_case import UpdateBillStateUseCase
+from application.bills.update_bill_use_case import RectifyBillUseCase, UpdateBillStateUseCase
 from domain.auth.user_entity import User
 from domain.bills.entity import BILL_STATE_PAID, BILL_STATE_PENDING
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/bills", tags=["bills"], dependencies=[Depends(get_current_user)])
 
@@ -84,6 +94,7 @@ async def create_bill(
 ):
     data = CreateBillData(**payload.model_dump())
     created_bill = create_bill_use_case.execute(data)
+    # Al quedar la factura "Creada" se genera su recibo PDF (Chromium) y se sube al NAS.
     assert created_bill.bill_id is not None
     document_use_case.execute(created_bill.bill_id, uploaded_by=current_user.id)
     return created_bill
@@ -109,7 +120,41 @@ async def update_bill_state(
         paid_at=payload.paid_at,
         cancellation_note=payload.cancellation_note,
     )
+    # Al completarse el pago, el recibo se regenera (versión "pagada") y se mueve a la carpeta
+    # de facturas pagadas del NAS.
     if updated_bill.state == BILL_STATE_PAID:
         assert updated_bill.bill_id is not None
         move_paid_document_use_case.execute(updated_bill.bill_id, uploaded_by=current_user.id)
     return updated_bill
+
+
+@router.put("/{bill_id}/rectify", response_model=BillResponse)
+async def rectify_bill(
+    bill_id: int,
+    payload: BillRectifyRequest,
+    rectify_bill_use_case: Annotated[RectifyBillUseCase, Depends(get_rectify_bill_use_case)],
+    document_use_case: Annotated[
+        GenerateAndStoreBillDocumentUseCase,
+        Depends(get_generate_and_store_bill_document_use_case),
+    ],
+    current_user: User = Depends(require_cleaning),
+):
+    bill = rectify_bill_use_case.execute(
+        bill_id,
+        cleaning_date=payload.cleaning_date,
+        # El DTO trae las horas como float (JSON); el dominio trabaja con Decimal. str()
+        # evita el ruido binario del float (Decimal(str(2.5)) == Decimal("2.5")).
+        clean_hours=Decimal(str(payload.clean_hours)),
+        cleaning_type_id=payload.cleaning_type_id,
+    )
+
+    # La factura corregida sigue "Creada": se regenera EN EL SITIO su recibo PDF en el NAS con
+    # los nuevos importes (el mismo documento, sin crear un segundo PDF). Un fallo aquí no debe
+    # impedir la rectificación.
+    assert bill.bill_id is not None
+    try:
+        document_use_case.execute(bill.bill_id, uploaded_by=current_user.id, regenerate=True)
+    except Exception:
+        logger.exception("No se pudo regenerar el PDF de la factura rectificada %s", bill.bill_id)
+
+    return bill
