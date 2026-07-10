@@ -14,6 +14,7 @@ import {
   BillReceiptData,
   billToReceiptData,
 } from '../../shared/components/bill-receipt/bill-receipt.component';
+import { billStateLabel } from '../../shared/utils/bill-transitions';
 
 interface CleaningWindow {
   apartmentId: string;
@@ -73,6 +74,7 @@ export class CleaningOrganizationComponent implements OnInit, OnDestroy {
 
   readonly weekdays = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
   readonly pendingTime = 'Pendiente';
+  readonly billStateLabel = billStateLabel;
   readonly barHeight = 22;
 
   private readonly barGap = 4;

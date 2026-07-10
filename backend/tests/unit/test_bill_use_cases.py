@@ -10,7 +10,7 @@ import pytest
 
 from application.bills.create_bill_use_case import CreateBillData, CreateBillUseCase
 from application.bills.list_bills_use_cases import ListBillsUseCase, ListPendingBillsUseCase
-from application.bills.update_bill_use_case import UpdateBillStateUseCase
+from application.bills.update_bill_use_case import RectifyBillUseCase, UpdateBillStateUseCase
 from domain.apartments.repository import IApartmentRepository
 from domain.auth.user_entity import Role
 from domain.bills.repository import IBillRepository
@@ -348,7 +348,8 @@ class TestUpdateBillStateUseCase:
         assert result.address == "C/ Raquero 6 Bloque 3"
         assert result.apartment_description == "Porto Fino"
 
-    def test_paid_to_created_clears_payment_date_and_confirmations(self):
+    def test_paid_is_terminal_cannot_revert_to_created(self):
+        # Una factura ya "Pagada" es terminal: no puede revertirse a "Creada".
         bills = _bills_with(
             make_bill(
                 bill_id=1,
@@ -361,14 +362,10 @@ class TestUpdateBillStateUseCase:
             )
         )
 
-        result = _update_use_case(bills).execute(1, "Creada", actor=_ADMIN_ACTOR)
+        with pytest.raises(DomainValidationError):
+            _update_use_case(bills).execute(1, "Creada", actor=_ADMIN_ACTOR)
 
-        assert result.state == "Creada"
-        assert result.paid_at is None
-        assert result.paid_confirmed_by_admin is None
-        assert result.paid_confirmed_by_admin_name is None
-        assert result.paid_confirmed_by_cleaner is None
-        assert result.paid_confirmed_by_cleaner_name is None
+        bills.update.assert_not_called()
 
     def test_cancelling_clears_partial_confirmation(self):
         bills = _bills_with(
@@ -441,6 +438,93 @@ class TestUpdateBillStateUseCase:
 
         with pytest.raises(BillNotFoundError):
             _update_use_case(bills).execute(99, "Pagada", actor=_ADMIN_ACTOR)
+
+        bills.update.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# RectifyBillUseCase
+# ---------------------------------------------------------------------------
+
+
+def _rectify_use_case(bills: MagicMock, cleaning_type=None) -> RectifyBillUseCase:
+    cleaning_types = MagicMock(spec=ICleaningTypeRepository)
+    cleaning_types.get_by_id.return_value = (
+        cleaning_type if cleaning_type is not None else make_cleaning_type(hourly_rate=Decimal("20"))
+    )
+    return RectifyBillUseCase(bills, cleaning_types)
+
+
+class TestRectifyBillUseCase:
+    def test_recomputes_rate_and_cost_from_new_data(self):
+        bills = _bills_with(make_bill(bill_id=1, state="Creada"))
+        cleaning_type = make_cleaning_type(
+            cleaning_type_id=7, name="Limpieza profunda", hourly_rate=Decimal("25")
+        )
+
+        result = _rectify_use_case(bills, cleaning_type).execute(
+            1, cleaning_date=date(2026, 7, 1), clean_hours=Decimal("3"), cleaning_type_id=7
+        )
+
+        assert result.state == "Creada"
+        assert result.cleaning_date == date(2026, 7, 1)
+        assert result.clean_hours == Decimal("3.00")
+        assert result.hourly_rate == Decimal("25.00")
+        assert result.cost == Decimal("75.00")
+        assert result.cleaning_type_id == 7
+        assert result.cleaning_type_name == "Limpieza profunda"
+
+    def test_clears_prior_payment_confirmations(self):
+        bills = _bills_with(
+            make_bill(
+                bill_id=1,
+                state="Creada",
+                paid_at=date(2026, 6, 1),
+                paid_confirmed_by_admin=datetime(2026, 6, 1, 10, 0),
+                paid_confirmed_by_admin_name="Admin User",
+            )
+        )
+
+        result = _rectify_use_case(bills).execute(
+            1, cleaning_date=date(2026, 7, 1), clean_hours=Decimal("2"), cleaning_type_id=1
+        )
+
+        assert result.paid_at is None
+        assert result.paid_confirmed_by_admin is None
+        assert result.paid_confirmed_by_admin_name is None
+        assert result.paid_confirmed_by_cleaner is None
+        assert result.paid_confirmed_by_cleaner_name is None
+
+    def test_cannot_rectify_a_paid_bill(self):
+        bills = _bills_with(make_bill(bill_id=1, state="Pagada"))
+
+        with pytest.raises(DomainValidationError):
+            _rectify_use_case(bills).execute(
+                1, cleaning_date=date(2026, 7, 1), clean_hours=Decimal("2"), cleaning_type_id=1
+            )
+
+        bills.update.assert_not_called()
+
+    def test_missing_cleaning_type_raises(self):
+        bills = _bills_with(make_bill(bill_id=1, state="Creada"))
+        cleaning_types = MagicMock(spec=ICleaningTypeRepository)
+        cleaning_types.get_by_id.return_value = None
+
+        with pytest.raises(CleaningTypeNotFoundError):
+            RectifyBillUseCase(bills, cleaning_types).execute(
+                1, cleaning_date=date(2026, 7, 1), clean_hours=Decimal("2"), cleaning_type_id=99
+            )
+
+        bills.update.assert_not_called()
+
+    def test_inactive_cleaning_type_raises(self):
+        bills = _bills_with(make_bill(bill_id=1, state="Creada"))
+        inactive = make_cleaning_type(active=False)
+
+        with pytest.raises(DomainValidationError, match="inactivo"):
+            _rectify_use_case(bills, inactive).execute(
+                1, cleaning_date=date(2026, 7, 1), clean_hours=Decimal("2"), cleaning_type_id=1
+            )
 
         bills.update.assert_not_called()
 

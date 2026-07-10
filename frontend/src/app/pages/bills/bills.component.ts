@@ -1,13 +1,20 @@
 import { CurrencyPipe } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { AuthService } from '../../auth/auth.service';
-import { Bill, BillState, BillUpdateStateRequest } from '../../models/bill.model';
+import {
+  Bill,
+  BillRectifyRequest,
+  BillState,
+  BillUpdateStateRequest,
+} from '../../models/bill.model';
+import { CleaningType } from '../../models/cleaning-type.model';
 import { BookingColorPipe } from '../../pipes/booking-color.pipe';
 import { ApartmentService } from '../../services/apartment.service';
 import { BillService } from '../../services/bill.service';
 import { CalendarLayoutService } from '../../services/calendar-layout.service';
+import { CleaningTypeService } from '../../services/cleaning-type.service';
 import {
   BillReceiptComponent,
   BillReceiptData,
@@ -19,8 +26,7 @@ import {
 } from '../../shared/components/date-range-picker/date-range-picker.component';
 import {
   allowedBillTransitions,
-  billConfirmationMessage,
-  billStateRequiresConfirmation,
+  billStateLabel,
   billTransitionLabel,
 } from '../../shared/utils/bill-transitions';
 import {
@@ -35,11 +41,6 @@ interface ToastMessage {
   text: string;
 }
 
-interface PendingTransition {
-  bill: Bill;
-  targetState: BillState;
-}
-
 @Component({
   selector: 'app-bills',
   standalone: true,
@@ -51,17 +52,18 @@ export class BillsComponent implements OnInit, OnDestroy {
   readonly authService = inject(AuthService);
   private billService = inject(BillService);
   private apartmentService = inject(ApartmentService);
+  private cleaningTypeService = inject(CleaningTypeService);
   private layout = inject(CalendarLayoutService);
   private colorPipe = new BookingColorPipe();
   private toastTimeout: ReturnType<typeof setTimeout> | null = null;
   private searchRequestId = 0;
+  private searchDebounce: ReturnType<typeof setTimeout> | null = null;
 
   readonly stateOptions: { value: string; label: string }[] = [
     { value: '', label: 'Todos' },
     { value: 'Pendiente', label: 'Pendiente' },
-    { value: 'Creada', label: 'Creada' },
+    { value: 'Creada', label: 'Pendiente de pago' },
     { value: 'Pagada', label: 'Pagada' },
-    { value: 'Cancelada', label: 'Cancelada' },
   ];
 
   bills = signal<Bill[]>([]);
@@ -81,16 +83,42 @@ export class BillsComponent implements OnInit, OnDestroy {
   billReceiptView = signal<BillReceiptData | null>(null);
   markPaidBill = signal<Bill | null>(null);
   paidAtDate = signal('');
-  cancelBill = signal<Bill | null>(null);
-  cancelNote = signal('');
-  pendingTransition = signal<PendingTransition | null>(null);
+
+  cleaningTypes = signal<CleaningType[]>([]);
+  rectifyingBill = signal<Bill | null>(null);
+  rectifyDate = signal('');
+  rectifyHours = signal('');
+  rectifyCleaningTypeId = signal<number | null>(null);
+
+  // Tipo de limpieza seleccionado en el modal de rectificación (para mostrar la tarifa).
+  rectifySelectedType = computed<CleaningType | null>(
+    () =>
+      this.cleaningTypes().find(type => type.cleaning_type_id === this.rectifyCleaningTypeId()) ??
+      null
+  );
+
+  // Coste recalculado (horas × tarifa) mientras se rectifica; null si faltan datos válidos.
+  rectifyCost = computed<number | null>(() => {
+    const hours = this.parseOptionalNumber(this.rectifyHours());
+    const type = this.rectifySelectedType();
+    if (hours === null || hours <= 0 || type === null) return null;
+    return Math.round(hours * type.hourly_rate * 100) / 100;
+  });
+
+  isRectifyValid = computed<boolean>(() => this.rectifyCost() !== null && !!this.rectifyDate());
 
   readonly billTransitionLabel = billTransitionLabel;
+  readonly billStateLabel = billStateLabel;
 
   ngOnInit(): void {
     this.apartmentService.getAllApartmentIds().subscribe({
       next: ids => this.apartmentIds.set(ids),
       error: () => this.apartmentIds.set([]),
+    });
+    // Tipos de limpieza activos: alimentan el desplegable del modal de rectificación.
+    this.cleaningTypeService.list(true).subscribe({
+      next: types => this.cleaningTypes.set(types),
+      error: () => this.cleaningTypes.set([]),
     });
     this.searchBills();
   }
@@ -100,9 +128,17 @@ export class BillsComponent implements OnInit, OnDestroy {
       clearTimeout(this.toastTimeout);
       this.toastTimeout = null;
     }
+    if (this.searchDebounce) {
+      clearTimeout(this.searchDebounce);
+      this.searchDebounce = null;
+    }
   }
 
   searchBills(): void {
+    if (this.searchDebounce) {
+      clearTimeout(this.searchDebounce);
+      this.searchDebounce = null;
+    }
     const requestId = ++this.searchRequestId;
     this.isLoading.set(true);
     this.loadError.set(null);
@@ -161,22 +197,41 @@ export class BillsComponent implements OnInit, OnDestroy {
   setDateRange(range: DateRangeValue): void {
     this.filterDateFrom.set(range.from);
     this.filterDateTo.set(range.to);
+    // Selección discreta de fechas: buscamos de inmediato.
+    this.searchBills();
   }
 
   updateFilterApartmentId(event: Event): void {
     this.filterApartmentId.set((event.target as HTMLInputElement).value);
+    this.scheduleSearch();
   }
 
   updateFilterState(event: Event): void {
     this.filterState.set((event.target as HTMLSelectElement).value);
+    // Cambio discreto en el desplegable: buscamos de inmediato.
+    this.searchBills();
   }
 
   updateFilterCostMin(event: Event): void {
     this.filterCostMin.set((event.target as HTMLInputElement).value);
+    this.scheduleSearch();
   }
 
   updateFilterCostMax(event: Event): void {
     this.filterCostMax.set((event.target as HTMLInputElement).value);
+    this.scheduleSearch();
+  }
+
+  // Búsqueda automática con retardo para los campos de texto/número: evita lanzar
+  // una petición por cada pulsación mientras el usuario escribe.
+  private scheduleSearch(): void {
+    if (this.searchDebounce) {
+      clearTimeout(this.searchDebounce);
+    }
+    this.searchDebounce = setTimeout(() => {
+      this.searchDebounce = null;
+      this.searchBills();
+    }, 400);
   }
 
   getApartmentColor(apartmentId: string): string {
@@ -250,6 +305,13 @@ export class BillsComponent implements OnInit, OnDestroy {
     this.billReceiptView.set(null);
   }
 
+  // Una factura "Creada" puede corregirse sin cancelarla: "Rectificar factura" abre un
+  // modal para cambiar fecha, horas y tipo de limpieza; el coste se recalcula y la
+  // factura sigue "Creada".
+  canRectifyBill(bill: Bill): boolean {
+    return this.canUpdateBill(bill) && bill.state === 'Creada';
+  }
+
   requestTransition(bill: Bill, targetState: BillState): void {
     if (!this.canUpdateBill(bill) || this.isUpdating()) return;
 
@@ -258,17 +320,6 @@ export class BillsComponent implements OnInit, OnDestroy {
       // La fecha de pago solo la declara la limpiadora (por defecto, hoy);
       // administración únicamente confirma.
       this.paidAtDate.set(this.isAdmin() ? '' : this.layout.toIso(new Date()));
-      return;
-    }
-
-    if (targetState === 'Cancelada') {
-      this.cancelBill.set(bill);
-      this.cancelNote.set('');
-      return;
-    }
-
-    if (billStateRequiresConfirmation(targetState)) {
-      this.pendingTransition.set({ bill, targetState });
       return;
     }
 
@@ -299,49 +350,79 @@ export class BillsComponent implements OnInit, OnDestroy {
     this.applyTransition(bill, 'Pagada', this.paidAtDate());
   }
 
-  closeCancelModal(): void {
+  // Abre el modal de rectificación con los datos actuales de la factura.
+  openRectify(bill: Bill): void {
+    if (!this.canRectifyBill(bill) || this.isUpdating()) return;
+    this.rectifyingBill.set(bill);
+    this.rectifyDate.set(bill.cleaning_date ?? '');
+    this.rectifyHours.set(bill.clean_hours != null ? String(bill.clean_hours) : '');
+    this.rectifyCleaningTypeId.set(bill.cleaning_type_id);
+  }
+
+  closeRectifyModal(): void {
     if (this.isUpdating()) return;
-    this.cancelBill.set(null);
-    this.cancelNote.set('');
+    this.resetRectify();
   }
 
-  updateCancelNote(event: Event): void {
-    this.cancelNote.set((event.target as HTMLTextAreaElement).value);
+  updateRectifyDate(event: Event): void {
+    this.rectifyDate.set((event.target as HTMLInputElement).value);
   }
 
-  confirmCancel(): void {
-    const bill = this.cancelBill();
-    if (!bill?.bill_id || this.isUpdating()) return;
-
-    this.applyTransition(bill, 'Cancelada', undefined, this.cancelNote().trim());
+  updateRectifyHours(event: Event): void {
+    this.rectifyHours.set((event.target as HTMLInputElement).value);
   }
 
-  closeConfirmDialog(): void {
-    if (this.isUpdating()) return;
-    this.pendingTransition.set(null);
+  updateRectifyCleaningType(event: Event): void {
+    const value = (event.target as HTMLSelectElement).value;
+    this.rectifyCleaningTypeId.set(value ? Number(value) : null);
   }
 
-  confirmPendingTransition(): void {
-    const pending = this.pendingTransition();
-    if (!pending || this.isUpdating()) return;
+  confirmRectify(): void {
+    const bill = this.rectifyingBill();
+    const hours = this.parseOptionalNumber(this.rectifyHours());
+    const cleaningTypeId = this.rectifyCleaningTypeId();
+    if (
+      !bill?.bill_id ||
+      this.isUpdating() ||
+      !this.rectifyDate() ||
+      hours === null ||
+      hours <= 0 ||
+      cleaningTypeId === null
+    ) {
+      return;
+    }
 
-    this.applyTransition(pending.bill, pending.targetState);
+    this.isUpdating.set(true);
+    const payload: BillRectifyRequest = {
+      cleaning_date: this.rectifyDate(),
+      clean_hours: hours,
+      cleaning_type_id: cleaningTypeId,
+    };
+
+    this.billService.rectifyBill(bill.bill_id, payload).subscribe({
+      next: updated => {
+        this.bills.update(items =>
+          items.map(item => (item.bill_id === updated.bill_id ? updated : item))
+        );
+        this.isUpdating.set(false);
+        this.resetRectify();
+        this.showToast('success', `Factura #${updated.bill_id} rectificada.`);
+      },
+      error: (error: HttpErrorResponse) => {
+        this.isUpdating.set(false);
+        this.showToast('error', this.resolveUpdateErrorMessage(error));
+      },
+    });
   }
 
-  confirmationMessage(pending: PendingTransition): string {
-    return billConfirmationMessage(
-      pending.bill.state,
-      pending.targetState,
-      pending.bill.bill_id ?? 0
-    );
+  private resetRectify(): void {
+    this.rectifyingBill.set(null);
+    this.rectifyDate.set('');
+    this.rectifyHours.set('');
+    this.rectifyCleaningTypeId.set(null);
   }
 
-  private applyTransition(
-    bill: Bill,
-    targetState: BillState,
-    paidAt?: string,
-    cancellationNote?: string
-  ): void {
+  private applyTransition(bill: Bill, targetState: BillState, paidAt?: string): void {
     if (!bill.bill_id) return;
 
     this.isUpdating.set(true);
@@ -349,9 +430,6 @@ export class BillsComponent implements OnInit, OnDestroy {
     const payload: BillUpdateStateRequest = { state: targetState };
     if (targetState === 'Pagada' && paidAt) {
       payload.paid_at = paidAt;
-    }
-    if (targetState === 'Cancelada' && cancellationNote) {
-      payload.cancellation_note = cancellationNote;
     }
 
     this.billService.updateBillState(bill.bill_id, payload).subscribe({
@@ -362,9 +440,6 @@ export class BillsComponent implements OnInit, OnDestroy {
         this.isUpdating.set(false);
         this.markPaidBill.set(null);
         this.paidAtDate.set('');
-        this.cancelBill.set(null);
-        this.cancelNote.set('');
-        this.pendingTransition.set(null);
         // Si se confirmó el pago pero la factura sigue Creada, falta la otra parte.
         if (targetState === 'Pagada' && updated.state !== 'Pagada') {
           this.showToast(
@@ -374,7 +449,10 @@ export class BillsComponent implements OnInit, OnDestroy {
           );
           return;
         }
-        this.showToast('success', `Factura #${updated.bill_id} actualizada a ${updated.state}.`);
+        this.showToast(
+          'success',
+          `Factura #${updated.bill_id} actualizada a ${billStateLabel(updated.state)}.`
+        );
       },
       error: (error: HttpErrorResponse) => {
         this.isUpdating.set(false);

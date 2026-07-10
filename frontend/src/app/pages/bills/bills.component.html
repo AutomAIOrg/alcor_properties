@@ -160,11 +160,11 @@
                       title="Ver factura"
                       (click)="openBillReceipt(bill)"
                     >
-                      {{ bill.state }}
+                      {{ billStateLabel(bill.state) }}
                     </button>
                   } @else {
                     <span class="bill-state-chip" [class.pending]="bill.state === 'Pendiente'">
-                      {{ bill.state }}
+                      {{ billStateLabel(bill.state) }}
                     </span>
                   }
                   @for (line of paidConfirmationDetails(bill); track line) {
@@ -187,17 +187,29 @@
                     <span class="pending-hint">
                       <a routerLink="/cleaning-organization">Generar desde Org. Limpiezas</a>
                     </span>
-                  } @else if (canUpdateBill(bill)) {
+                  } @else if (
+                    canUpdateBill(bill) &&
+                    (availableTransitions(bill).length || canRectifyBill(bill))
+                  ) {
                     <div class="row-actions">
                       @for (targetState of availableTransitions(bill); track targetState) {
                         <button
                           class="action-btn"
                           type="button"
-                          [class.danger]="targetState === 'Cancelada'"
                           [disabled]="isUpdating()"
                           (click)="requestTransition(bill, targetState)"
                         >
                           {{ billTransitionLabel(bill.state, targetState) }}
+                        </button>
+                      }
+                      @if (canRectifyBill(bill)) {
+                        <button
+                          class="action-btn"
+                          type="button"
+                          [disabled]="isUpdating()"
+                          (click)="openRectify(bill)"
+                        >
+                          Rectificar factura
                         </button>
                       }
                     </div>
@@ -283,81 +295,82 @@
     </div>
   }
 
-  @if (cancelBill()) {
-    <div class="modal-backdrop" role="presentation" (click)="closeCancelModal()">
+  @if (rectifyingBill()) {
+    <div class="modal-backdrop" role="presentation" (click)="closeRectifyModal()">
       <section
         class="confirm-dialog"
         role="dialog"
         aria-modal="true"
-        aria-labelledby="cancel-bill-title"
+        aria-labelledby="rectify-bill-title"
         (click)="$event.stopPropagation()"
       >
-        <h2 id="cancel-bill-title">Cancelar factura</h2>
+        <h2 id="rectify-bill-title">Rectificar factura</h2>
         <p>
-          ¿Seguro que deseas cancelar la factura <strong>#{{ cancelBill()!.bill_id }}</strong> ·
-          Piso <strong>{{ cancelBill()!.apartment_id }}</strong
-          >?
+          Factura <strong>#{{ rectifyingBill()!.bill_id }}</strong> · Piso
+          <strong>{{ rectifyingBill()!.apartment_id }}</strong>
+        </p>
+        <p class="dialog-hint">
+          Corrige los datos de la limpieza. La tarifa y el coste se recalculan y la factura sigue
+          Pendiente de pago.
         </p>
 
         <label class="dialog-field">
-          Nota explicativa (opcional)
-          <textarea
-            rows="3"
-            maxlength="500"
-            placeholder="Motivo de la cancelación..."
-            [value]="cancelNote()"
-            (input)="updateCancelNote($event)"
-          ></textarea>
+          Fecha de limpieza
+          <input type="date" [value]="rectifyDate()" (input)="updateRectifyDate($event)" />
         </label>
 
-        <div class="dialog-actions">
-          <button
-            class="primary-btn danger"
-            type="button"
-            [disabled]="isUpdating()"
-            (click)="confirmCancel()"
-          >
-            {{ isUpdating() ? 'Cancelando...' : 'Cancelar factura' }}
-          </button>
-          <button
-            class="secondary-btn"
-            type="button"
-            [disabled]="isUpdating()"
-            (click)="closeCancelModal()"
-          >
-            Volver
-          </button>
-        </div>
-      </section>
-    </div>
-  }
+        <label class="dialog-field">
+          Horas de limpieza
+          <input
+            type="number"
+            min="0"
+            step="0.01"
+            placeholder="0"
+            [value]="rectifyHours()"
+            (input)="updateRectifyHours($event)"
+          />
+        </label>
 
-  @if (pendingTransition()) {
-    <div class="modal-backdrop" role="presentation" (click)="closeConfirmDialog()">
-      <section
-        class="confirm-dialog"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="confirm-transition-title"
-        (click)="$event.stopPropagation()"
-      >
-        <h2 id="confirm-transition-title">Confirmar cambio</h2>
-        <p>{{ confirmationMessage(pendingTransition()!) }}</p>
+        <label class="dialog-field">
+          Tipo de limpieza
+          <select
+            [value]="rectifyCleaningTypeId() ?? ''"
+            (change)="updateRectifyCleaningType($event)"
+          >
+            <option value="" disabled>Selecciona un tipo</option>
+            @for (type of cleaningTypes(); track type.cleaning_type_id) {
+              <option [value]="type.cleaning_type_id">
+                {{ type.name }} ({{ type.hourly_rate | currency: 'EUR' : 'symbol' : '1.2-2' }}/h)
+              </option>
+            }
+          </select>
+        </label>
+
+        <p class="dialog-hint">
+          Coste:
+          <strong>
+            @if (rectifyCost() !== null) {
+              {{ rectifyCost() | currency: 'EUR' : 'symbol' : '1.2-2' }}
+            } @else {
+              —
+            }
+          </strong>
+        </p>
 
         <div class="dialog-actions">
           <button
             class="primary-btn"
             type="button"
-            [disabled]="isUpdating()"
-            (click)="confirmPendingTransition()"
+            [disabled]="isUpdating() || !isRectifyValid()"
+            (click)="confirmRectify()"
           >
-            {{ isUpdating() ? 'Guardando...' : 'Confirmar' }}
+            {{ isUpdating() ? 'Guardando...' : 'Guardar' }}
           </button>
           <button
             class="secondary-btn"
             type="button"
             [disabled]="isUpdating()"
-            (click)="closeConfirmDialog()"
+            (click)="closeRectifyModal()"
           >
             Cancelar
           </button>

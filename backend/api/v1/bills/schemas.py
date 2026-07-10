@@ -51,6 +51,22 @@ class BillResponse(BaseModel):
     created_at: date | None = None
 
 
+class BillRectifyRequest(BaseModel):
+    """
+    DTO de entrada para PUT /bills/{bill_id}/rectify.
+
+    Corrige los datos de una factura "Creada" (fecha, horas y tipo de limpieza). La
+    tarifa/hora y el coste se recalculan en el backend a partir del tipo elegido; la
+    factura permanece en estado "Creada".
+    """
+
+    cleaning_date: date = Field(..., description="Nueva fecha de la limpieza facturada")
+    clean_hours: float = Field(..., gt=0, description="Nuevas horas de limpieza (mayor que cero)")
+    cleaning_type_id: int = Field(
+        ..., description="Nuevo tipo de limpieza; su tarifa recalcula el coste"
+    )
+
+
 class BillUpdateStateRequest(BaseModel):
     """DTO de entrada para PUT /bills/{bill_id}. Cambia el estado de una factura."""
 

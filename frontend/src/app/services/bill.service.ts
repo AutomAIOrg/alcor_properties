@@ -6,6 +6,7 @@ import {
   Bill,
   BillCreateRequest,
   BillListFilters,
+  BillRectifyRequest,
   BillUpdateStateRequest,
 } from '../models/bill.model';
 
@@ -13,6 +14,7 @@ export type {
   Bill,
   BillCreateRequest,
   BillListFilters,
+  BillRectifyRequest,
   BillUpdateStateRequest,
 } from '../models/bill.model';
 
@@ -38,5 +40,9 @@ export class BillService {
 
   updateBillState(billId: number, payload: BillUpdateStateRequest): Observable<Bill> {
     return this.http.put<Bill>(`${this.API}/bills/${billId}`, payload);
+  }
+
+  rectifyBill(billId: number, payload: BillRectifyRequest): Observable<Bill> {
+    return this.http.put<Bill>(`${this.API}/bills/${billId}/rectify`, payload);
   }
 }

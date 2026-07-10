@@ -28,7 +28,7 @@ from application.bills.bill_pdf_renderer_interface import IBillPdfRenderer
 from application.bills.create_bill_use_case import CreateBillUseCase
 from application.bills.generate_bill_document_use_case import GenerateBillDocumentUseCase
 from application.bills.list_bills_use_cases import ListBillsUseCase, ListPendingBillsUseCase
-from application.bills.update_bill_use_case import UpdateBillStateUseCase
+from application.bills.update_bill_use_case import RectifyBillUseCase, UpdateBillStateUseCase
 from application.bookings.commands import (
     CreateBookingUseCase,
     DeleteBookingUseCase,
@@ -391,6 +391,15 @@ def get_update_bill_state_use_case(
 ) -> UpdateBillStateUseCase:
     """Inyección de dependencias para el caso de uso de actualizar el estado de una factura."""
     return UpdateBillStateUseCase(bill_repository, apartment_repository)
+
+
+def get_rectify_bill_use_case(
+    bill_repository: IBillRepository = Depends(get_bill_repository),
+    cleaning_type_repository: ICleaningTypeRepository = Depends(get_cleaning_type_repository),
+    apartment_repository: IApartmentRepository = Depends(get_apartment_repository),
+) -> RectifyBillUseCase:
+    """Inyección de dependencias para el caso de uso de rectificar los datos de una factura."""
+    return RectifyBillUseCase(bill_repository, cleaning_type_repository, apartment_repository)
 
 
 def get_list_bills_use_case(

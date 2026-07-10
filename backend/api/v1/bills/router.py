@@ -14,14 +14,20 @@ from api.dependencies import (
     get_generate_bill_document_use_case,
     get_list_bills_use_case,
     get_list_pending_bills_use_case,
+    get_rectify_bill_use_case,
     get_update_bill_state_use_case,
     require_cleaning,
 )
-from api.v1.bills.schemas import BillCreateRequest, BillResponse, BillUpdateStateRequest
+from api.v1.bills.schemas import (
+    BillCreateRequest,
+    BillRectifyRequest,
+    BillResponse,
+    BillUpdateStateRequest,
+)
 from application.bills.create_bill_use_case import CreateBillData, CreateBillUseCase
 from application.bills.generate_bill_document_use_case import GenerateBillDocumentUseCase
 from application.bills.list_bills_use_cases import ListBillsUseCase, ListPendingBillsUseCase
-from application.bills.update_bill_use_case import UpdateBillStateUseCase
+from application.bills.update_bill_use_case import RectifyBillUseCase, UpdateBillStateUseCase
 from domain.auth.user_entity import User
 from domain.bills.entity import BILL_STATE_CANCELLED, BILL_STATE_PENDING
 
@@ -122,5 +128,32 @@ async def update_bill_state(
             generate_bill_document_use_case.execute(bill)
         except Exception:
             logger.exception("No se pudo regenerar el PDF de la factura %s", bill.bill_id)
+
+    return bill
+
+
+@router.put("/{bill_id}/rectify", response_model=BillResponse)
+async def rectify_bill(
+    bill_id: int,
+    payload: BillRectifyRequest,
+    rectify_bill_use_case: Annotated[RectifyBillUseCase, Depends(get_rectify_bill_use_case)],
+    generate_bill_document_use_case: Annotated[
+        GenerateBillDocumentUseCase, Depends(get_generate_bill_document_use_case)
+    ],
+    _: User = Depends(require_cleaning),
+):
+    bill = rectify_bill_use_case.execute(
+        bill_id,
+        cleaning_date=payload.cleaning_date,
+        clean_hours=payload.clean_hours,
+        cleaning_type_id=payload.cleaning_type_id,
+    )
+
+    # La factura corregida sigue "Creada": se regenera su recibo PDF con los nuevos importes.
+    # Un fallo aquí no debe impedir la rectificación.
+    try:
+        generate_bill_document_use_case.execute(bill)
+    except Exception:
+        logger.exception("No se pudo regenerar el PDF de la factura rectificada %s", bill.bill_id)
 
     return bill
