@@ -5,6 +5,7 @@ import { RouterLink } from '@angular/router';
 import { AuthService } from '../../auth/auth.service';
 import {
   Bill,
+  BillCreateRequest,
   BillRectifyRequest,
   BillState,
   BillUpdateStateRequest,
@@ -66,11 +67,17 @@ export class BillsComponent implements OnInit, OnDestroy {
   private searchRequestId = 0;
   private searchDebounce: ReturnType<typeof setTimeout> | null = null;
 
+  // 'unpaid' es un filtro combinado (Pendiente de facturar + Pendiente de pago); es el valor
+  // por defecto al entrar. El backend no combina estados en una consulta, así que se resuelve
+  // en cliente pidiendo todas y filtrando a los estados Pendiente y Creada.
+  private readonly UNPAID_FILTER = 'unpaid';
+
   readonly stateOptions: { value: string; label: string }[] = [
-    { value: '', label: 'Todos' },
-    { value: 'Pendiente', label: 'Pendiente' },
+    { value: this.UNPAID_FILTER, label: 'Pendiente' },
+    { value: 'Pendiente', label: 'Pendiente de facturar' },
     { value: 'Creada', label: 'Pendiente de pago' },
     { value: 'Pagada', label: 'Pagada' },
+    { value: '', label: 'Todas' },
   ];
 
   bills = signal<Bill[]>([]);
@@ -81,7 +88,7 @@ export class BillsComponent implements OnInit, OnDestroy {
   toast = signal<ToastMessage | null>(null);
 
   filterApartmentId = signal('');
-  filterState = signal('');
+  filterState = signal(this.UNPAID_FILTER);
   filterDateFrom = signal('');
   filterDateTo = signal('');
   filterCostMin = signal('');
@@ -128,6 +135,67 @@ export class BillsComponent implements OnInit, OnDestroy {
       this.rectifySelectedType() !== null
   );
 
+  // Generación de factura desde la propia página (mismo flujo que Organización Limpiezas):
+  // se abre para una factura "Pendiente" (limpieza aún sin facturar).
+  creatingBillFor = signal<Bill | null>(null);
+  createDate = signal('');
+  createStartTime = signal('');
+  createEndTime = signal('');
+  createCleaningTypeId = signal<number | null>(null);
+  createFormError = signal<string | null>(null);
+  showCreatePreview = signal(false);
+  isCreatingBill = signal(false);
+  private createEmissionIso = signal('');
+
+  createSelectedType = computed<CleaningType | null>(
+    () =>
+      this.cleaningTypes().find(type => type.cleaning_type_id === this.createCleaningTypeId()) ??
+      null
+  );
+
+  createHours = computed<number | null>(() =>
+    this.computeHours(this.createDate(), this.createStartTime(), this.createEndTime())
+  );
+
+  createCost = computed<number | null>(() => {
+    const hours = this.createHours();
+    const type = this.createSelectedType();
+    if (hours === null || type === null) return null;
+    return Math.round(hours * type.hourly_rate * 100) / 100;
+  });
+
+  isCreateFormValid = computed<boolean>(
+    () =>
+      !!this.createDate() &&
+      !!this.createStartTime() &&
+      !!this.createEndTime() &&
+      this.createHours() !== null &&
+      this.createSelectedType() !== null
+  );
+
+  // Datos del recibo para el paso de previsualización, construidos desde el formulario
+  // (la factura aún no existe); null mientras falten datos válidos.
+  createReceiptData = computed<BillReceiptData | null>(() => {
+    const opportunity = this.creatingBillFor();
+    const type = this.createSelectedType();
+    const hours = this.createHours();
+    const cost = this.createCost();
+    if (!opportunity || !type || hours === null || cost === null) return null;
+    return {
+      emissionIso: this.createEmissionIso(),
+      cleaningDateIso: this.createDate(),
+      apartmentId: opportunity.apartment_id,
+      address: opportunity.address,
+      hours,
+      hourlyRate: type.hourly_rate,
+      cleaningTypeName: type.name,
+      cost,
+      paid: false,
+      paidAtIso: null,
+      paidConfirmations: [],
+    };
+  });
+
   readonly billTransitionLabel = billTransitionLabel;
   readonly billStateLabel = billStateLabel;
 
@@ -173,11 +241,15 @@ export class BillsComponent implements OnInit, OnDestroy {
       cost_max?: number;
     } = {};
 
+    const stateFilter = this.filterState();
     if (this.filterApartmentId().trim()) {
       filters.apartment_id = this.filterApartmentId().trim();
     }
-    if (this.filterState()) {
-      filters.state = this.filterState() as BillState;
+    // El filtro combinado 'unpaid' ("Pendiente") no se envía al backend: se piden todas y se
+    // filtran en cliente a Pendiente de facturar + Pendiente de pago (el backend solo admite
+    // un estado por consulta).
+    if (stateFilter && stateFilter !== this.UNPAID_FILTER) {
+      filters.state = stateFilter as BillState;
     }
     if (this.filterDateFrom()) {
       filters.date_from = this.filterDateFrom();
@@ -193,7 +265,11 @@ export class BillsComponent implements OnInit, OnDestroy {
     this.billService.listBills(filters).subscribe({
       next: bills => {
         if (requestId !== this.searchRequestId) return;
-        this.bills.set(bills);
+        this.bills.set(
+          stateFilter === this.UNPAID_FILTER
+            ? bills.filter(bill => bill.state === 'Pendiente' || bill.state === 'Creada')
+            : bills
+        );
         this.isLoading.set(false);
       },
       error: () => {
@@ -207,7 +283,7 @@ export class BillsComponent implements OnInit, OnDestroy {
 
   clearFilters(): void {
     this.filterApartmentId.set('');
-    this.filterState.set('');
+    this.filterState.set(this.UNPAID_FILTER);
     this.filterDateFrom.set('');
     this.filterDateTo.set('');
     this.filterCostMin.set('');
@@ -324,6 +400,123 @@ export class BillsComponent implements OnInit, OnDestroy {
 
   closeBillReceipt(): void {
     this.billReceiptView.set(null);
+  }
+
+  // ¿Puede el usuario generar facturas? (mismo permiso que en Organización Limpiezas).
+  canCreateBill(): boolean {
+    return this.authService.hasPermission('bills:create');
+  }
+
+  // Botón "Generar factura" en las filas "Pendiente" (limpieza facturable sin factura real).
+  canGenerateBill(bill: Bill): boolean {
+    return this.isPendingBill(bill) && bill.record_id !== null && this.canCreateBill();
+  }
+
+  openCreateBill(bill: Bill): void {
+    if (!this.canGenerateBill(bill) || this.isCreatingBill()) return;
+    this.creatingBillFor.set(bill);
+    // Fecha de limpieza por defecto: la de la oportunidad (checkout) o, si falta, hoy.
+    this.createDate.set(bill.cleaning_date ?? this.layout.toIso(new Date()));
+    this.createStartTime.set('');
+    this.createEndTime.set('');
+    this.createCleaningTypeId.set(null);
+    this.showCreatePreview.set(false);
+    this.createEmissionIso.set('');
+    this.createFormError.set(
+      this.cleaningTypes().length
+        ? null
+        : 'No hay tipos de limpieza disponibles. Créalos en el panel de administrador.'
+    );
+  }
+
+  closeCreateBill(): void {
+    if (this.isCreatingBill()) return;
+    this.creatingBillFor.set(null);
+    this.createDate.set('');
+    this.createStartTime.set('');
+    this.createEndTime.set('');
+    this.createCleaningTypeId.set(null);
+    this.createFormError.set(null);
+    this.showCreatePreview.set(false);
+    this.createEmissionIso.set('');
+  }
+
+  updateCreateDate(event: Event): void {
+    this.createDate.set((event.target as HTMLInputElement).value);
+    this.createFormError.set(null);
+  }
+
+  updateCreateStartTime(event: Event): void {
+    this.createStartTime.set((event.target as HTMLInputElement).value);
+    this.createFormError.set(null);
+  }
+
+  updateCreateEndTime(event: Event): void {
+    this.createEndTime.set((event.target as HTMLInputElement).value);
+    this.createFormError.set(null);
+  }
+
+  updateCreateCleaningType(event: Event): void {
+    const value = (event.target as HTMLSelectElement).value;
+    this.createCleaningTypeId.set(value ? Number(value) : null);
+    this.createFormError.set(null);
+  }
+
+  openCreatePreview(): void {
+    if (this.isCreatingBill() || !this.isCreateFormValid()) return;
+    if (this.createHours() === null) {
+      this.createFormError.set('La hora de fin debe ser posterior a la hora de inicio.');
+      return;
+    }
+    this.createFormError.set(null);
+    this.createEmissionIso.set(this.layout.toIso(new Date()));
+    this.showCreatePreview.set(true);
+  }
+
+  backToCreateForm(): void {
+    if (this.isCreatingBill()) return;
+    this.showCreatePreview.set(false);
+  }
+
+  submitCreateBill(): void {
+    const bill = this.creatingBillFor();
+    const type = this.createSelectedType();
+    if (!bill?.record_id || !type || this.isCreatingBill() || !this.isCreateFormValid()) return;
+
+    this.isCreatingBill.set(true);
+    const payload: BillCreateRequest = {
+      record_id: bill.record_id,
+      cleaning_date: this.createDate(),
+      start_time: this.createStartTime(),
+      end_time: this.createEndTime(),
+      cleaning_type_id: type.cleaning_type_id,
+    };
+
+    this.billService.createBill(payload).subscribe({
+      next: created => {
+        this.isCreatingBill.set(false);
+        this.closeCreateBill();
+        this.showToast(
+          'success',
+          `Factura #${created.bill_id} generada para el piso ${created.apartment_id}.`
+        );
+        // La fila "Pendiente" pasa a ser una factura real "Pendiente de pago".
+        this.searchBills();
+      },
+      error: (error: HttpErrorResponse) => {
+        this.isCreatingBill.set(false);
+        this.showCreatePreview.set(false);
+        this.createFormError.set(this.resolveCreateErrorMessage(error));
+      },
+    });
+  }
+
+  private resolveCreateErrorMessage(error: HttpErrorResponse): string {
+    if (error.status === 422 || error.status === 409) {
+      const detail = error.error?.detail;
+      if (typeof detail === 'string') return detail;
+    }
+    return 'No se ha podido generar la factura.';
   }
 
   // Una factura "Creada" puede corregirse sin cancelarla: "Rectificar factura" abre un

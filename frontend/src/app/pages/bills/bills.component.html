@@ -183,9 +183,20 @@
                 <td>{{ formatDate(bill.paid_at) }}</td>
                 <td class="actions-cell">
                   @if (isPendingBill(bill)) {
-                    <span class="pending-hint">
-                      <a routerLink="/cleaning-organization">Generar desde Org. Limpiezas</a>
-                    </span>
+                    @if (canGenerateBill(bill)) {
+                      <div class="row-actions">
+                        <button
+                          class="action-btn"
+                          type="button"
+                          [disabled]="isCreatingBill()"
+                          (click)="openCreateBill(bill)"
+                        >
+                          Generar factura
+                        </button>
+                      </div>
+                    } @else {
+                      <span class="muted-text">—</span>
+                    }
                   } @else if (
                     canUpdateBill(bill) &&
                     (availableTransitions(bill).length || canRectifyBill(bill))
@@ -392,6 +403,132 @@
             Cancelar
           </button>
         </div>
+      </section>
+    </div>
+  }
+
+  @if (creatingBillFor()) {
+    <div
+      class="modal-backdrop"
+      role="presentation"
+      appDismissableBackdrop
+      (backdropDismiss)="closeCreateBill()"
+    >
+      <section
+        class="confirm-dialog"
+        [class.receipt-dialog]="showCreatePreview()"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="create-bill-title"
+      >
+        <h2 id="create-bill-title">
+          {{ showCreatePreview() ? 'Revisar factura' : 'Generar factura' }}
+        </h2>
+        <p>
+          Piso <strong>{{ creatingBillFor()!.apartment_id }}</strong> · Limpieza
+          {{ formatDate(creatingBillFor()!.cleaning_date) }}
+        </p>
+
+        @if (!showCreatePreview()) {
+          <label class="dialog-field">
+            Tipo de limpieza
+            <select
+              [value]="createCleaningTypeId() ?? ''"
+              [disabled]="!cleaningTypes().length"
+              (change)="updateCreateCleaningType($event)"
+            >
+              <option value="" disabled>Selecciona un tipo de limpieza</option>
+              @for (type of cleaningTypes(); track type.cleaning_type_id) {
+                <option [value]="type.cleaning_type_id">
+                  {{ type.name }} · {{ type.hourly_rate | currency: 'EUR' : 'symbol' : '1.2-2' }}/h
+                </option>
+              }
+            </select>
+          </label>
+
+          <div class="rectify-form-grid">
+            <label class="dialog-field">
+              Fecha de limpieza
+              <input type="date" [value]="createDate()" (input)="updateCreateDate($event)" />
+            </label>
+
+            <label class="dialog-field">
+              Hora inicio
+              <input
+                type="time"
+                [value]="createStartTime()"
+                (input)="updateCreateStartTime($event)"
+              />
+            </label>
+
+            <label class="dialog-field">
+              Hora fin
+              <input type="time" [value]="createEndTime()" (input)="updateCreateEndTime($event)" />
+            </label>
+          </div>
+
+          @if (createFormError()) {
+            <div class="notice error-notice">{{ createFormError() }}</div>
+          }
+
+          <div class="dialog-summary">
+            @if (createSelectedType() !== null) {
+              <p>
+                <strong>Tarifa:</strong> {{ createSelectedType()!.hourly_rate }} €/h
+                @if (createHours() !== null) {
+                  · <strong>Horas:</strong> {{ createHours() }} · <strong>Total:</strong>
+                  {{ createCost() }} €
+                }
+              </p>
+            }
+          </div>
+
+          <div class="dialog-actions">
+            <button
+              class="primary-btn"
+              type="button"
+              [disabled]="isCreatingBill() || !isCreateFormValid()"
+              (click)="openCreatePreview()"
+            >
+              Previsualizar factura
+            </button>
+            <button
+              class="secondary-btn"
+              type="button"
+              [disabled]="isCreatingBill()"
+              (click)="closeCreateBill()"
+            >
+              Cancelar
+            </button>
+          </div>
+        } @else {
+          <p class="dialog-hint">
+            Revisa que los datos son correctos. Al aceptar se guardará la factura.
+          </p>
+
+          @if (createReceiptData(); as receipt) {
+            <app-bill-receipt [data]="receipt" />
+          }
+
+          <div class="dialog-actions">
+            <button
+              class="primary-btn"
+              type="button"
+              [disabled]="isCreatingBill()"
+              (click)="submitCreateBill()"
+            >
+              {{ isCreatingBill() ? 'Guardando...' : 'Generar factura' }}
+            </button>
+            <button
+              class="secondary-btn"
+              type="button"
+              [disabled]="isCreatingBill()"
+              (click)="backToCreateForm()"
+            >
+              Volver
+            </button>
+          </div>
+        }
       </section>
     </div>
   }

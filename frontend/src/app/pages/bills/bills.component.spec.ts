@@ -146,16 +146,40 @@ describe('BillsComponent', () => {
     expect(buttons).not.toContain('Cancelar');
   });
 
-  it('el filtro muestra "Pendiente de pago" en vez de "Creada" y no ofrece "Cancelada"', () => {
+  it('el filtro ofrece los estados esperados (con las etiquetas correctas y sin "Cancelada")', () => {
     const options = [...fixture.nativeElement.querySelectorAll('.filter-field select option')].map(
       (option: HTMLOptionElement) => option.textContent?.trim()
     );
 
-    expect(options).not.toContain('Cancelada');
-    expect(options).not.toContain('Creada');
-    expect(options).toEqual(
-      expect.arrayContaining(['Todos', 'Pendiente', 'Pendiente de pago', 'Pagada'])
+    expect(options).toEqual([
+      'Pendiente',
+      'Pendiente de facturar',
+      'Pendiente de pago',
+      'Pagada',
+      'Todas',
+    ]);
+  });
+
+  it('al entrar filtra por defecto a "Pendiente" (pendiente de facturar + de pago; oculta pagadas)', () => {
+    // El filtro arranca en el combinado "Pendiente".
+    expect(component.filterState()).toBe('unpaid');
+
+    billServiceSpy.listBills.mockReturnValue(
+      of([
+        makeBill({ bill_id: 1, state: 'Creada' }),
+        makeBill({ bill_id: 2, state: 'Pagada', paid_at: '2026-06-05' }),
+        makeBill({ bill_id: null, state: 'Pendiente', record_id: 3, cost: null }),
+      ])
     );
+    component.searchBills();
+    fixture.detectChanges();
+
+    // Se piden todas al backend (sin estado) y se filtran en cliente.
+    expect(billServiceSpy.listBills).toHaveBeenLastCalledWith({});
+    const states = component.bills().map(bill => bill.state);
+    expect(states).toContain('Creada');
+    expect(states).toContain('Pendiente');
+    expect(states).not.toContain('Pagada');
   });
 
   it('muestra el estado "Creada" como "Pendiente de pago" en el chip', () => {
@@ -169,6 +193,7 @@ describe('BillsComponent', () => {
     billServiceSpy.listBills.mockReturnValue(
       of([makeBill({ state: 'Pagada', paid_at: '2026-06-05' })])
     );
+    component.filterState.set('Pagada');
     component.searchBills();
     fixture.detectChanges();
 
@@ -215,6 +240,7 @@ describe('BillsComponent', () => {
         }),
       ])
     );
+    component.filterState.set('Pagada');
     component.searchBills();
     fixture.detectChanges();
 
@@ -287,6 +313,7 @@ describe('BillsComponent', () => {
     billServiceSpy.listBills.mockReturnValue(
       of([makeBill({ state: 'Pagada', paid_at: '2026-06-05' })])
     );
+    component.filterState.set('Pagada');
     component.searchBills();
     fixture.detectChanges();
 
@@ -314,6 +341,7 @@ describe('BillsComponent', () => {
         }),
       ])
     );
+    component.filterState.set('Pagada');
     component.searchBills();
     fixture.detectChanges();
 
@@ -418,14 +446,64 @@ describe('BillsComponent', () => {
     expect(fixture.nativeElement.querySelector('.toast.error')).not.toBeNull();
   });
 
-  it('no muestra acciones en facturas pendientes virtuales', () => {
+  it('ofrece "Generar factura" en las filas pendientes (con permiso de creación)', () => {
     billServiceSpy.listBills.mockReturnValue(
       of([makeBill({ bill_id: null, state: 'Pendiente', cost: null, hourly_rate: null })])
     );
     component.searchBills();
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.querySelector('.action-btn')).toBeNull();
-    expect(fixture.nativeElement.textContent).toContain('Generar desde Org. Limpiezas');
+    const buttons = [...fixture.nativeElement.querySelectorAll('.action-btn')].map(
+      (button: HTMLButtonElement) => button.textContent?.trim()
+    );
+    expect(buttons).toContain('Generar factura');
+  });
+
+  it('genera una factura desde la pestaña de facturas (formulario → previsualización → guardar)', () => {
+    billServiceSpy.listBills.mockReturnValue(
+      of([
+        makeBill({
+          bill_id: null,
+          state: 'Pendiente',
+          record_id: 9,
+          cost: null,
+          hourly_rate: null,
+        }),
+      ])
+    );
+    billServiceSpy.createBill.mockReturnValue(of(makeBill({ bill_id: 7, apartment_id: 'R180' })));
+    component.searchBills();
+    fixture.detectChanges();
+
+    component.openCreateBill(component.bills()[0]);
+    component.createDate.set('2026-07-01');
+    component.createStartTime.set('10:00');
+    component.createEndTime.set('12:00');
+    component.createCleaningTypeId.set(2); // tipo con tarifa 25 €/h
+    fixture.detectChanges();
+
+    // Las horas y el coste se derivan del intervalo y del tipo (2 h × 25 €/h = 50 €).
+    expect(component.createHours()).toBe(2);
+    expect(component.createCost()).toBe(50);
+
+    component.openCreatePreview();
+    fixture.detectChanges();
+
+    // Paso de previsualización: se muestra el recibo antes de guardar.
+    expect(component.showCreatePreview()).toBe(true);
+    expect(fixture.nativeElement.querySelector('.receipt')).not.toBeNull();
+
+    component.submitCreateBill();
+    fixture.detectChanges();
+
+    expect(billServiceSpy.createBill).toHaveBeenCalledWith({
+      record_id: 9,
+      cleaning_date: '2026-07-01',
+      start_time: '10:00',
+      end_time: '12:00',
+      cleaning_type_id: 2,
+    });
+    // El modal se cierra tras generar.
+    expect(component.creatingBillFor()).toBeNull();
   });
 });

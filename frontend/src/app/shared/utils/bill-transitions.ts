@@ -15,10 +15,14 @@ export function allowedBillTransitions(state: BillState): BillState[] {
   return BILL_TRANSITIONS[state] ?? [];
 }
 
-// Etiqueta visible del estado de una factura. El valor interno "Creada" (factura emitida
-// a la espera de cobro) se muestra como "Pendiente de pago"; el resto se muestran igual.
+// Etiqueta visible del estado de una factura:
+//  - "Pendiente" (limpieza aún sin facturar) → "Pendiente de facturar".
+//  - "Creada" (factura emitida a la espera de cobro) → "Pendiente de pago".
+//  - el resto se muestran igual.
 export function billStateLabel(state: BillState | string): string {
-  return state === 'Creada' ? 'Pendiente de pago' : state;
+  if (state === 'Pendiente') return 'Pendiente de facturar';
+  if (state === 'Creada') return 'Pendiente de pago';
+  return state;
 }
 
 export function billTransitionLabel(_currentState: BillState, targetState: BillState): string {
