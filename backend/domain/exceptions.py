@@ -165,6 +165,22 @@ class BillDocumentAlreadyExistsError(DomainException):
         super().__init__(f"Ya existe un documento de factura para la factura {bill_id}")
 
 
+class BillDocumentNotFoundError(DomainException):
+    """Se lanza cuando no se encuentra un documento de factura."""
+
+    def __init__(self, bill_id: int) -> None:
+        self.bill_id = bill_id
+        super().__init__(f"No se encontró documento de factura para la factura {bill_id}")
+
+
+class BillDocumentNotUpdatedError(DomainException):
+    """Se lanza cuando no se puede actualizar un documento de factura."""
+
+    def __init__(self, bill_id: int) -> None:
+        self.bill_id = bill_id
+        super().__init__(f"No se pudo actualizar el documento de factura para la factura {bill_id}")
+
+
 class FileStorageError(DomainException):
     """Se lanza cuando falla la subida de un archivo al almacenamiento remoto (NAS)."""
 

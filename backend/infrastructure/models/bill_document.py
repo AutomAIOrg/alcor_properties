@@ -28,3 +28,12 @@ class BillDocumentORM(Base):
         "Uploaded By", Integer, ForeignKey("users.ID"), nullable=False
     )
     uploaded_at: Mapped[datetime] = mapped_column("Uploaded At", DateTime, nullable=False)
+    status: Mapped[str] = mapped_column("Status", String(50), nullable=False)
+    operation: Mapped[str] = mapped_column("Operation", String(50), nullable=False)
+    attempts: Mapped[int] = mapped_column("Attempts", Integer, nullable=False, default=0)
+    last_error: Mapped[str | None] = mapped_column("Last Error", String(1000), nullable=True)
+    next_retry_at: Mapped[datetime | None] = mapped_column("Next Retry At", DateTime, nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column("Completed At", DateTime, nullable=True)
+    previous_nas_path: Mapped[str | None] = mapped_column(
+        "Previous NAS Path", String(1024), nullable=True
+    )
