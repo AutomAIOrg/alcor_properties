@@ -3,23 +3,28 @@ Caso de uso: generar documento PDF de factura y almacenarlo en NAS.
 """
 
 import logging
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
-from application.bills.bill_pdf_renderer_interface import BillPdfData, IBillPdfRenderer
-from application.shared.file_storage_interface import IFileStorage
-from domain.bills.bill_document import BillDocument
-from domain.bills.bill_document_repository import IBillDocumentRepository
-from domain.bills.entity import Bill
-from domain.bills.repository import IBillRepository
-from domain.exceptions import (
-    BillDocumentAlreadyExistsError,
-    DomainValidationError,
-    FileStorageError,
+from application.bills.bill_document_helpers import (
+    CONTENT_TYPE_PDF,
+    build_bill_document_filename,
+    build_bill_pdf_data,
+    pending_invoices_folder,
+    validate_bill_for_document,
 )
+from application.bills.bill_pdf_renderer_interface import IBillPdfRenderer
+from application.shared.file_storage_interface import IFileStorage
+from domain.bills.bill_document import (
+    BILL_DOCUMENT_OPERATION_GENERATE_PENDING,
+    BILL_DOCUMENT_STATUS_COMPLETED,
+    BILL_DOCUMENT_STATUS_ERROR,
+    BillDocument,
+)
+from domain.bills.bill_document_repository import IBillDocumentRepository
+from domain.bills.repository import IBillRepository
+from domain.exceptions import FileStorageError
 
 logger = logging.getLogger(__name__)
-
-_CONTENT_TYPE_PDF = "application/pdf"
 
 
 class GenerateAndStoreBillDocumentUseCase:
@@ -46,95 +51,100 @@ class GenerateAndStoreBillDocumentUseCase:
 
     def execute(self, bill_id: int, uploaded_by: int) -> BillDocument:
         bill = self._bill_repository.get_by_id(bill_id)
-        self._validate_bill_for_document(bill)
+        validate_bill_for_document(bill)
 
-        if self._document_repository.list_by_bill_id(bill_id):
-            raise BillDocumentAlreadyExistsError(bill_id)
+        existing_document = self._document_repository.get_by_bill_id(bill_id)
+        if existing_document is not None:
+            return existing_document
 
         assert bill.cleaning_date is not None
-        assert bill.hourly_rate is not None
-
-        pdf_data = BillPdfData(
-            bill_id=bill_id,
-            cleaning_date=bill.cleaning_date,
-            apartment_id=bill.apartment_id,
-            clean_hours=bill.clean_hours,
-            hourly_rate=bill.hourly_rate,
-        )
-        content = self._pdf_renderer.render(pdf_data)
-
-        remote_folder = (
-            f"{self._nas_base_path}/{bill.apartment_id} LIMPIEZAS/{bill.cleaning_date.year}"
-        )
-        filename = self._build_filename(bill.apartment_id, bill.cleaning_date)
+        remote_folder = pending_invoices_folder(self._nas_base_path)
+        filename = build_bill_document_filename(bill.apartment_id, bill.cleaning_date)
+        now = datetime.now(UTC)
 
         try:
+            pdf_data = build_bill_pdf_data(bill, bill_id)
+            content = self._pdf_renderer.render(pdf_data)
             nas_path = self._file_storage.upload_bytes(
                 remote_folder=remote_folder,
                 filename=filename,
                 content=content,
-                content_type=_CONTENT_TYPE_PDF,
+                content_type=CONTENT_TYPE_PDF,
+            )
+            document = BillDocument(
+                bill_id=bill_id,
+                filename=filename,
+                nas_path=nas_path,
+                content_type=CONTENT_TYPE_PDF,
+                size_bytes=len(content),
+                uploaded_by=uploaded_by,
+                uploaded_at=now,
+                status=BILL_DOCUMENT_STATUS_COMPLETED,
+                operation=BILL_DOCUMENT_OPERATION_GENERATE_PENDING,
+                attempts=1,
+                completed_at=now,
             )
         except FileStorageError:
-            raise
+            document = self._failed_document(
+                bill_id=bill_id,
+                filename=filename,
+                nas_path=f"{remote_folder}/{filename}",
+                uploaded_by=uploaded_by,
+                uploaded_at=now,
+                error="No se pudo almacenar el documento de factura en el NAS.",
+            )
         except Exception as exc:
             logger.exception("Error inesperado al subir documento de factura %s al NAS", bill_id)
-            raise FileStorageError(
-                "No se pudo almacenar el documento de factura en el NAS."
-            ) from exc
-
-        document = BillDocument(
-            bill_id=bill_id,
-            filename=filename,
-            nas_path=nas_path,
-            content_type=_CONTENT_TYPE_PDF,
-            size_bytes=len(content),
-            uploaded_by=uploaded_by,
-            uploaded_at=datetime.now(UTC),
-        )
+            document = self._failed_document(
+                bill_id=bill_id,
+                filename=filename,
+                nas_path=f"{remote_folder}/{filename}",
+                uploaded_by=uploaded_by,
+                uploaded_at=now,
+                error=str(exc),
+            )
 
         try:
             return self._document_repository.create(document)
-        except BillDocumentAlreadyExistsError:
-            self._compensate_upload(nas_path)
-            raise
         except Exception as exc:
-            self._compensate_upload(nas_path)
+            if document.status == BILL_DOCUMENT_STATUS_COMPLETED:
+                self._compensate_upload(document.nas_path)
             logger.error(
-                "Documento subido al NAS (%s) pero falló la persistencia en BD para factura %s",
-                nas_path,
+                "Falló la persistencia del estado documental (%s) para factura %s",
+                document.nas_path,
                 bill_id,
             )
             raise FileStorageError(
-                "El documento se subió al NAS pero no se pudo registrar en la base de datos."
+                "No se pudo registrar el estado del documento de factura en la base de datos."
             ) from exc
+
+    @staticmethod
+    def _failed_document(
+        *,
+        bill_id: int,
+        filename: str,
+        nas_path: str,
+        uploaded_by: int,
+        uploaded_at: datetime,
+        error: str,
+    ) -> BillDocument:
+        return BillDocument(
+            bill_id=bill_id,
+            filename=filename,
+            nas_path=nas_path,
+            content_type=CONTENT_TYPE_PDF,
+            size_bytes=0,
+            uploaded_by=uploaded_by,
+            uploaded_at=uploaded_at,
+            status=BILL_DOCUMENT_STATUS_ERROR,
+            operation=BILL_DOCUMENT_OPERATION_GENERATE_PENDING,
+            attempts=1,
+            last_error=error[:1000],
+            next_retry_at=uploaded_at + timedelta(hours=1),
+        )
 
     def _compensate_upload(self, nas_path: str) -> None:
         try:
             self._file_storage.delete(nas_path)
         except Exception:
             logger.exception("No se pudo eliminar el archivo huérfano en NAS: %s", nas_path)
-
-    @staticmethod
-    def _validate_bill_for_document(bill: Bill) -> None:
-        if bill.cleaning_date is None:
-            raise DomainValidationError(
-                "La factura no tiene fecha de limpieza; no se puede generar el documento."
-            )
-        if bill.clean_hours <= 0:
-            raise DomainValidationError(
-                "La factura no tiene horas de limpieza válidas; no se puede generar el documento."
-            )
-        if bill.hourly_rate is None:
-            raise DomainValidationError(
-                "La factura no tiene tarifa por hora; no se puede generar el documento."
-            )
-        if bill.hourly_rate < 0:
-            raise DomainValidationError("La tarifa por hora no puede ser negativa.")
-        if not bill.apartment_id.strip():
-            raise DomainValidationError("El apartamento es obligatorio.")
-
-    @staticmethod
-    def _build_filename(apartment_id: str, cleaning_date) -> str:
-        date_str = cleaning_date.strftime("%d.%m.%Y")
-        return f"{apartment_id} LIMPIEZA {date_str}.pdf"
