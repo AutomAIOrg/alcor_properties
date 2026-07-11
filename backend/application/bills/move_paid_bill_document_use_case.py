@@ -14,6 +14,7 @@ from application.bills.bill_document_helpers import (
 )
 from application.bills.bill_pdf_renderer_interface import IBillPdfRenderer
 from application.shared.file_storage_interface import IFileStorage
+from domain.apartments.repository import IApartmentRepository
 from domain.bills.bill_document import (
     BILL_DOCUMENT_OPERATION_MOVE_TO_PAID,
     BILL_DOCUMENT_STATUS_COMPLETED,
@@ -37,12 +38,14 @@ class MovePaidBillDocumentUseCase:
         self,
         bill_repository: IBillRepository,
         document_repository: IBillDocumentRepository,
+        apartment_repository: IApartmentRepository,
         pdf_renderer: IBillPdfRenderer,
         file_storage: IFileStorage,
         nas_base_path: str,
     ) -> None:
         self._bill_repository = bill_repository
         self._document_repository = document_repository
+        self._apartment_repository = apartment_repository
         self._pdf_renderer = pdf_renderer
         self._file_storage = file_storage
         self._nas_base_path = nas_base_path.rstrip("/")
@@ -61,7 +64,7 @@ class MovePaidBillDocumentUseCase:
         now = datetime.now(UTC)
 
         try:
-            pdf_data = build_bill_pdf_data(bill, bill_id)
+            pdf_data = build_bill_pdf_data(bill, bill_id, self._apartment_repository)
             content = self._pdf_renderer.render(pdf_data)
             new_nas_path = self._file_storage.upload_bytes(
                 remote_folder=remote_folder,

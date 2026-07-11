@@ -15,6 +15,7 @@ from application.bills.bill_document_helpers import (
 )
 from application.bills.bill_pdf_renderer_interface import IBillPdfRenderer
 from application.shared.file_storage_interface import IFileStorage
+from domain.apartments.repository import IApartmentRepository
 from domain.bills.bill_document import (
     BILL_DOCUMENT_OPERATION_GENERATE_PENDING,
     BILL_DOCUMENT_OPERATION_MOVE_TO_PAID,
@@ -35,12 +36,14 @@ class RetryBillDocumentSyncUseCase:
         self,
         bill_repository: IBillRepository,
         document_repository: IBillDocumentRepository,
+        apartment_repository: IApartmentRepository,
         pdf_renderer: IBillPdfRenderer,
         file_storage: IFileStorage,
         nas_base_path: str,
     ) -> None:
         self._bill_repository = bill_repository
         self._document_repository = document_repository
+        self._apartment_repository = apartment_repository
         self._pdf_renderer = pdf_renderer
         self._file_storage = file_storage
         self._nas_base_path = nas_base_path.rstrip("/")
@@ -58,7 +61,9 @@ class RetryBillDocumentSyncUseCase:
 
             folder = self._folder_for_operation(document.operation)
             filename = build_bill_document_filename(bill.apartment_id, bill.cleaning_date)
-            content = self._pdf_renderer.render(build_bill_pdf_data(bill, document.bill_id))
+            content = self._pdf_renderer.render(
+                build_bill_pdf_data(bill, document.bill_id, self._apartment_repository)
+            )
             nas_path = self._file_storage.upload_bytes(
                 remote_folder=folder,
                 filename=filename,

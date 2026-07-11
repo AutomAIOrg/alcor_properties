@@ -31,7 +31,7 @@ from application.bills.generate_and_store_bill_document_use_case import (
 from application.bills.list_bills_use_cases import ListBillsUseCase, ListPendingBillsUseCase
 from application.bills.move_paid_bill_document_use_case import MovePaidBillDocumentUseCase
 from application.bills.retry_bill_document_sync_use_case import RetryBillDocumentSyncUseCase
-from application.bills.update_bill_use_case import UpdateBillStateUseCase
+from application.bills.update_bill_use_case import RectifyBillUseCase, UpdateBillStateUseCase
 from application.bookings.commands import (
     CreateBookingUseCase,
     DeleteBookingUseCase,
@@ -70,7 +70,7 @@ from domain.bookings.repository import IBookingRepository
 from domain.cleaning_types.repository import ICleaningTypeRepository
 from domain.exceptions import InvalidToken
 from infrastructure.database.session import get_db
-from infrastructure.documents.stub_bill_pdf_renderer import StubBillPdfRenderer
+from infrastructure.documents.chromium_bill_pdf_renderer import ChromiumBillPdfRenderer
 from infrastructure.email.smtp_email_sender import ConsoleEmailSender, SMTPEmailSender
 from infrastructure.repositories.sqlalchemy_apartment_repository import (
     SQLAlchemyApartmentRepository,
@@ -215,11 +215,6 @@ def get_file_storage() -> IFileStorage:
         volume_prefix=settings.NAS_VOLUME_PREFIX,
         connect_timeout=settings.NAS_SSH_TIMEOUT,
     )
-
-
-def get_bill_pdf_renderer() -> IBillPdfRenderer:
-    """Renderer PDF de facturas (stub hasta implementar plantilla real)."""
-    return StubBillPdfRenderer()
 
 
 def get_cleaning_type_repository(db: Session = Depends(get_db)) -> ICleaningTypeRepository:
@@ -393,6 +388,11 @@ def get_apartment_stats_use_case(
     )
 
 
+def get_bill_pdf_renderer() -> IBillPdfRenderer:
+    """Renderer del PDF de factura (Chromium headless + plantilla del recibo)."""
+    return ChromiumBillPdfRenderer(chromium_path=settings.BILL_PDF_CHROMIUM_PATH)
+
+
 def get_create_bill_use_case(
     bill_repository: IBillRepository = Depends(get_bill_repository),
     booking_repository: IBookingRepository = Depends(get_booking_repository),
@@ -408,6 +408,15 @@ def get_update_bill_state_use_case(
 ) -> UpdateBillStateUseCase:
     """Inyección de dependencias para el caso de uso de actualizar el estado de una factura."""
     return UpdateBillStateUseCase(bill_repository, apartment_repository)
+
+
+def get_rectify_bill_use_case(
+    bill_repository: IBillRepository = Depends(get_bill_repository),
+    cleaning_type_repository: ICleaningTypeRepository = Depends(get_cleaning_type_repository),
+    apartment_repository: IApartmentRepository = Depends(get_apartment_repository),
+) -> RectifyBillUseCase:
+    """Inyección de dependencias para el caso de uso de rectificar los datos de una factura."""
+    return RectifyBillUseCase(bill_repository, cleaning_type_repository, apartment_repository)
 
 
 def get_list_bills_use_case(
@@ -458,6 +467,7 @@ def get_delete_cleaning_type_use_case(
 def get_generate_and_store_bill_document_use_case(
     bill_repository: IBillRepository = Depends(get_bill_repository),
     document_repository: IBillDocumentRepository = Depends(get_bill_document_repository),
+    apartment_repository: IApartmentRepository = Depends(get_apartment_repository),
     pdf_renderer: IBillPdfRenderer = Depends(get_bill_pdf_renderer),
     file_storage: IFileStorage = Depends(get_file_storage),
 ) -> GenerateAndStoreBillDocumentUseCase:
@@ -465,6 +475,7 @@ def get_generate_and_store_bill_document_use_case(
     return GenerateAndStoreBillDocumentUseCase(
         bill_repository,
         document_repository,
+        apartment_repository,
         pdf_renderer,
         file_storage,
         settings.NAS_BASE_PATH,
@@ -474,6 +485,7 @@ def get_generate_and_store_bill_document_use_case(
 def get_move_paid_bill_document_use_case(
     bill_repository: IBillRepository = Depends(get_bill_repository),
     document_repository: IBillDocumentRepository = Depends(get_bill_document_repository),
+    apartment_repository: IApartmentRepository = Depends(get_apartment_repository),
     pdf_renderer: IBillPdfRenderer = Depends(get_bill_pdf_renderer),
     file_storage: IFileStorage = Depends(get_file_storage),
 ) -> MovePaidBillDocumentUseCase:
@@ -481,6 +493,7 @@ def get_move_paid_bill_document_use_case(
     return MovePaidBillDocumentUseCase(
         bill_repository,
         document_repository,
+        apartment_repository,
         pdf_renderer,
         file_storage,
         settings.NAS_BASE_PATH,
@@ -490,6 +503,7 @@ def get_move_paid_bill_document_use_case(
 def get_retry_bill_document_sync_use_case(
     bill_repository: IBillRepository = Depends(get_bill_repository),
     document_repository: IBillDocumentRepository = Depends(get_bill_document_repository),
+    apartment_repository: IApartmentRepository = Depends(get_apartment_repository),
     pdf_renderer: IBillPdfRenderer = Depends(get_bill_pdf_renderer),
     file_storage: IFileStorage = Depends(get_file_storage),
 ) -> RetryBillDocumentSyncUseCase:
@@ -497,6 +511,7 @@ def get_retry_bill_document_sync_use_case(
     return RetryBillDocumentSyncUseCase(
         bill_repository,
         document_repository,
+        apartment_repository,
         pdf_renderer,
         file_storage,
         settings.NAS_BASE_PATH,

@@ -79,6 +79,11 @@ class Settings(BaseSettings):
     NAS_VOLUME_PREFIX: str = "/volume1"
     NAS_SSH_TIMEOUT: int = 30
 
+    # Generación del PDF de factura (Chromium headless). BILL_PDF_CHROMIUM_PATH: ruta al
+    # binario de Chromium/Chrome usado para el render (subprocess --print-to-pdf).
+    # Vacío = autodetección en el PATH. El PDF se sube directamente al NAS, no se guarda en disco.
+    BILL_PDF_CHROMIUM_PATH: str = ""
+
     @model_validator(mode="after")
     def _resolve_db_aliases(self) -> "Settings":
         """Utiliza variables MYSQL_* cuando las variables canónicas DB_* no están presentes."""

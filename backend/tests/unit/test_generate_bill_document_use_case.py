@@ -2,15 +2,16 @@
 Unit tests — GenerateAndStoreBillDocumentUseCase.
 """
 
+from datetime import date
 from decimal import Decimal
 from unittest.mock import MagicMock
 
 import pytest
 
-from application.bills.bill_pdf_renderer_interface import BillPdfData
 from application.bills.generate_and_store_bill_document_use_case import (
     GenerateAndStoreBillDocumentUseCase,
 )
+from domain.apartments.repository import IApartmentRepository
 from domain.bills.bill_document import BILL_DOCUMENT_STATUS_COMPLETED, BILL_DOCUMENT_STATUS_ERROR
 from domain.bills.bill_document_repository import IBillDocumentRepository
 from domain.bills.repository import IBillRepository
@@ -19,17 +20,19 @@ from domain.exceptions import (
     DomainValidationError,
     FileStorageError,
 )
-from tests.helpers import make_bill, make_bill_document
+from tests.helpers import make_apartment, make_bill, make_bill_document
 
 pytestmark = pytest.mark.unit
 
 _NAS_BASE = "/facturas"
 _PDF_BYTES = b"%PDF-1.4 stub"
+_PENDING_FOLDER = "/facturas/1FACTURAS PENDIENTE"
 
 
 def _use_case(
     bills: MagicMock | None = None,
     documents: MagicMock | None = None,
+    apartments: MagicMock | None = None,
     renderer: MagicMock | None = None,
     storage: MagicMock | None = None,
 ) -> GenerateAndStoreBillDocumentUseCase:
@@ -41,14 +44,19 @@ def _use_case(
         documents.get_by_bill_id.return_value = None
         documents.list_by_bill_id.return_value = []
         documents.create.side_effect = lambda doc: doc
+    if apartments is None:
+        apartments = MagicMock(spec=IApartmentRepository)
+        apartments.get_by_apartment_id.return_value = make_apartment(address="Calle Glaucio 15")
     if renderer is None:
         renderer = MagicMock()
         renderer.render.return_value = _PDF_BYTES
     if storage is None:
         storage = MagicMock()
-        storage.upload_bytes.return_value = "/facturas/2026-06-01/bill_1_20260601_abcd1234.pdf"
+        storage.upload_bytes.return_value = f"{_PENDING_FOLDER}/TEST-001 LIMPIEZA 01.06.2026.pdf"
 
-    return GenerateAndStoreBillDocumentUseCase(bills, documents, renderer, storage, _NAS_BASE)
+    return GenerateAndStoreBillDocumentUseCase(
+        bills, documents, apartments, renderer, storage, _NAS_BASE
+    )
 
 
 class TestGenerateAndStoreBillDocumentUseCase:
@@ -63,28 +71,40 @@ class TestGenerateAndStoreBillDocumentUseCase:
         renderer = MagicMock()
         renderer.render.return_value = _PDF_BYTES
         storage = MagicMock()
-        storage.upload_bytes.return_value = "/facturas/2026-06-01/bill_1_20260601_abcd1234.pdf"
+        storage.upload_bytes.return_value = f"{_PENDING_FOLDER}/TEST-001 LIMPIEZA 01.06.2026.pdf"
 
-        result = _use_case(bills, documents, renderer, storage).execute(1, uploaded_by=2)
+        result = _use_case(bills, documents, None, renderer, storage).execute(1, uploaded_by=2)
 
         assert result.id == 10
         assert result.bill_id == 1
         assert result.status == BILL_DOCUMENT_STATUS_COMPLETED
         assert result.nas_path.endswith(".pdf")
-        renderer.render.assert_called_once_with(
-            BillPdfData(
-                bill_id=1,
-                cleaning_date=bill.cleaning_date,
-                apartment_id=bill.apartment_id,
-                clean_hours=bill.clean_hours,
-                hourly_rate=bill.hourly_rate,
-            )
-        )
+
+        # El renderer recibe los datos de negocio de la factura, con la dirección resuelta.
+        renderer.render.assert_called_once()
+        pdf_data = renderer.render.call_args.args[0]
+        assert pdf_data.bill_id == 1
+        assert pdf_data.apartment_id == bill.apartment_id
+        assert pdf_data.cleaning_date == bill.cleaning_date
+        assert pdf_data.clean_hours == bill.clean_hours
+        assert pdf_data.hourly_rate == bill.hourly_rate
+        assert pdf_data.cost == bill.cost
+        assert pdf_data.address == "Calle Glaucio 15"
+        assert pdf_data.paid is False
+
         storage.upload_bytes.assert_called_once()
         call_kwargs = storage.upload_bytes.call_args.kwargs
-        assert call_kwargs["remote_folder"] == "/facturas/1FACTURAS PENDIENTE"
+        assert call_kwargs["remote_folder"] == _PENDING_FOLDER
         assert call_kwargs["content"] == _PDF_BYTES
         documents.create.assert_called_once()
+
+    def test_resolves_address_even_when_apartment_missing(self):
+        apartments = MagicMock(spec=IApartmentRepository)
+        apartments.get_by_apartment_id.return_value = None
+
+        _use_case(apartments=apartments).execute(1, uploaded_by=2)
+
+        # Se tolera un apartamento inexistente: el recibo sale sin dirección.
 
     def test_raises_when_bill_not_found(self):
         bills = MagicMock(spec=IBillRepository)
@@ -112,6 +132,13 @@ class TestGenerateAndStoreBillDocumentUseCase:
         bills.get_by_id.return_value = make_bill(hourly_rate=None)
 
         with pytest.raises(DomainValidationError, match="tarifa"):
+            _use_case(bills=bills).execute(1, uploaded_by=2)
+
+    def test_raises_when_cost_missing(self):
+        bills = MagicMock(spec=IBillRepository)
+        bills.get_by_id.return_value = make_bill(cost=None)
+
+        with pytest.raises(DomainValidationError, match="coste"):
             _use_case(bills=bills).execute(1, uploaded_by=2)
 
     def test_marks_document_as_error_when_nas_upload_fails(self):
@@ -174,3 +201,44 @@ class TestGenerateAndStoreBillDocumentUseCase:
 
         assert result.status == BILL_DOCUMENT_STATUS_ERROR
         storage.delete.assert_not_called()
+
+    def test_regenerate_updates_existing_document_in_place(self):
+        existing = make_bill_document(
+            id=10, nas_path=f"{_PENDING_FOLDER}/TEST-001 LIMPIEZA 01.06.2026.pdf"
+        )
+        documents = MagicMock(spec=IBillDocumentRepository)
+        documents.get_by_bill_id.return_value = existing
+        documents.update.side_effect = lambda doc: doc
+        storage = MagicMock()
+        # Mismo nombre (misma fecha) → se sobrescribe el archivo, no hay limpieza.
+        storage.upload_bytes.return_value = existing.nas_path
+
+        result = _use_case(documents=documents, storage=storage).execute(
+            1, uploaded_by=2, regenerate=True
+        )
+
+        assert result.id == 10
+        assert result.status == BILL_DOCUMENT_STATUS_COMPLETED
+        documents.update.assert_called_once()
+        documents.create.assert_not_called()
+        storage.delete.assert_not_called()
+
+    def test_regenerate_cleans_up_previous_file_when_filename_changes(self):
+        bills = MagicMock(spec=IBillRepository)
+        bills.get_by_id.return_value = make_bill(bill_id=1, cleaning_date=date(2026, 6, 3))
+        old_path = f"{_PENDING_FOLDER}/TEST-001 LIMPIEZA 01.06.2026.pdf"
+        new_path = f"{_PENDING_FOLDER}/TEST-001 LIMPIEZA 03.06.2026.pdf"
+        existing = make_bill_document(id=10, nas_path=old_path)
+        documents = MagicMock(spec=IBillDocumentRepository)
+        documents.get_by_bill_id.return_value = existing
+        documents.update.side_effect = lambda doc: doc
+        storage = MagicMock()
+        storage.upload_bytes.return_value = new_path
+
+        result = _use_case(bills=bills, documents=documents, storage=storage).execute(
+            1, uploaded_by=2, regenerate=True
+        )
+
+        assert result.id == 10
+        assert result.nas_path == new_path
+        storage.delete.assert_called_once_with(old_path)

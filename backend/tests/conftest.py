@@ -210,6 +210,8 @@ def bills_api_client(
     from main import app
 
     app.dependency_overrides[get_create_bill_use_case] = lambda: mock_create_bill_use_case
+    # La generación del PDF es un efecto secundario ajeno a la capa HTTP: se neutraliza
+    # con mocks para no tocar Chromium ni el NAS en los tests de API.
     app.dependency_overrides[get_update_bill_state_use_case] = lambda: (
         mock_update_bill_state_use_case
     )
@@ -450,10 +452,11 @@ def e2e_client(sqlite_engine, mock_e2e_file_storage):
     """
     TestClient sin mocks de use cases.
 
-    Solo sobreescribe get_db para apuntar a SQLite en lugar de MySQL.
-    El stack completo (use cases + repositorio) es real.
+    Sobreescribe get_db para apuntar a SQLite en lugar de MySQL, y neutraliza los efectos
+    de infraestructura de la generación del PDF: el renderer (Chromium, dependencia de
+    sistema) y el almacenamiento en NAS. El resto del stack (use cases + repositorio) es real.
     """
-    from api.dependencies import get_file_storage
+    from api.dependencies import get_bill_pdf_renderer, get_file_storage
     from infrastructure.database.session import get_db
     from main import app
 
@@ -466,8 +469,13 @@ def e2e_client(sqlite_engine, mock_e2e_file_storage):
         finally:
             session.close()
 
+    # Renderer falso: devuelve bytes de PDF sin invocar Chromium (evita colgar CI en headless).
+    fake_renderer = MagicMock()
+    fake_renderer.render.return_value = b"%PDF-1.4 e2e"
+
     app.dependency_overrides[get_db] = override_get_db
     app.dependency_overrides[get_file_storage] = lambda: mock_e2e_file_storage
+    app.dependency_overrides[get_bill_pdf_renderer] = lambda: fake_renderer
 
     try:
         with TestClient(app, raise_server_exceptions=True) as client:
@@ -475,6 +483,7 @@ def e2e_client(sqlite_engine, mock_e2e_file_storage):
     finally:
         app.dependency_overrides.pop(get_db, None)
         app.dependency_overrides.pop(get_file_storage, None)
+        app.dependency_overrides.pop(get_bill_pdf_renderer, None)
 
 
 @pytest.fixture

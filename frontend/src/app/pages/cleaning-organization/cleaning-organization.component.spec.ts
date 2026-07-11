@@ -247,6 +247,35 @@ describe('CleaningOrganizationComponent', () => {
     ]);
   });
 
+  it('ordena las limpiezas por entrada (check-in) más próxima; las sin entrada, al final', () => {
+    setup([
+      makeCleaningOpportunity({
+        source_booking_record_id: 1,
+        apartment_id: 'R181',
+        available_from: '2026-06-02',
+        available_until: '2026-06-20',
+      }),
+      makeCleaningOpportunity({
+        source_booking_record_id: 2,
+        apartment_id: 'R182',
+        available_from: '2026-06-03',
+        available_until: '2026-06-08',
+      }),
+      makeCleaningOpportunity({
+        source_booking_record_id: 3,
+        apartment_id: 'R183',
+        available_from: '2026-06-04',
+        available_until: null,
+      }),
+    ]);
+
+    component.currentDate.set(new Date(2026, 5, 3));
+
+    // Entrada más próxima primero (06-08 antes que 06-20); la que no tiene entrada, la última.
+    const order = component.cleaningOpportunities().map(o => o.sourceBookingRecordId);
+    expect(order).toEqual([2, 1, 3]);
+  });
+
   it('calcula barras semanales desde la fecha disponible hasta la fecha límite', () => {
     setup([
       makeCleaningOpportunity({

@@ -18,9 +18,11 @@ BILL_STATE_PAID = "Pagada"
 BILL_STATE_CANCELLED = "Cancelada"
 
 # Transiciones de estado permitidas entre facturas reales (Pendiente queda fuera al ser virtual).
+# "Pagada" es un estado terminal: no admite ninguna transición. Una factura ya pagada queda
+# solo para consulta/impresión del recibo; no puede revertirse ni modificarse.
 ALLOWED_BILL_TRANSITIONS: dict[str, set[str]] = {
     BILL_STATE_CREATED: {BILL_STATE_PAID, BILL_STATE_CANCELLED},
-    BILL_STATE_PAID: {BILL_STATE_CREATED},
+    BILL_STATE_PAID: set(),
     BILL_STATE_CANCELLED: {BILL_STATE_CREATED},
 }
 

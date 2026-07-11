@@ -416,7 +416,8 @@ button.bill-state-chip {
   font-weight: 700;
 
   input,
-  textarea {
+  textarea,
+  select {
     padding: 0.55rem 0.7rem;
     border: 1px solid #d0d5dd;
     border-radius: 8px;
@@ -429,9 +430,60 @@ button.bill-state-chip {
     }
   }
 
+  // El desplegable de tipo de limpieza se muestra con el mismo formato que en el modal
+  // de generar factura (Organización Limpiezas): fondo blanco, foco resaltado y estados.
+  select {
+    width: 100%;
+    background: #fff;
+    color: #101828;
+    font-weight: 500;
+    cursor: pointer;
+
+    &:focus {
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+    }
+
+    &:disabled {
+      background: #f2f4f7;
+      color: #98a2b3;
+      cursor: not-allowed;
+    }
+  }
+
   textarea {
     resize: vertical;
     min-height: 3.5rem;
+  }
+}
+
+// Rejilla Fecha / Hora inicio / Hora fin del modal de rectificar (mismo aspecto que el
+// modal de generar factura de Organización Limpiezas).
+.rectify-form-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-top: 1rem;
+
+  @media (max-width: 640px) {
+    grid-template-columns: 1fr;
+  }
+
+  .dialog-field {
+    margin-top: 0;
+  }
+}
+
+// Resumen Tarifa · Horas · Total del modal de rectificar.
+.dialog-summary {
+  margin-top: 1rem;
+  padding: 0.75rem;
+  border-radius: 8px;
+  background: #f9fafb;
+  color: #344054;
+  font-size: 0.86rem;
+
+  p {
+    margin: 0;
   }
 }
 

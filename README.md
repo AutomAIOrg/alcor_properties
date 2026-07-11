@@ -214,3 +214,132 @@ pnpm build
 - **Modal de creación** de nuevas reservas con validación, cálculo automático de noches y selector de piso desde la base de datos
 - **Estados de reserva**: `Confirmed`, `Pending`, `Cancelled`, `ok` (configurables en `booking.model.ts`)
 - Diseño **responsive** con soporte móvil
+
+---
+
+## Despliegue en VPS (Docker Compose)
+
+La producción usa **Docker Compose** con tres servicios lógicos:
+
+| Servicio | Rol |
+|---|---|
+| `migrate` | Ejecuta `alembic upgrade head` una vez contra la MySQL externa |
+| `backend` | FastAPI + Chromium (PDF de facturas) |
+| `web` | Angular estático + Caddy (HTTPS y proxy `/api/*`) |
+
+**No se incluye MySQL** en el stack de producción: la base de datos del cliente ya existe y solo recibe migraciones de Alembic.
+
+Los archivos `docker-compose.yml` y `docker-compose.test.yml` de la raíz son **solo para desarrollo local y CI**.
+
+### Requisitos en la VPS
+
+- Docker Engine y Docker Compose v2
+- DNS del dominio apuntando a la IP de la VPS (`APP_DOMAIN`)
+- Puertos **80** y **443** abiertos
+- Acceso de red desde la VPS a la MySQL de producción (firewall / allowlist)
+- **Tailscale** instalado en el **host** de la VPS si el NAS Synology solo es accesible por red `100.x.x.x`
+- Backup de la base de datos antes del primer despliegue
+
+### Archivos de despliegue
+
+```
+alcor_properties/
+├── backend/Dockerfile          # Imagen FastAPI + Chromium
+├── backend/docker-entrypoint.sh
+├── frontend/Dockerfile         # Build Angular + Caddy
+├── deploy/Caddyfile            # TLS, proxy /api, SPA fallback
+├── docker-compose.prod.yml     # Orquestación producción
+├── .env.production.example     # Plantilla de variables (sin secretos)
+└── .dockerignore
+```
+
+### Primer despliegue
+
+1. Clonar el repositorio en la VPS.
+
+2. Crear el fichero de entorno (no commitear):
+
+```bash
+cp .env.production.example .env.production
+chmod 600 .env.production
+# Editar .env.production con valores reales (DB, JWT, NAS, SMTP, dominio...)
+```
+
+3. Validar la configuración de Compose:
+
+```bash
+docker compose -f docker-compose.prod.yml config
+```
+
+4. Construir y levantar el stack (migraciones + backend + web):
+
+```bash
+docker compose -f docker-compose.prod.yml up -d --build
+```
+
+5. Crear el usuario administrador inicial (solo si no existe):
+
+```bash
+docker compose -f docker-compose.prod.yml exec backend python scripts/create_admin_user.py
+```
+
+6. Comprobar salud:
+
+```bash
+curl -f https://TU_DOMINIO/health
+```
+
+### Variables críticas (`.env.production`)
+
+| Variable | Descripción |
+|---|---|
+| `APP_DOMAIN` | Dominio público (Caddy + certificado TLS) |
+| `DB_*` | Conexión a MySQL externa |
+| `JWT_SECRET_KEY` | Secreto fuerte para tokens |
+| `DEFAULT_PASSWORD` | Obligatoria para arrancar la API |
+| `FRONTEND_URL` | URL HTTPS del frontend (emails de reset) |
+| `CORS_ORIGINS` | JSON con el origen HTTPS del frontend |
+| `NAS_*` | Credenciales y ruta del NAS (PDF de facturas) |
+| `BILL_PDF_CHROMIUM_PATH` | `/usr/bin/chromium` (ya en la imagen) |
+| `SMTP_*` | Envío de emails en producción |
+
+### Actualización / rollback
+
+**Actualizar** tras un `git pull`:
+
+```bash
+docker compose -f docker-compose.prod.yml up -d --build
+```
+
+El servicio `migrate` vuelve a ejecutar `alembic upgrade head` en cada despliegue.
+
+**Rollback** de aplicación (sin tocar la BD):
+
+```bash
+git checkout <commit-anterior>
+docker compose -f docker-compose.prod.yml up -d --build
+```
+
+Si una migración ya se aplicó, el rollback de código puede requerir restaurar un backup de MySQL.
+
+### Logs y operación
+
+```bash
+docker compose -f docker-compose.prod.yml logs -f backend
+docker compose -f docker-compose.prod.yml logs -f web
+docker compose -f docker-compose.prod.yml ps
+```
+
+Reintentar sincronización de documentos de factura con el NAS (cron opcional en el host):
+
+```bash
+docker compose -f docker-compose.prod.yml exec backend python scripts/retry_bill_documents.py
+```
+
+### Smoke tests post-despliegue
+
+- [ ] `https://TU_DOMINIO` carga la SPA (rutas directas como `/login` funcionan)
+- [ ] `https://TU_DOMINIO/health` devuelve `{"status":"healthy","database":"ok"}`
+- [ ] Login y refresh de sesión
+- [ ] Crear factura y verificar generación de PDF en el NAS
+- [ ] Solo los puertos 80/443 están expuestos públicamente (el backend no publica `:8000`)

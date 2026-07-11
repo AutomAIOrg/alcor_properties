@@ -6,13 +6,13 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from application.bills.bill_pdf_renderer_interface import BillPdfData
 from application.bills.move_paid_bill_document_use_case import MovePaidBillDocumentUseCase
+from domain.apartments.repository import IApartmentRepository
 from domain.bills.bill_document import BILL_DOCUMENT_STATUS_COMPLETED, BILL_DOCUMENT_STATUS_ERROR
 from domain.bills.bill_document_repository import IBillDocumentRepository
 from domain.bills.repository import IBillRepository
 from domain.exceptions import BillNotFoundError, DomainValidationError, FileStorageError
-from tests.helpers import make_bill, make_bill_document
+from tests.helpers import make_apartment, make_bill, make_bill_document
 
 pytestmark = pytest.mark.unit
 
@@ -27,6 +27,7 @@ def _use_case(
     documents: MagicMock | None = None,
     renderer: MagicMock | None = None,
     storage: MagicMock | None = None,
+    apartments: MagicMock | None = None,
 ) -> MovePaidBillDocumentUseCase:
     if bills is None:
         bills = MagicMock(spec=IBillRepository)
@@ -35,6 +36,9 @@ def _use_case(
         documents = MagicMock(spec=IBillDocumentRepository)
         documents.list_by_bill_id.return_value = [make_bill_document(id=10, nas_path=_PENDING_PATH)]
         documents.update.side_effect = lambda doc: doc
+    if apartments is None:
+        apartments = MagicMock(spec=IApartmentRepository)
+        apartments.get_by_apartment_id.return_value = make_apartment()
     if renderer is None:
         renderer = MagicMock()
         renderer.render.return_value = _PDF_BYTES
@@ -42,7 +46,7 @@ def _use_case(
         storage = MagicMock()
         storage.upload_bytes.return_value = _PAID_PATH
 
-    return MovePaidBillDocumentUseCase(bills, documents, renderer, storage, _NAS_BASE)
+    return MovePaidBillDocumentUseCase(bills, documents, apartments, renderer, storage, _NAS_BASE)
 
 
 class TestMovePaidBillDocumentUseCase:
@@ -62,15 +66,14 @@ class TestMovePaidBillDocumentUseCase:
 
         assert result.nas_path == _PAID_PATH
         assert result.status == BILL_DOCUMENT_STATUS_COMPLETED
-        renderer.render.assert_called_once_with(
-            BillPdfData(
-                bill_id=1,
-                cleaning_date=bill.cleaning_date,
-                apartment_id=bill.apartment_id,
-                clean_hours=bill.clean_hours,
-                hourly_rate=bill.hourly_rate,
-            )
-        )
+        renderer.render.assert_called_once()
+        pdf_data = renderer.render.call_args.args[0]
+        assert pdf_data.bill_id == 1
+        assert pdf_data.cleaning_date == bill.cleaning_date
+        assert pdf_data.apartment_id == bill.apartment_id
+        assert pdf_data.clean_hours == bill.clean_hours
+        assert pdf_data.hourly_rate == bill.hourly_rate
+        assert pdf_data.cost == bill.cost
         call_kwargs = storage.upload_bytes.call_args.kwargs
         assert call_kwargs["remote_folder"] == "/facturas/1FACTURAS PAGADAS"
         documents.update.assert_called_once()
