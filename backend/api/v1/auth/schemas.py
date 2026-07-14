@@ -48,6 +48,13 @@ class ResetPasswordRequest(BaseModel):
     new_password: str = Field(..., description="Nueva contraseña")
 
 
+class ChangePasswordRequest(BaseModel):
+    """DTO de entrada para POST /change-password."""
+
+    current_password: str = Field(..., description="Contraseña actual")
+    new_password: str = Field(..., description="Nueva contraseña")
+
+
 class RefreshTokenRequest(BaseModel):
     """DTO de entrada para POST /refresh."""
 

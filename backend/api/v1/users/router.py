@@ -8,6 +8,7 @@ from api.dependencies import (
     get_current_user,
     get_delete_user_use_case,
     get_get_all_users_use_case,
+    get_reset_user_password_use_case,
     get_update_user_use_case,
     require_admin,
 )
@@ -15,6 +16,10 @@ from api.v1.users.schemas import CreateUserRequest, UpdateUserRequest, UserRespo
 from application.users.create_user_use_case import CreateUserData, CreateUserUseCase
 from application.users.delete_user_use_case import DeleteUserUseCase
 from application.users.get_all_users_use_case import GetAllUsersUseCase
+from application.users.reset_user_password_use_case import (
+    ResetUserPasswordCommand,
+    ResetUserPasswordUseCase,
+)
 from application.users.update_user_use_case import UpdateUserData, UpdateUserUseCase
 from config import settings
 from domain.auth.user_entity import User
@@ -76,6 +81,25 @@ async def update_user(
     )
     logger.info("Usuario actualizado correctamente")
     return {"message": "Usuario actualizado correctamente"}
+
+
+@router.post("/{user_id}/reset-password")
+async def reset_user_password(
+    user_id: int,
+    reset_user_password_use_case: Annotated[
+        ResetUserPasswordUseCase, Depends(get_reset_user_password_use_case)
+    ],
+):
+    """Restablece la contraseña de un usuario a la contraseña inicial del sistema."""
+    logger.info(f"Restableciendo la contraseña del usuario {user_id} a la inicial")
+    reset_user_password_use_case.execute(
+        ResetUserPasswordCommand(
+            user_id=user_id,
+            initial_password=settings.DEFAULT_PASSWORD,
+        )
+    )
+    logger.info("Contraseña restablecida correctamente")
+    return {"message": "Contraseña restablecida a la contraseña inicial."}
 
 
 @router.get("/")
