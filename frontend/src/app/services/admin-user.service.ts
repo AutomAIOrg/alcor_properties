@@ -46,4 +46,8 @@ export class AdminUserService {
   deleteUser(userId: number): Observable<ApiMessageResponse> {
     return this.http.delete<ApiMessageResponse>(`${this.API}${userId}`);
   }
+
+  resetUserPassword(userId: number): Observable<ApiMessageResponse> {
+    return this.http.post<ApiMessageResponse>(`${this.API}${userId}/reset-password`, {});
+  }
 }
