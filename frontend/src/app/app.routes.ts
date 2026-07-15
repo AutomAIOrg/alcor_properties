@@ -42,11 +42,6 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/admin/admin.component').then(m => m.AdminComponent),
     canActivate: [authGuard, permissionGuard('admin:access')],
   },
-  {
-    path: 'account',
-    loadComponent: () => import('./pages/account/account.component').then(m => m.AccountComponent),
-    canActivate: [authGuard],
-  },
   { path: '', redirectTo: 'login', pathMatch: 'full' },
   { path: '**', redirectTo: 'login' },
 ];

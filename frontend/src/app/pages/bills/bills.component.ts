@@ -1,6 +1,7 @@
 import { CurrencyPipe } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import { AuthService } from '../../auth/auth.service';
 import {
   Bill,
@@ -47,6 +48,7 @@ interface ToastMessage {
   standalone: true,
   imports: [
     CurrencyPipe,
+    RouterLink,
     BillReceiptComponent,
     DateRangePickerComponent,
     DismissableBackdropDirective,

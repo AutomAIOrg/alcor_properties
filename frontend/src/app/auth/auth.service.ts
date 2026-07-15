@@ -57,15 +57,6 @@ export class AuthService {
     });
   }
 
-  // Cambia la contraseña del usuario autenticado. Exige la contraseña actual.
-  // No renueva la sesión: el backend mantiene válida la sesión en curso.
-  changePassword(currentPassword: string, newPassword: string): Observable<MessageResponse> {
-    return this.http.post<MessageResponse>(`${this.API}/change-password`, {
-      current_password: currentPassword,
-      new_password: newPassword,
-    });
-  }
-
   refreshToken(): Observable<AccessTokenResponse> {
     const refreshToken = this.tokenService.getRefreshToken();
     if (!refreshToken) {

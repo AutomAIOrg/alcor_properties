@@ -18,7 +18,6 @@ from application.apartments.use_cases import (
     SearchApartmentsUseCase,
     UpdateApartmentUseCase,
 )
-from application.auth.change_password_use_case import ChangePasswordUseCase
 from application.auth.forgot_password_use_case import ForgotPasswordUseCase
 from application.auth.login_use_case import LoginUseCase
 from application.auth.refresh_token_use_case import RefreshTokenUseCase
@@ -61,7 +60,6 @@ from application.shared.user_repository_interface import IUserRepository
 from application.users.create_user_use_case import CreateUserUseCase
 from application.users.delete_user_use_case import DeleteUserUseCase
 from application.users.get_all_users_use_case import GetAllUsersUseCase
-from application.users.reset_user_password_use_case import ResetUserPasswordUseCase
 from application.users.update_user_use_case import UpdateUserUseCase
 from config import settings
 from domain.apartments.repository import IApartmentRepository
@@ -266,14 +264,6 @@ def get_reset_password_use_case(
     return ResetPasswordUseCase(user_repository, token_manager, password_manager)
 
 
-def get_change_password_use_case(
-    user_repository: IUserRepository = Depends(get_user_repository),
-    password_manager: IPasswordManager = Depends(get_password_manager),
-) -> ChangePasswordUseCase:
-    """Inyección de dependencias para que un usuario cambie su propia contraseña."""
-    return ChangePasswordUseCase(user_repository, password_manager)
-
-
 def get_create_user_use_case(
     user_repository: IUserRepository = Depends(get_user_repository),
     password_manager: IPasswordManager = Depends(get_password_manager),
@@ -301,14 +291,6 @@ def get_get_all_users_use_case(
 ) -> GetAllUsersUseCase:
     """Inyección de dependencias para obtener todos los usuarios."""
     return GetAllUsersUseCase(user_repository)
-
-
-def get_reset_user_password_use_case(
-    user_repository: IUserRepository = Depends(get_user_repository),
-    password_manager: IPasswordManager = Depends(get_password_manager),
-) -> ResetUserPasswordUseCase:
-    """Inyección de dependencias para restablecer la contraseña de un usuario a la inicial."""
-    return ResetUserPasswordUseCase(user_repository, password_manager)
 
 
 @dataclass
