@@ -55,6 +55,7 @@ class RefreshTokenUseCase:
                 "username": user.username,
                 "role": user.role,
                 "ver": user.token_version,
+                "mcp": user.must_change_password,
             },
         )
         return RefreshTokenResult(access_token=access_token)

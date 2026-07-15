@@ -40,7 +40,7 @@ class TestRefreshTokenUseCase:
         user_repository.get_by_id.assert_called_once_with(1)
         token_manager.create_access_token.assert_called_once_with(
             subject="1",
-            claims={"username": "admin", "role": Role.ADMIN, "ver": 0},
+            claims={"username": "admin", "role": Role.ADMIN, "ver": 0, "mcp": False},
         )
 
     def test_revoked_token_version_raises_invalid_token(self):

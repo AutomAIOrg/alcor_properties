@@ -57,6 +57,7 @@ class SQLAlchemyUserRepository(IUserRepository):
             lastname=user.lastname,
             email=user.email,
             role=user.role.value,
+            must_change_password=user.must_change_password,
         )
         self._db.add(orm)
         try:
@@ -97,6 +98,7 @@ class SQLAlchemyUserRepository(IUserRepository):
         orm.lastname = user.lastname
         orm.email = user.email
         orm.role = user.role.value
+        orm.must_change_password = user.must_change_password
 
         try:
             self._db.commit()
@@ -156,4 +158,5 @@ class SQLAlchemyUserRepository(IUserRepository):
             email=orm.email,
             role=Role(orm.role),
             token_version=orm.token_version,
+            must_change_password=orm.must_change_password,
         )

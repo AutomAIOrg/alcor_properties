@@ -26,6 +26,9 @@ class User:
     lastname: str | None = None
     email: str | None = None
     token_version: int = 0
+    # Mientras sea True el usuario solo puede fijar una contraseña propia: aún
+    # tiene la contraseña inicial del sistema (alta o restablecimiento del admin).
+    must_change_password: bool = False
     created_at: datetime = field(default_factory=datetime.now)
     updated_at: datetime = field(default_factory=datetime.now)
 
@@ -40,3 +43,4 @@ class NewUser:
     role: Role
     lastname: str | None = None
     email: str | None = None
+    must_change_password: bool = False

@@ -33,7 +33,7 @@ def password_manager() -> MagicMock:
 
 class TestResetUserPasswordUseCase:
     def test_resets_password_and_invalidates_sessions(self, user_repository, password_manager):
-        user = make_user(id=2, password="stored-hash")
+        user = make_user(id=2, password="stored-hash", must_change_password=False)
         user_repository.get_by_id.return_value = user
         password_manager.hash.return_value = "hashed-initial-password"
 
@@ -44,6 +44,8 @@ class TestResetUserPasswordUseCase:
         assert result is None
         password_manager.hash.assert_called_once_with("alcor1234")
         assert user.password == "hashed-initial-password"
+        # Vuelve a tener la contraseña inicial: debe fijar una propia al entrar.
+        assert user.must_change_password is True
         user_repository.update_user.assert_called_once_with(user)
         # Invalida las sesiones activas del usuario afectado.
         user_repository.bump_token_version.assert_called_once_with(2)
