@@ -4,6 +4,8 @@ End-to-end tests — flujos completos de facturas sin mocks.
 Stack: TestClient → Use Cases reales → SQLAlchemy Repositories → SQLite en memoria.
 """
 
+from datetime import date, timedelta
+
 import pytest
 
 pytestmark = pytest.mark.e2e
@@ -342,13 +344,17 @@ class TestBillabilityValidation:
         assert "cancelada" in r.json()["detail"]
 
     def test_future_checkout_returns_422(self, e2e_client, admin_auth_headers):
+        # Fechas relativas a hoy: un check-out fijo dejaría de ser futuro con el tiempo.
+        check_in = date.today() + timedelta(days=5)
+        check_out = check_in + timedelta(days=5)
+
         r = e2e_client.post(
             "/api/v1/bookings/",
             json={
                 **_BOOKING_PAYLOAD,
                 "apartment_id": "E2E-FUTURE-001",
-                "check_in": "2026-07-10",
-                "check_out": "2026-07-15",
+                "check_in": check_in.isoformat(),
+                "check_out": check_out.isoformat(),
                 "nights": 5,
             },
             headers=admin_auth_headers,
@@ -359,7 +365,7 @@ class TestBillabilityValidation:
 
         r = e2e_client.post(
             "/api/v1/bills/",
-            json=_bill_payload(record_id, cleaning_type_id, cleaning_date="2026-07-15"),
+            json=_bill_payload(record_id, cleaning_type_id, cleaning_date=check_out.isoformat()),
             headers=admin_auth_headers,
         )
         assert r.status_code == 422
