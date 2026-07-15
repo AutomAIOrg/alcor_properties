@@ -34,6 +34,7 @@ describe('LoggingComponent', () => {
     authServiceSpy = {
       login: jest.fn(),
       forgotPassword: jest.fn(),
+      mustChangePassword: jest.fn().mockReturnValue(false),
       getDefaultRoute: jest.fn().mockReturnValue('/calendar'),
     } as unknown as jest.Mocked<AuthService>;
 
@@ -137,6 +138,19 @@ describe('LoggingComponent', () => {
       expect(authServiceSpy.getDefaultRoute).toHaveBeenCalledTimes(1);
       expect(routerSpy.navigate).toHaveBeenCalledTimes(1);
       expect(routerSpy.navigate).toHaveBeenCalledWith(['/cleaning-organization']);
+    });
+
+    it('navega al cambio de contraseña si el usuario aún tiene la inicial', () => {
+      authServiceSpy.login.mockReturnValue(of(makeAuthResponse()));
+      authServiceSpy.mustChangePassword.mockReturnValue(true);
+
+      component.username = 'nueva@test.com';
+      component.password = 'alcor1234';
+
+      component.onSubmit();
+
+      expect(routerSpy.navigate).toHaveBeenCalledWith(['/change-initial-password']);
+      expect(authServiceSpy.getDefaultRoute).not.toHaveBeenCalled();
     });
   });
 

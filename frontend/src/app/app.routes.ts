@@ -1,5 +1,5 @@
 import { Routes } from '@angular/router';
-import { authGuard } from './auth/auth.guard';
+import { authGuard, initialPasswordGuard } from './auth/auth.guard';
 import { permissionGuard } from './auth/auth.guard';
 
 export const routes: Routes = [
@@ -11,6 +11,14 @@ export const routes: Routes = [
     path: 'reset-password',
     loadComponent: () =>
       import('./pages/reset-password/reset-password.component').then(m => m.ResetPasswordComponent),
+  },
+  {
+    path: 'change-initial-password',
+    loadComponent: () =>
+      import('./pages/change-initial-password/change-initial-password.component').then(
+        m => m.ChangeInitialPasswordComponent
+      ),
+    canActivate: [initialPasswordGuard],
   },
   {
     path: 'calendar',

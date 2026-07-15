@@ -28,6 +28,8 @@ export class AuthService {
   currentUser = this._currentUser.asReadonly();
   isAuthenticated = computed(() => !!this._currentUser());
   currentRole = computed(() => this._currentUser()?.role ?? null);
+  // Tiene la contraseña inicial del sistema: no puede usar la app hasta cambiarla.
+  mustChangePassword = computed(() => this._currentUser()?.mcp === true);
 
   // ── Login / Logout ─────────────────────────────────────────────────────────
   login(credentials: AuthRequest): Observable<AuthResponse> {
@@ -64,6 +66,20 @@ export class AuthService {
       current_password: currentPassword,
       new_password: newPassword,
     });
+  }
+
+  // Fija la contraseña propia de un usuario que aún tiene la inicial del sistema.
+  // No exige la contraseña actual y devuelve tokens nuevos, que sustituyen a los
+  // vigentes para que la sesión continúe ya sin la marca de cambio obligatorio.
+  changeInitialPassword(newPassword: string): Observable<AuthResponse> {
+    return this.http
+      .post<AuthResponse>(`${this.API}/change-initial-password`, { new_password: newPassword })
+      .pipe(
+        tap(response => {
+          this.tokenService.setTokens(response.access_token, response.refresh_token);
+          this._currentUser.set(this.tokenService.decodeToken());
+        })
+      );
   }
 
   refreshToken(): Observable<AccessTokenResponse> {
