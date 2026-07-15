@@ -78,17 +78,27 @@
                             type="button"
                             title="Editar usuario"
                             aria-label="Editar usuario"
-                            [disabled]="isSavingUser() || isDeletingUser()"
+                            [disabled]="isSavingUser() || isDeletingUser() || isResettingPassword()"
                             (click)="startEditingUser(user)"
                           >
                             ✎
+                          </button>
+                          <button
+                            class="icon-btn reset-btn"
+                            type="button"
+                            title="Restablecer contraseña inicial"
+                            aria-label="Restablecer contraseña inicial"
+                            [disabled]="isSavingUser() || isDeletingUser() || isResettingPassword()"
+                            (click)="openResetPasswordDialog(user)"
+                          >
+                            🔑
                           </button>
                           <button
                             class="icon-btn delete-btn"
                             type="button"
                             title="Eliminar usuario"
                             aria-label="Eliminar usuario"
-                            [disabled]="isSavingUser() || isDeletingUser()"
+                            [disabled]="isSavingUser() || isDeletingUser() || isResettingPassword()"
                             (click)="openDeleteUserDialog(user)"
                           >
                             🗑
@@ -328,6 +338,29 @@
       }
     </article>
   }
+
+  <article class="accordion-card">
+    <button
+      class="accordion-trigger"
+      type="button"
+      [attr.aria-expanded]="isPasswordSectionOpen()"
+      (click)="togglePasswordSection()"
+    >
+      <span>
+        <strong>Gestión de contraseña</strong>
+        <small>Cambia tu propia contraseña de acceso introduciendo la contraseña actual.</small>
+      </span>
+      <span class="accordion-icon" [class.open]="isPasswordSectionOpen()">▾</span>
+    </button>
+
+    @if (isPasswordSectionOpen()) {
+      <div class="accordion-content">
+        <article class="admin-card">
+          <app-change-password-form />
+        </article>
+      </div>
+    }
+  </article>
 
   @if (isUserFormModalOpen()) {
     <div
@@ -659,6 +692,47 @@
             (click)="confirmDeleteUser()"
           >
             {{ isDeletingUser() ? 'Eliminando...' : 'Confirmar' }}
+          </button>
+        </div>
+      </section>
+    </div>
+  }
+
+  @if (userPendingReset()) {
+    <div
+      class="modal-backdrop"
+      role="presentation"
+      appDismissableBackdrop
+      (backdropDismiss)="closeResetPasswordDialog()"
+    >
+      <section
+        class="confirm-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="reset-password-title"
+      >
+        <h2 id="reset-password-title">Restablecer contraseña</h2>
+        <p>
+          ¿Seguro que deseas restablecer la contraseña del usuario
+          <strong>{{ userPendingReset()!.username }}</strong> a la contraseña inicial? El usuario
+          deberá volver a iniciar sesión con la contraseña inicial y cambiarla.
+        </p>
+        <div class="dialog-actions">
+          <button
+            class="secondary-btn"
+            type="button"
+            [disabled]="isResettingPassword()"
+            (click)="closeResetPasswordDialog()"
+          >
+            Cancelar
+          </button>
+          <button
+            class="danger-btn"
+            type="button"
+            [disabled]="isResettingPassword()"
+            (click)="confirmResetPassword()"
+          >
+            {{ isResettingPassword() ? 'Restableciendo...' : 'Confirmar' }}
           </button>
         </div>
       </section>

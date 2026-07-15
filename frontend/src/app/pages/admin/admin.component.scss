@@ -404,6 +404,17 @@
   }
 }
 
+.reset-btn {
+  border-color: #fde68a;
+  background: #fffbeb;
+  color: #b45309;
+
+  &:hover:not(:disabled) {
+    background: #fef3c7;
+    border-color: #fcd34d;
+  }
+}
+
 .delete-btn {
   border-color: #fecaca;
   background: #fef2f2;

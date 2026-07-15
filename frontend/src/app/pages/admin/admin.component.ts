@@ -2,6 +2,7 @@ import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
 import { DismissableBackdropDirective } from '../../shared/directives/dismissable-backdrop.directive';
+import { ChangePasswordFormComponent } from '../../shared/components/change-password-form/change-password-form.component';
 import { AuthService } from '../../auth/auth.service';
 import { Role } from '../../models/user.model';
 import { ApartmentColorService, autoApartmentColor } from '../../services/apartment-color.service';
@@ -83,7 +84,7 @@ interface AdminCleaningTypeDraft {
 @Component({
   selector: 'app-admin',
   standalone: true,
-  imports: [FormsModule, DismissableBackdropDirective],
+  imports: [FormsModule, DismissableBackdropDirective, ChangePasswordFormComponent],
   templateUrl: './admin.component.html',
   styleUrl: './admin.component.scss',
 })
@@ -105,6 +106,8 @@ export class AdminComponent implements OnInit, OnDestroy {
   editingUserId = signal<number | null>(null);
   isUserFormModalOpen = signal(false);
   userPendingDeletion = signal<AdminUserRow | null>(null);
+  userPendingReset = signal<AdminUserRow | null>(null);
+  isResettingPassword = signal(false);
   isPropertyFormModalOpen = signal(false);
   isSavingProperty = signal(false);
   isDeletingProperty = signal(false);
@@ -120,6 +123,7 @@ export class AdminComponent implements OnInit, OnDestroy {
   isUsersSectionOpen = signal(false);
   isPropertiesSectionOpen = signal(false);
   isCleaningTypesSectionOpen = signal(false);
+  isPasswordSectionOpen = signal(false);
 
   cleaningTypes = signal<CleaningType[]>([]);
   isLoadingCleaningTypes = signal(false);
@@ -189,6 +193,7 @@ export class AdminComponent implements OnInit, OnDestroy {
     this.isUsersSectionOpen.set(false);
     this.isPropertiesSectionOpen.set(false);
     this.isCleaningTypesSectionOpen.set(false);
+    this.isPasswordSectionOpen.set(false);
   }
 
   toggleUsersSection(): void {
@@ -210,6 +215,12 @@ export class AdminComponent implements OnInit, OnDestroy {
     if (willOpen && !this.cleaningTypes().length) {
       this.loadCleaningTypes();
     }
+  }
+
+  togglePasswordSection(): void {
+    const willOpen = !this.isPasswordSectionOpen();
+    this.closeAllSections();
+    this.isPasswordSectionOpen.set(willOpen);
   }
 
   loadCleaningTypes(): void {
@@ -544,6 +555,38 @@ export class AdminComponent implements OnInit, OnDestroy {
       error: (error: HttpErrorResponse) => {
         this.showToast('error', 'Error al eliminar el usuario.', this.getApiErrorMessage(error));
         this.isDeletingUser.set(false);
+      },
+    });
+  }
+
+  openResetPasswordDialog(user: AdminUserRow): void {
+    this.userPendingReset.set(user);
+  }
+
+  closeResetPasswordDialog(): void {
+    if (this.isResettingPassword()) return;
+    this.userPendingReset.set(null);
+  }
+
+  confirmResetPassword(): void {
+    const user = this.userPendingReset();
+    if (!user) return;
+
+    this.isResettingPassword.set(true);
+
+    this.adminUserService.resetUserPassword(user.id).subscribe({
+      next: response => {
+        this.userPendingReset.set(null);
+        this.isResettingPassword.set(false);
+        this.showToast('success', response.message);
+      },
+      error: (error: HttpErrorResponse) => {
+        this.isResettingPassword.set(false);
+        this.showToast(
+          'error',
+          'Error al restablecer la contraseña.',
+          this.getApiErrorMessage(error)
+        );
       },
     });
   }
