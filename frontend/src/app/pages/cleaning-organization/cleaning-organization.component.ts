@@ -29,6 +29,9 @@ interface CleaningWindow {
   hasBill: boolean;
   billState: string | null;
   address: string | null;
+  // Ocupación de la reserva de entrada; null mientras no haya reserva siguiente.
+  nextPersons: number | null;
+  nextNights: number | null;
 }
 
 interface CleaningWeekDay {
@@ -211,6 +214,8 @@ export class CleaningOrganizationComponent implements OnInit, OnDestroy {
         hasBill: opportunity.has_bill,
         billState: opportunity.bill_state,
         address: opportunity.address,
+        nextPersons: opportunity.next_persons,
+        nextNights: opportunity.next_nights,
       }))
       // Se ordenan por la próxima entrada (check-in) más cercana; las limpiezas sin próxima
       // entrada (sin reserva siguiente) quedan al final. Empate → por piso, para estabilidad.

@@ -111,3 +111,5 @@ class CleaningOpportunityResponse(BaseModel):
     bill_state: str | None = None
     address: str | None = None
     apartment_description: str | None = None
+    next_persons: int | None = None
+    next_nights: int | None = None

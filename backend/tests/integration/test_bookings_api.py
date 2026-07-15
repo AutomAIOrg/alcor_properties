@@ -262,6 +262,8 @@ class TestSpecialCollectionEndpoints:
                 "bill_state": None,
                 "address": "C/ Raquero 6 Bloque 3",
                 "apartment_description": "Porto Fino",
+                "next_persons": None,
+                "next_nights": None,
             }
         ]
         mock_use_cases.get_cleaning_opportunities_query.execute.assert_called_once_with()

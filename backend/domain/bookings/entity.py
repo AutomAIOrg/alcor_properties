@@ -145,6 +145,10 @@ class CleaningOpportunity(BaseModel):
     can_bill: bool = False
     has_bill: bool = False
     bill_state: str | None = None
+    # Ocupación registrada en la reserva de entrada (la que llega en available_until).
+    # None si aún no hay reserva siguiente, igual que available_until.
+    next_persons: int | None = None
+    next_nights: int | None = None
     # Datos del apartamento congelados para el recibo (dirección y descripción).
     # Se rellenan en la capa de aplicación; permiten a la limpiadora ver la
     # dirección completa sin necesidad de acceder al endpoint (solo-admin) de apartamentos.
