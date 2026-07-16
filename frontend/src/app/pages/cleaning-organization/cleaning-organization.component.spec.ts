@@ -257,15 +257,16 @@ describe('CleaningOrganizationComponent', () => {
       {
         apartmentId: 'R180',
         availableFromDate: '2026-06-02',
-        availableFromTime: 'Pendiente',
+        availableFromTime: '11:00:00',
         availableUntilDate: '2026-06-05',
-        availableUntilTime: 'Pendiente',
+        availableUntilTime: '16:00:00',
         comments: 'Llevar llaves',
         sourceBookingRecordId: 1,
         canBill: false,
         hasBill: false,
         billState: null,
         address: null,
+        nextBookingRecordId: 2,
         nextPersons: null,
         nextNights: null,
       },
@@ -843,6 +844,216 @@ describe('CleaningOrganizationComponent', () => {
     expect(fixture.nativeElement.textContent).toContain('Ha fallado al guardar el comentario');
     expect(fixture.nativeElement.querySelector('.toast.error')).not.toBeNull();
     expect(fixture.nativeElement.querySelector('.comment-dialog')).not.toBeNull();
+  });
+
+  it('muestra las horas de salida y entrada de la reserva', () => {
+    setup([
+      makeCleaningOpportunity({
+        source_booking_record_id: 1,
+        available_from_time: '11:00:00',
+        available_until_time: '16:00:00',
+      }),
+    ]);
+
+    component.currentDate.set(new Date(2026, 5, 3));
+    fixture.detectChanges();
+
+    const times = Array.from(
+      fixture.nativeElement.querySelectorAll('.time-cell span')
+    ) as HTMLElement[];
+    expect(times.map(cell => cell.textContent?.trim())).toEqual(['11:00', '16:00']);
+  });
+
+  it('muestra la hora pactada cuando la reserva tiene uno distinta de la estándar', () => {
+    setup([
+      makeCleaningOpportunity({
+        source_booking_record_id: 1,
+        available_from_time: '13:30:00',
+        available_until_time: '18:00:00',
+      }),
+    ]);
+
+    component.currentDate.set(new Date(2026, 5, 3));
+    fixture.detectChanges();
+
+    const times = Array.from(
+      fixture.nativeElement.querySelectorAll('.time-cell span')
+    ) as HTMLElement[];
+    expect(times.map(cell => cell.textContent?.trim())).toEqual(['13:30', '18:00']);
+  });
+
+  it('muestra el lápiz de horas solo para admin', () => {
+    setup([makeCleaningOpportunity({ source_booking_record_id: 1 })], false);
+    component.currentDate.set(new Date(2026, 5, 3));
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('.time-edit-btn')).toBeNull();
+
+    TestBed.resetTestingModule();
+    setup([makeCleaningOpportunity({ source_booking_record_id: 1 })], true);
+    component.currentDate.set(new Date(2026, 5, 3));
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('.time-edit-btn')).not.toBeNull();
+  });
+
+  it('el lápiz de salida edita solo la hora de salida, en la reserva que se va', () => {
+    setup(
+      [
+        makeCleaningOpportunity({
+          source_booking_record_id: 1,
+          next_booking_record_id: 2,
+          available_from_time: '11:00:00',
+          available_until_time: '16:00:00',
+        }),
+      ],
+      true
+    );
+    bookingServiceSpy.updateBooking.mockReturnValue(of(makeBooking()));
+
+    component.currentDate.set(new Date(2026, 5, 3));
+    fixture.detectChanges();
+
+    const [checkOutPencil] = Array.from(
+      fixture.nativeElement.querySelectorAll('.time-edit-btn')
+    ) as HTMLButtonElement[];
+    checkOutPencil.click();
+    fixture.detectChanges();
+
+    // Un único campo, precargado con la hora de salida.
+    const inputs = fixture.nativeElement.querySelectorAll('.times-form-grid input[type="time"]');
+    expect(inputs.length).toBe(1);
+    expect((inputs[0] as HTMLInputElement).value).toBe('11:00');
+    expect(fixture.nativeElement.textContent).toContain('Editar hora de salida');
+
+    (inputs[0] as HTMLInputElement).value = '13:30';
+    inputs[0].dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+
+    const acceptButton: HTMLButtonElement = fixture.nativeElement.querySelector('.primary-btn');
+    acceptButton.click();
+    fixture.detectChanges();
+
+    expect(bookingServiceSpy.updateBooking).toHaveBeenCalledTimes(1);
+    expect(bookingServiceSpy.updateBooking).toHaveBeenCalledWith(1, { check_out_time: '13:30' });
+    expect(component.cleaningOpportunities()[0].availableFromTime).toBe('13:30');
+    expect(component.cleaningOpportunities()[0].availableUntilTime).toBe('16:00:00');
+    expect(fixture.nativeElement.textContent).toContain('Hora guardada con éxito');
+  });
+
+  it('el lápiz de entrada edita solo la hora de entrada, en la reserva que llega', () => {
+    setup(
+      [
+        makeCleaningOpportunity({
+          source_booking_record_id: 1,
+          next_booking_record_id: 2,
+          available_from_time: '11:00:00',
+          available_until_time: '16:00:00',
+        }),
+      ],
+      true
+    );
+    bookingServiceSpy.updateBooking.mockReturnValue(of(makeBooking()));
+
+    component.currentDate.set(new Date(2026, 5, 3));
+    fixture.detectChanges();
+
+    const [, checkInPencil] = Array.from(
+      fixture.nativeElement.querySelectorAll('.time-edit-btn')
+    ) as HTMLButtonElement[];
+    checkInPencil.click();
+    fixture.detectChanges();
+
+    const inputs = fixture.nativeElement.querySelectorAll('.times-form-grid input[type="time"]');
+    expect(inputs.length).toBe(1);
+    expect((inputs[0] as HTMLInputElement).value).toBe('16:00');
+    expect(fixture.nativeElement.textContent).toContain('Editar hora de entrada');
+
+    (inputs[0] as HTMLInputElement).value = '18:00';
+    inputs[0].dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+
+    const acceptButton: HTMLButtonElement = fixture.nativeElement.querySelector('.primary-btn');
+    acceptButton.click();
+    fixture.detectChanges();
+
+    expect(bookingServiceSpy.updateBooking).toHaveBeenCalledTimes(1);
+    expect(bookingServiceSpy.updateBooking).toHaveBeenCalledWith(2, { check_in_time: '18:00' });
+    expect(component.cleaningOpportunities()[0].availableFromTime).toBe('11:00:00');
+    expect(component.cleaningOpportunities()[0].availableUntilTime).toBe('18:00');
+  });
+
+  it('no envía PUT si la hora no ha cambiado', () => {
+    setup(
+      [
+        makeCleaningOpportunity({
+          source_booking_record_id: 1,
+          available_from_time: '11:00:00',
+        }),
+      ],
+      true
+    );
+    bookingServiceSpy.updateBooking.mockReturnValue(of(makeBooking()));
+
+    component.currentDate.set(new Date(2026, 5, 3));
+    fixture.detectChanges();
+
+    const editButton: HTMLButtonElement = fixture.nativeElement.querySelector('.time-edit-btn');
+    editButton.click();
+    fixture.detectChanges();
+
+    const acceptButton: HTMLButtonElement = fixture.nativeElement.querySelector('.primary-btn');
+    acceptButton.click();
+    fixture.detectChanges();
+
+    expect(bookingServiceSpy.updateBooking).not.toHaveBeenCalled();
+    expect(fixture.nativeElement.querySelector('.comment-dialog')).toBeNull();
+  });
+
+  it('no ofrece editar la hora de entrada si no hay reserva siguiente', () => {
+    setup(
+      [
+        makeCleaningOpportunity({
+          source_booking_record_id: 1,
+          available_until: '2026-06-05',
+          available_until_time: null,
+          next_booking_record_id: null,
+        }),
+      ],
+      true
+    );
+
+    component.currentDate.set(new Date(2026, 5, 3));
+    fixture.detectChanges();
+
+    // Solo queda el lápiz de la hora de salida.
+    expect(fixture.nativeElement.querySelectorAll('.time-edit-btn').length).toBe(1);
+  });
+
+  it('muestra toast de error si falla al guardar la hora', () => {
+    setup([makeCleaningOpportunity({ source_booking_record_id: 1 })], true);
+    bookingServiceSpy.updateBooking.mockReturnValue(throwError(() => new Error('API error')));
+
+    component.currentDate.set(new Date(2026, 5, 3));
+    fixture.detectChanges();
+
+    const editButton: HTMLButtonElement = fixture.nativeElement.querySelector('.time-edit-btn');
+    editButton.click();
+    fixture.detectChanges();
+
+    const checkOutInput: HTMLInputElement = fixture.nativeElement.querySelector(
+      '.times-form-grid input[type="time"]'
+    );
+    checkOutInput.value = '13:30';
+    checkOutInput.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+
+    const acceptButton: HTMLButtonElement = fixture.nativeElement.querySelector('.primary-btn');
+    acceptButton.click();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('Ha fallado al guardar la hora');
+    expect(fixture.nativeElement.querySelector('.toast.error')).not.toBeNull();
   });
 
   it('muestra error y permite reintentar si no se pueden cargar las reservas', () => {
