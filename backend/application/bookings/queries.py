@@ -388,12 +388,17 @@ def _build_cleaning_opportunities(
                     apartment_id=booking.apartment_id,
                     available_from=booking.check_out,
                     available_until=next_booking.check_in if next_booking else None,
+                    available_from_time=booking.effective_check_out_time(),
+                    available_until_time=(
+                        next_booking.effective_check_in_time() if next_booking else None
+                    ),
                     comments=(booking.notes_cleaning or "").strip(),
                     has_bill=booking.record_id in billed,
                     can_bill=booking.is_cleanable(now),
                     bill_state=bill_st,
                     address=apartment.address if apartment else None,
                     apartment_description=(apartment.apartment_description if apartment else None),
+                    next_booking_record_id=next_booking.record_id if next_booking else None,
                     next_persons=next_booking.persons if next_booking else None,
                     next_nights=next_booking.nights if next_booking else None,
                 )

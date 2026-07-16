@@ -163,10 +163,17 @@ class CleaningOpportunity(BaseModel):
     apartment_id: str
     available_from: date
     available_until: date | None = None
+    # Horas ya resueltas (hora pactada de la reserva o estándar): la de salida siempre
+    # existe; la de entrada acompaña a available_until y es None si no hay reserva siguiente.
+    available_from_time: time = DEFAULT_CHECKOUT_TIME
+    available_until_time: time | None = None
     comments: str = ""
     can_bill: bool = False
     has_bill: bool = False
     bill_state: str | None = None
+    # Reserva de entrada (la que llega en available_until). Su ID permite al administrador
+    # editar la hora de entrada desde la lista de limpiezas; None si aún no hay siguiente.
+    next_booking_record_id: int | None = None
     # Ocupación registrada en la reserva de entrada (la que llega en available_until).
     # None si aún no hay reserva siguiente, igual que available_until.
     next_persons: int | None = None

@@ -5,7 +5,7 @@ FastAPI TestClient con use cases inyectados como MagicMock.
 Sin base de datos real: la dependencia get_booking_use_cases se sobreescribe.
 """
 
-from datetime import date
+from datetime import date, time
 
 import pytest
 from sqlalchemy.exc import SQLAlchemyError
@@ -240,9 +240,12 @@ class TestSpecialCollectionEndpoints:
                 apartment_id="R180",
                 available_from=date(2026, 6, 5),
                 available_until=date(2026, 6, 10),
+                available_from_time=time(11, 0),
+                available_until_time=time(16, 0),
                 comments="",
                 address="C/ Raquero 6 Bloque 3",
                 apartment_description="Porto Fino",
+                next_booking_record_id=8,
             )
         ]
 
@@ -256,12 +259,15 @@ class TestSpecialCollectionEndpoints:
                 "apartment_id": "R180",
                 "available_from": "2026-06-05",
                 "available_until": "2026-06-10",
+                "available_from_time": "11:00:00",
+                "available_until_time": "16:00:00",
                 "comments": "",
                 "can_bill": False,
                 "has_bill": False,
                 "bill_state": None,
                 "address": "C/ Raquero 6 Bloque 3",
                 "apartment_description": "Porto Fino",
+                "next_booking_record_id": 8,
                 "next_persons": None,
                 "next_nights": None,
             }
