@@ -4,7 +4,7 @@ Integration tests — SQLAlchemyBookingRepository contra SQLite en memoria.
 No se conecta a MySQL. El mismo Base.metadata crea la tabla bookings en SQLite.
 """
 
-from datetime import date
+from datetime import date, time
 
 import pytest
 
@@ -397,6 +397,34 @@ class TestUpdate:
 
         assert result.notes == "Nota reserva"
         assert result.notes_cleaning == "Llaves en conserjería"
+
+    def test_persists_agreed_check_times(self, sqlite_session):
+        repo = SQLAlchemyBookingRepository(sqlite_session)
+        orm = _insert_orm(sqlite_session)
+        existing = repo.get_by_id(orm.record_id)
+        assert existing.check_in_time is None
+        assert existing.check_out_time is None
+
+        updated = existing.model_copy(
+            update={"check_in_time": time(18, 0), "check_out_time": time(13, 30)}
+        )
+        result = repo.update(updated)
+
+        assert result.check_in_time == time(18, 0)
+        assert result.check_out_time == time(13, 30)
+        assert repo.get_by_id(orm.record_id).check_out_time == time(13, 30)
+
+    def test_clears_agreed_check_times_back_to_standard(self, sqlite_session):
+        repo = SQLAlchemyBookingRepository(sqlite_session)
+        orm = _insert_orm(sqlite_session, check_in_time=time(18, 0), check_out_time=time(13, 30))
+        existing = repo.get_by_id(orm.record_id)
+
+        updated = existing.model_copy(update={"check_in_time": None, "check_out_time": None})
+        result = repo.update(updated)
+
+        assert result.check_in_time is None
+        assert result.check_out_time is None
+        assert result.effective_check_out_time() == time(11, 0)
 
     def test_raises_booking_not_found_for_missing_record(self, sqlite_session):
         booking = make_booking(record_id=9999)

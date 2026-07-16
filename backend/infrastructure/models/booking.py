@@ -4,10 +4,10 @@ Modelo ORM de SQLAlchemy para la tabla 'bookings'.
 Mapea los nombres de columnas heredados en español a nombres de atributos limpios en Python.
 """
 
-from datetime import date
+from datetime import date, time
 from decimal import Decimal
 
-from sqlalchemy import Date, Integer, Numeric, String, Text
+from sqlalchemy import Date, Integer, Numeric, String, Text, Time
 from sqlalchemy.orm import Mapped, mapped_column
 
 from infrastructure.database.base import Base
@@ -31,6 +31,9 @@ class BookingORM(Base):
     # Estancia
     check_in: Mapped[date] = mapped_column("Check-In", Date, nullable=False)
     check_out: Mapped[date] = mapped_column("Check-Out", Date, nullable=False)
+    # NULL = hora estándar del complejo; solo se rellena si la reserva pacta otra.
+    check_in_time: Mapped[time | None] = mapped_column("Check-In Time", Time, nullable=True)
+    check_out_time: Mapped[time | None] = mapped_column("Check-Out Time", Time, nullable=True)
     nights: Mapped[int | None] = mapped_column("Nº Noches", Integer, nullable=True)
     status: Mapped[str | None] = mapped_column("Status", String(100), nullable=True)
 

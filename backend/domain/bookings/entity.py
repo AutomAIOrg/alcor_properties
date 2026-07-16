@@ -18,6 +18,10 @@ NON_BLOCKING_STATUSES: frozenset[str] = frozenset({"cancelled"})
 # indique una hora de salida concreta.
 DEFAULT_CHECKOUT_TIME: time = time(11, 0)
 
+# Hora de entrada por defecto: el piso debe estar limpio antes de este momento
+# del día de check-in, salvo que la reserva indique una hora de entrada concreta.
+DEFAULT_CHECKIN_TIME: time = time(16, 0)
+
 
 class Booking(BaseModel):
     """
@@ -42,6 +46,16 @@ class Booking(BaseModel):
     check_out: date = Field(..., description="Fecha de salida (exclusiva)")
     nights: int = Field(..., ge=1, description="Número de noches — derivado de las fechas")
     status: str = Field(default="Confirmed", description="Estado de la reserva")
+
+    # Horas de entrada/salida. None → se aplica la hora estándar del complejo
+    # (DEFAULT_CHECKIN_TIME / DEFAULT_CHECKOUT_TIME); solo se rellenan cuando la
+    # reserva pacta una hora distinta.
+    check_in_time: time | None = Field(
+        default=None, description="Hora de entrada pactada; None = hora estándar"
+    )
+    check_out_time: time | None = Field(
+        default=None, description="Hora de salida pactada; None = hora estándar"
+    )
 
     # Ocupación
     persons: int = Field(default=1, ge=1, description="Número total de personas")
@@ -119,9 +133,17 @@ class Booking(BaseModel):
         today = reference_date or date.today()
         return today <= self.check_out <= today + timedelta(days=days)
 
+    def effective_check_in_time(self) -> time:
+        """Hora de entrada real: la pactada en la reserva o la estándar."""
+        return self.check_in_time or DEFAULT_CHECKIN_TIME
+
+    def effective_check_out_time(self) -> time:
+        """Hora de salida real: la pactada en la reserva o la estándar."""
+        return self.check_out_time or DEFAULT_CHECKOUT_TIME
+
     def cleaning_available_at(self) -> datetime:
         """Momento a partir del cual el piso puede limpiarse: check-out + hora de salida."""
-        return datetime.combine(self.check_out, DEFAULT_CHECKOUT_TIME)
+        return datetime.combine(self.check_out, self.effective_check_out_time())
 
     def is_cleanable(self, reference: datetime | None = None) -> bool:
         """

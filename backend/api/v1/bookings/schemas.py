@@ -2,7 +2,7 @@
 DTOs (Data Transfer Objects) para la API de reservas.
 """
 
-from datetime import date
+from datetime import date, time
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -17,6 +17,9 @@ class BookingResponse(BaseModel):
     guest_name: str
     check_in: date
     check_out: date
+    # None = hora estándar (entrada 16:00 / salida 11:00).
+    check_in_time: time | None = None
+    check_out_time: time | None = None
     nights: int
     status: str
     persons: int
@@ -62,6 +65,8 @@ class BookingCreateRequest(BaseModel):
     guest_name: str = Field(..., min_length=1, description="Nombre completo del huésped")
     check_in: date = Field(..., description="Fecha de check-in")
     check_out: date = Field(..., description="Fecha de check-out")
+    check_in_time: time | None = Field(default=None, description="Hora de entrada; None = 16:00")
+    check_out_time: time | None = Field(default=None, description="Hora de salida; None = 11:00")
     nights: int = Field(..., ge=1, description="Número de noches")
     status: str = Field(default="Confirmed", description="Estado de la reserva")
     persons: int = Field(default=1, ge=1)
@@ -83,6 +88,9 @@ class BookingUpdateRequest(BaseModel):
     guest_name: str | None = None
     check_in: date | None = None
     check_out: date | None = None
+    # Enviar null restaura explícitamente la hora estándar.
+    check_in_time: time | None = None
+    check_out_time: time | None = None
     status: str | None = None
     persons: int | None = None
     adults: int | None = None

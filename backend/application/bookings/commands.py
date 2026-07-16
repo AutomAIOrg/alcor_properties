@@ -3,7 +3,7 @@ Casos de uso (comandos) para el dominio de Reservas.
 """
 
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, time
 
 from application.bookings.helpers import apply_electric_allowance
 from domain.bookings.entity import Booking
@@ -24,6 +24,8 @@ class BookingUpdateData:
     guest_name: str | None | _UnsetType = _UNSET
     check_in: date | None | _UnsetType = _UNSET
     check_out: date | None | _UnsetType = _UNSET
+    check_in_time: time | None | _UnsetType = _UNSET
+    check_out_time: time | None | _UnsetType = _UNSET
     status: str | None | _UnsetType = _UNSET
     persons: int | None | _UnsetType = _UNSET
     adults: int | None | _UnsetType = _UNSET
