@@ -3,6 +3,7 @@ Respositorio SQLAlchemy para apartamentos
 """
 
 import logging
+from decimal import Decimal
 
 from sqlalchemy import Select, exists, func, or_, select
 from sqlalchemy.orm import Session
@@ -28,7 +29,9 @@ class SQLAlchemyApartmentRepository(IApartmentRepository):
 
     def create_apartment(self, new_apartment: Apartment) -> None:
         """Crea un nuevo apartamento."""
-        new_apartment_orm = ApartmentORM(**new_apartment.model_dump())
+        values = new_apartment.model_dump()
+        values["electric_allowance_rate"] = Decimal(str(values["electric_allowance_rate"]))
+        new_apartment_orm = ApartmentORM(**values)
         try:
             self._db.add(new_apartment_orm)
             self._db.commit()
@@ -84,6 +87,8 @@ class SQLAlchemyApartmentRepository(IApartmentRepository):
         orm.email = updated_apartment.email
         orm.phone = updated_apartment.phone
         orm.color = updated_apartment.color
+        orm.electric_allowance_enabled = updated_apartment.electric_allowance_enabled
+        orm.electric_allowance_rate = Decimal(str(updated_apartment.electric_allowance_rate))
         try:
             self._db.commit()
         except Exception as e:
@@ -108,6 +113,17 @@ class SQLAlchemyApartmentRepository(IApartmentRepository):
         stmt = select(ApartmentORM).order_by(ApartmentORM.apartment_id.asc())
         rows = self._db.execute(stmt).scalars().all()
         return [self._to_domain(row) for row in rows]
+
+    def get_electric_allowance_rates(self) -> dict[str, float]:
+        """Devuelve {apartment_id: importe por noche} de los apartamentos con cupo activado."""
+        stmt = select(
+            ApartmentORM.apartment_id,
+            ApartmentORM.electric_allowance_rate,
+        ).where(ApartmentORM.electric_allowance_enabled.is_(True))
+
+        return {
+            apartment_id.strip(): float(rate) for apartment_id, rate in self._db.execute(stmt).all()
+        }
 
     # ------------------------------------------------------------------ #
     # Filtros                                                            #
@@ -244,4 +260,6 @@ class SQLAlchemyApartmentRepository(IApartmentRepository):
             email=row.email,
             phone=row.phone,
             color=row.color,
+            electric_allowance_enabled=row.electric_allowance_enabled,
+            electric_allowance_rate=float(row.electric_allowance_rate),
         )

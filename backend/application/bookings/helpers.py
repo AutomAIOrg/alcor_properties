@@ -2,22 +2,25 @@
 Funciones auxiliares compartidas entre queries y commands del dominio de Reservas.
 """
 
+from collections.abc import Mapping
 from datetime import date, timedelta
 
 from domain.bookings.entity import Booking
 
+# {apartment_id: importe por noche} de los apartamentos con cupo eléctrico activado.
+# Los apartamentos sin cupo no aparecen en el mapa.
+ElectricRates = Mapping[str, float]
 
-def apply_electric_allowance(booking: Booking, electric_ids: set[str]) -> Booking:
-    """Establece electric_allowance en una reserva según los IDs configurados."""
-    if booking.apartment_id.strip() in electric_ids:
-        booking.electric_allowance = booking.nights * 4.0
-    else:
-        booking.electric_allowance = None
+
+def apply_electric_allowance(booking: Booking, electric_rates: ElectricRates) -> Booking:
+    """Establece electric_allowance según la tarifa configurada en el apartamento."""
+    rate = electric_rates.get(booking.apartment_id.strip())
+    booking.electric_allowance = booking.nights * rate if rate is not None else None
     return booking
 
 
-def apply_all(bookings: list[Booking], electric_ids: set[str]) -> list[Booking]:
-    return [apply_electric_allowance(b, electric_ids) for b in bookings]
+def apply_all(bookings: list[Booking], electric_rates: ElectricRates) -> list[Booking]:
+    return [apply_electric_allowance(b, electric_rates) for b in bookings]
 
 
 def booking_overlap_nights(booking: Booking, start_date: date, end_date: date) -> int:

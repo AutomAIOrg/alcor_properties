@@ -108,7 +108,7 @@ class TestGetApartmentStatsUseCase:
         mock_apartment_repo.get_by_apartment_id.return_value = apartment
         mock_repo.search_bookings.side_effect = [[booking], [booking]]
 
-        GetApartmentStatsUseCase(mock_apartment_repo, mock_repo, set()).execute(
+        GetApartmentStatsUseCase(mock_apartment_repo, mock_repo, {}).execute(
             apartment_id="R180",
             start_date=date(2026, 6, 10),
             end_date=date(2026, 6, 15),
@@ -134,7 +134,7 @@ class TestGetApartmentStatsUseCase:
         mock_apartment_repo.get_by_apartment_id.return_value = apartment
         mock_repo.search_bookings.side_effect = [[booking], [booking]]
 
-        result = GetApartmentStatsUseCase(mock_apartment_repo, mock_repo, set()).execute(
+        result = GetApartmentStatsUseCase(mock_apartment_repo, mock_repo, {}).execute(
             apartment_id="R180",
             start_date=date(2026, 6, 10),
             end_date=date(2026, 6, 15),
@@ -157,7 +157,7 @@ class TestGetApartmentStatsUseCase:
         mock_apartment_repo.get_by_apartment_id.return_value = apartment
         mock_repo.search_bookings.side_effect = [[booking], [booking]]
 
-        result = GetApartmentStatsUseCase(mock_apartment_repo, mock_repo, set()).execute(
+        result = GetApartmentStatsUseCase(mock_apartment_repo, mock_repo, {}).execute(
             apartment_id="R180",
             start_date=date(2026, 6, 10),
             end_date=date(2026, 6, 15),
@@ -180,7 +180,7 @@ class TestGetApartmentStatsUseCase:
         mock_apartment_repo.get_by_apartment_id.return_value = apartment
         mock_repo.search_bookings.side_effect = [[booking], [booking]]
 
-        result = GetApartmentStatsUseCase(mock_apartment_repo, mock_repo, set()).execute(
+        result = GetApartmentStatsUseCase(mock_apartment_repo, mock_repo, {}).execute(
             apartment_id="R180"
         )
 
@@ -208,7 +208,7 @@ class TestGetApartmentStatsUseCase:
         mock_apartment_repo.get_by_apartment_id.return_value = apartment
         mock_repo.search_bookings.side_effect = [[booking], [booking]]
 
-        result = GetApartmentStatsUseCase(mock_apartment_repo, mock_repo, {"R180"}).execute(
+        result = GetApartmentStatsUseCase(mock_apartment_repo, mock_repo, {"R180": 4.0}).execute(
             apartment_id="R180",
             start_date=date(2026, 12, 1),
             end_date=date(2027, 2, 1),
@@ -240,7 +240,7 @@ class TestGetApartmentStatsUseCase:
         mock_apartment_repo.get_by_apartment_id.return_value = apartment
         mock_repo.search_bookings.side_effect = [[booking], [booking]]
 
-        result = GetApartmentStatsUseCase(mock_apartment_repo, mock_repo, set()).execute(
+        result = GetApartmentStatsUseCase(mock_apartment_repo, mock_repo, {}).execute(
             apartment_id="R180",
             start_date=date(2026, 12, 1),
             end_date=date(2027, 2, 1),

@@ -6,6 +6,7 @@ from datetime import date, datetime, timedelta
 from typing import Any
 
 from application.bookings.helpers import (
+    ElectricRates,
     apply_all,
     apply_electric_allowance,
     compute_stats,
@@ -57,10 +58,10 @@ class ListBookingsQuery:
     def __init__(
         self,
         repository: IBookingRepository,
-        electric_apartment_ids: set[str],
+        electric_rates: ElectricRates,
     ) -> None:
         self._repo = repository
-        self._electric_ids = electric_apartment_ids
+        self._electric_rates = electric_rates
 
     def execute(
         self,
@@ -115,7 +116,7 @@ class ListBookingsQuery:
                 booking_number=booking_number,
                 search=search,
             )
-        return apply_all(bookings, self._electric_ids)
+        return apply_all(bookings, self._electric_rates)
 
 
 class GetBookingStatsQuery:
@@ -126,10 +127,10 @@ class GetBookingStatsQuery:
     def __init__(
         self,
         repository: IBookingRepository,
-        electric_apartment_ids: set[str],
+        electric_rates: ElectricRates,
     ) -> None:
         self._repo = repository
-        self._electric_ids = electric_apartment_ids
+        self._electric_rates = electric_rates
 
     def execute(
         self,
@@ -185,7 +186,7 @@ class GetBookingStatsQuery:
                 booking_number=booking_number,
             )
 
-        bookings = apply_all(bookings, self._electric_ids)
+        bookings = apply_all(bookings, self._electric_rates)
 
         occupancy_pct = None
         no_booking_days_pct = None
@@ -213,14 +214,14 @@ class GetBookingByIdQuery:
     def __init__(
         self,
         repository: IBookingRepository,
-        electric_apartment_ids: set[str],
+        electric_rates: ElectricRates,
     ) -> None:
         self._repo = repository
-        self._electric_ids = electric_apartment_ids
+        self._electric_rates = electric_rates
 
     def execute(self, record_id: int) -> Booking:
         booking = self._repo.get_by_id(record_id)  # lanza BookingNotFound si no existe
-        return apply_electric_allowance(booking, self._electric_ids)
+        return apply_electric_allowance(booking, self._electric_rates)
 
 
 class GetActiveBookingsQuery:
@@ -229,16 +230,16 @@ class GetActiveBookingsQuery:
     def __init__(
         self,
         repository: IBookingRepository,
-        electric_apartment_ids: set[str],
+        electric_rates: ElectricRates,
     ) -> None:
         self._repo = repository
-        self._electric_ids = electric_apartment_ids
+        self._electric_rates = electric_rates
 
     def execute(self) -> list[Booking]:
         today = date.today()
         bookings = self._repo.search_bookings(start_date=today, end_date=today + timedelta(days=1))
         active = [b for b in bookings if b.is_active()]
-        return apply_all(active, self._electric_ids)
+        return apply_all(active, self._electric_rates)
 
 
 class GetUpcomingCheckinsQuery:
@@ -247,10 +248,10 @@ class GetUpcomingCheckinsQuery:
     def __init__(
         self,
         repository: IBookingRepository,
-        electric_apartment_ids: set[str],
+        electric_rates: ElectricRates,
     ) -> None:
         self._repo = repository
-        self._electric_ids = electric_apartment_ids
+        self._electric_rates = electric_rates
 
     def execute(self, days: int = 7) -> list[Booking]:
         today = date.today()
@@ -260,7 +261,7 @@ class GetUpcomingCheckinsQuery:
         )
         upcoming = [b for b in bookings if b.has_upcoming_checkin(days)]
         upcoming.sort(key=lambda b: b.check_in)
-        return apply_all(upcoming, self._electric_ids)
+        return apply_all(upcoming, self._electric_rates)
 
 
 class GetUpcomingCheckoutsQuery:
@@ -269,10 +270,10 @@ class GetUpcomingCheckoutsQuery:
     def __init__(
         self,
         repository: IBookingRepository,
-        electric_apartment_ids: set[str],
+        electric_rates: ElectricRates,
     ) -> None:
         self._repo = repository
-        self._electric_ids = electric_apartment_ids
+        self._electric_rates = electric_rates
 
     def execute(self, days: int = 7) -> list[Booking]:
         today = date.today()
@@ -283,7 +284,7 @@ class GetUpcomingCheckoutsQuery:
         )
         upcoming = [b for b in bookings if b.has_upcoming_checkout(days)]
         upcoming.sort(key=lambda b: b.check_out)
-        return apply_all(upcoming, self._electric_ids)
+        return apply_all(upcoming, self._electric_rates)
 
 
 class GetCalendarEventsQuery:
@@ -296,10 +297,10 @@ class GetCalendarEventsQuery:
     def __init__(
         self,
         repository: IBookingRepository,
-        electric_apartment_ids: set[str],
+        electric_rates: ElectricRates,
     ) -> None:
         self._repo = repository
-        self._electric_ids = electric_apartment_ids
+        self._electric_rates = electric_rates
 
     def execute(
         self,
@@ -309,7 +310,7 @@ class GetCalendarEventsQuery:
         resolved_start = start_date or date.today()
         end_date = resolved_start + timedelta(days=days)
         bookings = self._repo.search_bookings(start_date=resolved_start, end_date=end_date)
-        bookings = apply_all(bookings, self._electric_ids)
+        bookings = apply_all(bookings, self._electric_rates)
 
         today = date.today()
         events = []

@@ -4,7 +4,9 @@ Modelo ORM de SQLAlchemy para la tabla 'Apartamentos'.
 Mapea los nombres de columnas heredados en español a nombres de atributos limpios en Python.
 """
 
-from sqlalchemy import Integer, String
+from decimal import Decimal
+
+from sqlalchemy import Boolean, Integer, Numeric, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from infrastructure.database.base import Base
@@ -36,3 +38,11 @@ class ApartmentORM(Base):
 
     # Presentación: color personalizado en el calendario (#RRGGBB); NULL = color automático
     color: Mapped[str | None] = mapped_column("Color", String(7), nullable=True)
+
+    # Cupo eléctrico: si se aplica a las reservas del apartamento y su importe por noche
+    electric_allowance_enabled: Mapped[bool] = mapped_column(
+        "Electric Allowance", Boolean, nullable=False, default=False
+    )
+    electric_allowance_rate: Mapped[Decimal] = mapped_column(
+        "Electric Allowance Rate", Numeric(10, 2), nullable=False, default=Decimal("4.00")
+    )

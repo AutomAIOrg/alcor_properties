@@ -39,6 +39,7 @@ from application.bookings.commands import (
     DeleteBookingUseCase,
     UpdateBookingUseCase,
 )
+from application.bookings.helpers import ElectricRates
 from application.bookings.queries import (
     GetActiveBookingsQuery,
     GetBookingByIdQuery,
@@ -179,11 +180,6 @@ def require_cleaning(
     return current_user
 
 
-def get_electric_ids() -> set[str]:
-    """Parsea la variable de entorno ELECTRIC a un set de IDs de reservas."""
-    return {b.strip() for b in settings.ELECTRIC.split(",") if b.strip()}
-
-
 def get_booking_repository(db: Session = Depends(get_db)) -> IBookingRepository:
     """Repositorio de reservas."""
     return SQLAlchemyBookingRepository(db)
@@ -192,6 +188,13 @@ def get_booking_repository(db: Session = Depends(get_db)) -> IBookingRepository:
 def get_apartment_repository(db: Session = Depends(get_db)) -> IApartmentRepository:
     """Repositorio de apartamentos."""
     return SQLAlchemyApartmentRepository(db)
+
+
+def get_electric_rates(
+    repository: IApartmentRepository = Depends(get_apartment_repository),
+) -> ElectricRates:
+    """Tarifas del cupo eléctrico por apartamento, configuradas desde administración."""
+    return repository.get_electric_allowance_rates()
 
 
 def get_bill_repository(db: Session = Depends(get_db)) -> IBillRepository:
@@ -342,22 +345,22 @@ def get_booking_use_cases(
     repo: IBookingRepository = Depends(get_booking_repository),
     bill_repository: IBillRepository = Depends(get_bill_repository),
     apartment_repository: IApartmentRepository = Depends(get_apartment_repository),
-    electric_ids: set[str] = Depends(get_electric_ids),
+    electric_rates: ElectricRates = Depends(get_electric_rates),
 ) -> BookingUseCases:
     """Inyección de dependencias para los casos de uso de reservas."""
     return BookingUseCases(
-        list_query=ListBookingsQuery(repo, electric_ids),
-        get_by_id_query=GetBookingByIdQuery(repo, electric_ids),
-        get_active_query=GetActiveBookingsQuery(repo, electric_ids),
-        upcoming_checkins_query=GetUpcomingCheckinsQuery(repo, electric_ids),
-        upcoming_checkouts_query=GetUpcomingCheckoutsQuery(repo, electric_ids),
-        calendar_events_query=GetCalendarEventsQuery(repo, electric_ids),
+        list_query=ListBookingsQuery(repo, electric_rates),
+        get_by_id_query=GetBookingByIdQuery(repo, electric_rates),
+        get_active_query=GetActiveBookingsQuery(repo, electric_rates),
+        upcoming_checkins_query=GetUpcomingCheckinsQuery(repo, electric_rates),
+        upcoming_checkouts_query=GetUpcomingCheckoutsQuery(repo, electric_rates),
+        calendar_events_query=GetCalendarEventsQuery(repo, electric_rates),
         get_cleaning_opportunities_query=GetCleaningOpportunitiesUseCase(
             repo, bill_repository, apartment_repository
         ),
-        stats_query=GetBookingStatsQuery(repo, electric_ids),
-        create_command=CreateBookingUseCase(repo, electric_ids),
-        update_command=UpdateBookingUseCase(repo, electric_ids),
+        stats_query=GetBookingStatsQuery(repo, electric_rates),
+        create_command=CreateBookingUseCase(repo, electric_rates),
+        update_command=UpdateBookingUseCase(repo, electric_rates),
         delete_command=DeleteBookingUseCase(repo),
     )
 
@@ -408,12 +411,10 @@ def get_get_all_apartments_use_case(
 def get_apartment_stats_use_case(
     apartment_repository: IApartmentRepository = Depends(get_apartment_repository),
     booking_repository: IBookingRepository = Depends(get_booking_repository),
-    electric_apartment_ids: set[str] = Depends(get_electric_ids),
+    electric_rates: ElectricRates = Depends(get_electric_rates),
 ) -> GetApartmentStatsUseCase:
     """Inyección de dependencias para el caso de uso de estadísticas de apartamentos."""
-    return GetApartmentStatsUseCase(
-        apartment_repository, booking_repository, electric_apartment_ids
-    )
+    return GetApartmentStatsUseCase(apartment_repository, booking_repository, electric_rates)
 
 
 def get_bill_pdf_renderer() -> IBillPdfRenderer:

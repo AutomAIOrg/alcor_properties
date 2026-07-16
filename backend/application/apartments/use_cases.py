@@ -7,6 +7,7 @@ import logging
 from datetime import date
 
 from application.bookings.helpers import (
+    ElectricRates,
     apply_all,
     booking_overlap_nights,
     compute_stats,
@@ -123,11 +124,11 @@ class GetApartmentStatsUseCase:
         self,
         apartment_repository: IApartmentRepository,
         booking_repository: IBookingRepository,
-        electric_apartment_ids: set[str],
+        electric_rates: ElectricRates,
     ) -> None:
         self._apt_repo = apartment_repository
         self._bkg_repo = booking_repository
-        self._electric_ids = electric_apartment_ids
+        self._electric_rates = electric_rates
 
     def execute(
         self,
@@ -150,7 +151,7 @@ class GetApartmentStatsUseCase:
         else:
             range_bookings = self._bkg_repo.search_bookings(apartment_id=apartment_id)
 
-        range_bookings = apply_all(range_bookings, self._electric_ids)
+        range_bookings = apply_all(range_bookings, self._electric_rates)
 
         # Calcular occupancy_pct del rango
         range_occupancy_pct = None
@@ -170,7 +171,7 @@ class GetApartmentStatsUseCase:
         # Todas las reservas del apartamento (para el desglose anual)
         all_bookings = apply_all(
             self._bkg_repo.search_bookings(apartment_id=apartment_id),
-            self._electric_ids,
+            self._electric_rates,
         )
 
         # Agrupar por años tocados por la estancia. Una reserva que cruza de año

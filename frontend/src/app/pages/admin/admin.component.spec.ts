@@ -34,6 +34,8 @@ function makeApartment(overrides: Partial<ApartmentResponse> = {}): ApartmentRes
     email: null,
     phone: null,
     color: null,
+    electric_allowance_enabled: false,
+    electric_allowance_rate: 4,
     ...overrides,
   };
 }
@@ -312,6 +314,8 @@ describe('AdminComponent', () => {
         email: ' juan@example.com ',
         phone: ' 600000000 ',
         color: null,
+        electric_allowance_enabled: true,
+        electric_allowance_rate: 6.5,
       });
 
       component.saveProperty();
@@ -329,6 +333,8 @@ describe('AdminComponent', () => {
         email: 'juan@example.com',
         phone: '600000000',
         color: null,
+        electric_allowance_enabled: true,
+        electric_allowance_rate: 6.5,
       });
       expect(apartmentServiceSpy.getAllApartments).toHaveBeenCalledTimes(2);
       expect(component.isPropertyFormModalOpen()).toBe(false);
@@ -372,9 +378,75 @@ describe('AdminComponent', () => {
         email: null,
         phone: null,
         color: null,
+        electric_allowance_enabled: false,
+        electric_allowance_rate: 4,
       });
       expect(component.editingPropertyReference()).toBeNull();
       expect(component.isPropertyFormModalOpen()).toBe(false);
+    });
+
+    it('editar apartamento precarga el cupo eléctrico guardado', async () => {
+      await setup(
+        [],
+        [
+          makeApartment({
+            apartment_id: 'R180',
+            electric_allowance_enabled: true,
+            electric_allowance_rate: 6.5,
+          }),
+        ]
+      );
+
+      component.startEditingProperty({
+        reference: 'R180',
+        name: 'Apartamento R180',
+        address: 'Calle Mayor 1',
+      });
+
+      expect(component.newProperty().electric_allowance_enabled).toBe(true);
+      expect(component.newProperty().electric_allowance_rate).toBe(6.5);
+    });
+
+    it('guarda la tarifa del cupo eléctrico modificada por el administrador', async () => {
+      await setup([], [makeApartment({ apartment_id: 'R180' })]);
+
+      component.startEditingProperty({
+        reference: 'R180',
+        name: 'Apartamento R180',
+        address: 'Calle Mayor 1',
+      });
+      component.updateNewPropertyElectricAllowanceEnabled(true);
+      component.updateNewPropertyElectricAllowanceRate('7.25');
+      component.saveProperty();
+
+      expect(apartmentServiceSpy.updateApartment).toHaveBeenCalledWith(
+        'R180',
+        expect.objectContaining({
+          electric_allowance_enabled: true,
+          electric_allowance_rate: 7.25,
+        })
+      );
+    });
+
+    it('un importe vacío se guarda como la tarifa por defecto', async () => {
+      await setup([], [makeApartment({ apartment_id: 'R180' })]);
+
+      component.startEditingProperty({
+        reference: 'R180',
+        name: 'Apartamento R180',
+        address: 'Calle Mayor 1',
+      });
+      component.updateNewPropertyElectricAllowanceRate('');
+      component.updateNewPropertyElectricAllowanceEnabled(true);
+      component.saveProperty();
+
+      expect(apartmentServiceSpy.updateApartment).toHaveBeenCalledWith(
+        'R180',
+        expect.objectContaining({
+          electric_allowance_enabled: true,
+          electric_allowance_rate: 4,
+        })
+      );
     });
 
     it('elimina el apartamento y cierra el modal si estaba en edición', async () => {

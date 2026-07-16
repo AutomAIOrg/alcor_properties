@@ -6,6 +6,8 @@ from datetime import date
 
 from pydantic import BaseModel, Field
 
+from domain.apartments.entity import DEFAULT_ELECTRIC_ALLOWANCE_RATE
+
 
 class ApartmentResponse(BaseModel):
     """
@@ -29,6 +31,15 @@ class ApartmentResponse(BaseModel):
         default=None,
         pattern=r"^#[0-9A-Fa-f]{6}$",
         description="Color personalizado en el calendario (hexadecimal #RRGGBB)",
+    )
+    electric_allowance_enabled: bool = Field(
+        default=False,
+        description="Si el apartamento aplica cupo eléctrico a sus reservas",
+    )
+    electric_allowance_rate: float = Field(
+        default=DEFAULT_ELECTRIC_ALLOWANCE_RATE,
+        ge=0,
+        description="Importe por noche del cupo eléctrico",
     )
 
 
@@ -65,6 +76,15 @@ class CreateApartmentRequest(BaseModel):
         pattern=r"^#[0-9A-Fa-f]{6}$",
         description="Color personalizado en el calendario (hexadecimal #RRGGBB)",
     )
+    electric_allowance_enabled: bool = Field(
+        default=False,
+        description="Si el apartamento aplica cupo eléctrico a sus reservas",
+    )
+    electric_allowance_rate: float = Field(
+        default=DEFAULT_ELECTRIC_ALLOWANCE_RATE,
+        ge=0,
+        description="Importe por noche del cupo eléctrico",
+    )
 
 
 class UpdateApartmentRequest(BaseModel):
@@ -96,6 +116,15 @@ class UpdateApartmentRequest(BaseModel):
         default=None,
         pattern=r"^#[0-9A-Fa-f]{6}$",
         description="Color personalizado en el calendario (hexadecimal #RRGGBB)",
+    )
+    electric_allowance_enabled: bool = Field(
+        default=False,
+        description="Si el apartamento aplica cupo eléctrico a sus reservas",
+    )
+    electric_allowance_rate: float = Field(
+        default=DEFAULT_ELECTRIC_ALLOWANCE_RATE,
+        ge=0,
+        description="Importe por noche del cupo eléctrico",
     )
 
 

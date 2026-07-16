@@ -9,6 +9,11 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 # Color personalizado del calendario: hexadecimal #RRGGBB.
 HEX_COLOR_PATTERN = re.compile(r"^#[0-9A-Fa-f]{6}$")
 
+# Importe por noche del cupo eléctrico aplicado a los apartamentos que lo tienen
+# activado. Es solo el valor inicial: cada apartamento guarda su propia tarifa y el
+# administrador puede cambiarla desde la gestión de apartamentos.
+DEFAULT_ELECTRIC_ALLOWANCE_RATE = 4.0
+
 
 class Apartment(BaseModel):
     """
@@ -47,6 +52,16 @@ class Apartment(BaseModel):
         default=None,
         description="Color personalizado del apartamento en el calendario (hexadecimal #RRGGBB). "
         "Si es None se usa el color automático.",
+    )
+    electric_allowance_enabled: bool = Field(
+        default=False,
+        description="Si el apartamento aplica cupo eléctrico a sus reservas",
+    )
+    electric_allowance_rate: float = Field(
+        default=DEFAULT_ELECTRIC_ALLOWANCE_RATE,
+        ge=0,
+        description="Importe por noche del cupo eléctrico. Solo se aplica si "
+        "electric_allowance_enabled es True.",
     )
 
     # ------------------------------------------------------------------ #
