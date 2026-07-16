@@ -46,5 +46,7 @@ class CreateUserUseCase:
                 lastname=user.lastname,
                 email=user.email,
                 role=user.role,
+                # Nace con la contraseña inicial: debe fijar la suya al primer acceso.
+                must_change_password=True,
             )
         )

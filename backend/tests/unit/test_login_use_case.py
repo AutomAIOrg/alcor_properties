@@ -41,7 +41,7 @@ class TestLoginUseCase:
         )
         token_manager.create_access_token.assert_called_once_with(
             subject="1",
-            claims={"username": "admin", "role": Role.ADMIN, "ver": 0},
+            claims={"username": "admin", "role": Role.ADMIN, "ver": 0, "mcp": False},
         )
         token_manager.create_refresh_token.assert_called_once_with(subject="1", token_version=0)
 

@@ -4,7 +4,7 @@ Modelo ORM de SQLAlchemy para la tabla 'users'.
 Mapea los nombres de columnas heredados en español a nombres de atributos limpios en Python.
 """
 
-from sqlalchemy import Integer, String
+from sqlalchemy import Boolean, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from infrastructure.database.base import Base
@@ -34,4 +34,9 @@ class UserORM(Base):
     # Versión de token de sesión. Al incrementarse invalida los access/refresh previos.
     token_version: Mapped[int] = mapped_column(
         "TokenVersion", Integer, nullable=False, default=0, server_default="0"
+    )
+
+    # Obliga al usuario a fijar su propia contraseña antes de usar la aplicación.
+    must_change_password: Mapped[bool] = mapped_column(
+        "MustChangePassword", Boolean, nullable=False, default=False, server_default="0"
     )

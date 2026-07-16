@@ -57,6 +57,7 @@ class LoginUseCase:
             "username": user.username,
             "role": user.role,
             "ver": user.token_version,
+            "mcp": user.must_change_password,
         }
         access_token = self._token_manager.create_access_token(
             subject=str(user.id),

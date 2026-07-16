@@ -29,6 +29,9 @@ interface CleaningWindow {
   hasBill: boolean;
   billState: string | null;
   address: string | null;
+  // Ocupación de la reserva de entrada; null mientras no haya reserva siguiente.
+  nextPersons: number | null;
+  nextNights: number | null;
 }
 
 interface CleaningWeekDay {
@@ -193,12 +196,7 @@ export class CleaningOrganizationComponent implements OnInit, OnDestroy {
 
   cleaningOpportunities = computed<CleaningWindow[]>(() =>
     this.apiCleaningOpportunities()
-      .filter(opportunity =>
-        this.isCleaningWindowVisibleInCurrentWeek(
-          opportunity.available_from,
-          opportunity.available_until
-        )
-      )
+      .filter(opportunity => this.hasCheckInInCurrentWeek(opportunity.available_until))
       .map(opportunity => ({
         apartmentId: opportunity.apartment_id,
         availableFromDate: opportunity.available_from,
@@ -211,20 +209,16 @@ export class CleaningOrganizationComponent implements OnInit, OnDestroy {
         hasBill: opportunity.has_bill,
         billState: opportunity.bill_state,
         address: opportunity.address,
+        nextPersons: opportunity.next_persons,
+        nextNights: opportunity.next_nights,
       }))
-      // Se ordenan por la próxima entrada (check-in) más cercana; las limpiezas sin próxima
-      // entrada (sin reserva siguiente) quedan al final. Empate → por piso, para estabilidad.
-      .sort((a, b) => {
-        if (a.availableUntilDate === null && b.availableUntilDate === null) {
-          return a.apartmentId.localeCompare(b.apartmentId);
-        }
-        if (a.availableUntilDate === null) return 1;
-        if (b.availableUntilDate === null) return -1;
-        return (
-          a.availableUntilDate.localeCompare(b.availableUntilDate) ||
+      // El filtro garantiza que todas tienen check-in en la semana: se ordenan por esa
+      // entrada, de más antigua a más reciente. Empate → por piso, para estabilidad.
+      .sort(
+        (a, b) =>
+          (a.availableUntilDate ?? '').localeCompare(b.availableUntilDate ?? '') ||
           a.apartmentId.localeCompare(b.apartmentId)
-        );
-      })
+      )
   );
 
   cleaningBars = computed<CleaningBar[]>(() => {
@@ -575,18 +569,15 @@ export class CleaningOrganizationComponent implements OnInit, OnDestroy {
     return monday;
   }
 
-  private isCleaningWindowVisibleInCurrentWeek(
-    availableFromDate: string,
-    availableUntilDate: string | null
-  ): boolean {
-    const hasCheckOutInWeek =
-      availableFromDate >= this.weekStartIso() && availableFromDate <= this.weekEndIso();
-    const hasCheckInInWeek =
+  // Solo se muestran las limpiezas cuya entrada (check-in de la reserva siguiente) cae en
+  // la semana mostrada. Las que no tienen reserva siguiente no entran: no hay entrada que
+  // preparar todavía.
+  private hasCheckInInCurrentWeek(availableUntilDate: string | null): boolean {
+    return (
       !!availableUntilDate &&
       availableUntilDate >= this.weekStartIso() &&
-      availableUntilDate <= this.weekEndIso();
-
-    return hasCheckOutInWeek || hasCheckInInWeek;
+      availableUntilDate <= this.weekEndIso()
+    );
   }
 
   private buildCleaningBar(opportunity: CleaningWindow): PendingCleaningBar | null {

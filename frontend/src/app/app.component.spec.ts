@@ -1,6 +1,6 @@
 import { Component } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { provideRouter, Router } from '@angular/router';
 
 import { AppComponent } from './app.component';
 import { AuthService } from './auth/auth.service';
@@ -46,6 +46,8 @@ describe('AppComponent', () => {
           { path: 'bills', component: StubRouteComponent },
           { path: 'searches', component: StubRouteComponent },
           { path: 'admin', component: StubRouteComponent },
+          { path: 'login', component: StubRouteComponent },
+          { path: 'change-initial-password', component: StubRouteComponent },
         ]),
         { provide: AuthService, useValue: authServiceSpy },
       ],
@@ -102,6 +104,37 @@ describe('AppComponent', () => {
     );
 
     expect(menuLinks).toContain('📅 Calendario');
+  });
+
+  it('oculta la barra lateral en el cambio de la contraseña inicial', async () => {
+    permissions = new Set<Permission>(['cleaning:access', 'bills:read']);
+    setup();
+
+    await TestBed.inject(Router).navigate(['/change-initial-password']);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('.sidebar')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.logout-btn')).toBeNull();
+  });
+
+  it('oculta la barra lateral en el login', async () => {
+    permissions = new Set<Permission>(['cleaning:access']);
+    setup();
+
+    await TestBed.inject(Router).navigate(['/login']);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('.sidebar')).toBeNull();
+  });
+
+  it('muestra la barra lateral en el resto de la aplicación', async () => {
+    permissions = new Set<Permission>(['cleaning:access']);
+    setup();
+
+    await TestBed.inject(Router).navigate(['/cleaning-organization']);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('.sidebar')).not.toBeNull();
   });
 
   it('ejecuta logout desde el botón de cerrar sesión', () => {

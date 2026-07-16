@@ -57,5 +57,6 @@ class ChangePasswordUseCase:
             raise DomainValidationError("La nueva contraseña debe ser distinta de la actual")
 
         user.password = self._password_manager.hash(command.new_password)
+        user.must_change_password = False
         self._user_repository.update_user(user)
         logger.info("Contraseña cambiada correctamente")

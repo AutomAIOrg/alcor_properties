@@ -20,13 +20,17 @@ function makeCleaningOpportunity(
     source_booking_record_id: 1,
     apartment_id: 'R180',
     available_from: '2026-06-02',
-    available_until: null,
+    // Solo se muestran las ventanas con check-in en la semana, así que el caso
+    // representativo siempre tiene entrada.
+    available_until: '2026-06-05',
     comments: '',
     can_bill: false,
     has_bill: false,
     bill_state: null,
     address: null,
     apartment_description: null,
+    next_persons: null,
+    next_nights: null,
     ...overrides,
   };
 }
@@ -211,7 +215,7 @@ describe('CleaningOrganizationComponent', () => {
     expect(component.canGoPrevWeek()).toBe(true);
   });
 
-  it('filtra ventanas visibles en la semana seleccionada', () => {
+  it('muestra solo las limpiezas con check-in en la semana seleccionada', () => {
     setup([
       makeCleaningOpportunity({
         source_booking_record_id: 1,
@@ -225,6 +229,20 @@ describe('CleaningOrganizationComponent', () => {
         apartment_id: 'R181',
         available_from: '2026-06-20',
         available_until: '2026-06-25',
+      }),
+      // Sale en la semana pero la entrada cae fuera: no se muestra.
+      makeCleaningOpportunity({
+        source_booking_record_id: 3,
+        apartment_id: 'R182',
+        available_from: '2026-06-04',
+        available_until: '2026-06-20',
+      }),
+      // Sin reserva siguiente: no hay entrada, no se muestra.
+      makeCleaningOpportunity({
+        source_booking_record_id: 4,
+        apartment_id: 'R183',
+        available_from: '2026-06-04',
+        available_until: null,
       }),
     ]);
 
@@ -243,37 +261,38 @@ describe('CleaningOrganizationComponent', () => {
         hasBill: false,
         billState: null,
         address: null,
+        nextPersons: null,
+        nextNights: null,
       },
     ]);
   });
 
-  it('ordena las limpiezas por entrada (check-in) más próxima; las sin entrada, al final', () => {
+  it('ordena las limpiezas por entrada (check-in) de más antigua a más reciente', () => {
     setup([
       makeCleaningOpportunity({
         source_booking_record_id: 1,
         apartment_id: 'R181',
-        available_from: '2026-06-02',
-        available_until: '2026-06-20',
+        available_from: '2026-06-01',
+        available_until: '2026-06-06',
       }),
       makeCleaningOpportunity({
         source_booking_record_id: 2,
         apartment_id: 'R182',
-        available_from: '2026-06-03',
-        available_until: '2026-06-08',
+        available_from: '2026-06-01',
+        available_until: '2026-06-02',
       }),
       makeCleaningOpportunity({
         source_booking_record_id: 3,
         apartment_id: 'R183',
-        available_from: '2026-06-04',
-        available_until: null,
+        available_from: '2026-06-01',
+        available_until: '2026-06-04',
       }),
     ]);
 
     component.currentDate.set(new Date(2026, 5, 3));
 
-    // Entrada más próxima primero (06-08 antes que 06-20); la que no tiene entrada, la última.
     const order = component.cleaningOpportunities().map(o => o.sourceBookingRecordId);
-    expect(order).toEqual([2, 1, 3]);
+    expect(order).toEqual([2, 3, 1]);
   });
 
   it('calcula barras semanales desde la fecha disponible hasta la fecha límite', () => {
@@ -384,25 +403,6 @@ describe('CleaningOrganizationComponent', () => {
     expect(r181Bar).toBeDefined();
     expect(r180Bars[0].color).toBe(r180Bars[1].color);
     expect(r180Bars[0].color).not.toBe(r181Bar!.color);
-  });
-
-  it('muestra pendiente como fecha final si no hay siguiente reserva del mismo piso', () => {
-    setup([
-      makeCleaningOpportunity({
-        source_booking_record_id: 1,
-        apartment_id: 'R180',
-        available_from: '2026-06-02',
-        available_until: null,
-      }),
-    ]);
-
-    component.currentDate.set(new Date(2026, 5, 3));
-
-    expect(component.cleaningOpportunities()[0].availableUntilDate).toBeNull();
-    expect(component.formatDate(component.cleaningOpportunities()[0].availableUntilDate)).toBe(
-      'Pendiente'
-    );
-    expect(component.cleaningBars()[0].isEndInWeek).toBe(false);
   });
 
   it('renderiza el calendario semanal y la tabla de detalle', () => {

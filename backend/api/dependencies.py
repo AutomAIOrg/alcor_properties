@@ -18,6 +18,7 @@ from application.apartments.use_cases import (
     SearchApartmentsUseCase,
     UpdateApartmentUseCase,
 )
+from application.auth.change_initial_password_use_case import ChangeInitialPasswordUseCase
 from application.auth.change_password_use_case import ChangePasswordUseCase
 from application.auth.forgot_password_use_case import ForgotPasswordUseCase
 from application.auth.login_use_case import LoginUseCase
@@ -272,6 +273,15 @@ def get_change_password_use_case(
 ) -> ChangePasswordUseCase:
     """Inyección de dependencias para que un usuario cambie su propia contraseña."""
     return ChangePasswordUseCase(user_repository, password_manager)
+
+
+def get_change_initial_password_use_case(
+    user_repository: IUserRepository = Depends(get_user_repository),
+    password_manager: IPasswordManager = Depends(get_password_manager),
+    token_manager: ITokenManager = Depends(get_token_manager),
+) -> ChangeInitialPasswordUseCase:
+    """Inyección de dependencias para que un usuario fije su contraseña inicial."""
+    return ChangeInitialPasswordUseCase(user_repository, password_manager, token_manager)
 
 
 def get_create_user_use_case(

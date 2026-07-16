@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
 
-import { authGuard, permissionGuard } from './auth.guard';
+import { authGuard, initialPasswordGuard, permissionGuard } from './auth.guard';
 import { AuthService } from './auth.service';
 
 describe('authGuard', () => {
@@ -15,6 +15,7 @@ describe('authGuard', () => {
   beforeEach(() => {
     authServiceSpy = {
       isAuthenticated: jest.fn().mockReturnValue(false),
+      mustChangePassword: jest.fn().mockReturnValue(false),
       hasPermission: jest.fn().mockReturnValue(false),
       getDefaultRoute: jest.fn().mockReturnValue('/calendar'),
     } as unknown as jest.Mocked<AuthService>;
@@ -39,6 +40,31 @@ describe('authGuard', () => {
 
   it('authGuard redirige a login si no hay usuario autenticado', () => {
     expect(runGuard()).toEqual({ paths: ['/login'] });
+  });
+
+  it('authGuard redirige al cambio de contraseña si el usuario tiene la inicial', () => {
+    authServiceSpy.isAuthenticated.mockReturnValue(true);
+    authServiceSpy.mustChangePassword.mockReturnValue(true);
+
+    expect(runGuard()).toEqual({ paths: ['/change-initial-password'] });
+  });
+
+  it('initialPasswordGuard permite continuar si el cambio está pendiente', () => {
+    authServiceSpy.isAuthenticated.mockReturnValue(true);
+    authServiceSpy.mustChangePassword.mockReturnValue(true);
+
+    expect(runGuard(initialPasswordGuard)).toBe(true);
+  });
+
+  it('initialPasswordGuard redirige a la ruta por defecto si no hay cambio pendiente', () => {
+    authServiceSpy.isAuthenticated.mockReturnValue(true);
+    authServiceSpy.mustChangePassword.mockReturnValue(false);
+
+    expect(runGuard(initialPasswordGuard)).toEqual({ paths: ['/calendar'] });
+  });
+
+  it('initialPasswordGuard redirige a login si no hay usuario autenticado', () => {
+    expect(runGuard(initialPasswordGuard)).toEqual({ paths: ['/login'] });
   });
 
   it('permissionGuard permite continuar si el usuario tiene el permiso requerido', () => {

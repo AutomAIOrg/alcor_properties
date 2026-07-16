@@ -67,6 +67,8 @@ class ResetPasswordUseCase:
             raise UserNotFound()
 
         user.password = self._password_manager.hash(command.new_password)
+        # La contraseña la ha elegido el propio usuario: ya no es la inicial.
+        user.must_change_password = False
         self._user_repository.update_user(user)
         # Invalida cualquier access/refresh token previo: un token robado deja de servir.
         self._user_repository.bump_token_version(user_id)

@@ -24,4 +24,6 @@ export interface User {
   role: Role;
   exp: number;
   iat: number;
+  /** El usuario aún tiene la contraseña inicial y debe fijar una propia. */
+  mcp?: boolean;
 }

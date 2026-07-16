@@ -394,6 +394,8 @@ def _build_cleaning_opportunities(
                     bill_state=bill_st,
                     address=apartment.address if apartment else None,
                     apartment_description=(apartment.apartment_description if apartment else None),
+                    next_persons=next_booking.persons if next_booking else None,
+                    next_nights=next_booking.nights if next_booking else None,
                 )
             )
 

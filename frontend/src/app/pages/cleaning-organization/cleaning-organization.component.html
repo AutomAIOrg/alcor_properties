@@ -106,6 +106,8 @@
             <th>Hora</th>
             <th>Fecha entrada</th>
             <th>Hora</th>
+            <th>Nº Ocupantes</th>
+            <th>Nº Noches</th>
             <th>Comentarios</th>
             <th>Generar factura</th>
           </tr>
@@ -113,11 +115,11 @@
         <tbody>
           @if (isLoading()) {
             <tr>
-              <td colspan="7" class="state-cell">Cargando limpiezas...</td>
+              <td colspan="9" class="state-cell">Cargando limpiezas...</td>
             </tr>
           } @else if (!cleaningOpportunities().length) {
             <tr>
-              <td colspan="7" class="state-cell">
+              <td colspan="9" class="state-cell">
                 No hay pisos disponibles para limpiar en esta semana.
               </td>
             </tr>
@@ -136,6 +138,8 @@
                 <td>{{ opportunity.availableFromTime }}</td>
                 <td>{{ formatDate(opportunity.availableUntilDate) }}</td>
                 <td>{{ opportunity.availableUntilTime }}</td>
+                <td>{{ opportunity.nextPersons ?? '—' }}</td>
+                <td>{{ opportunity.nextNights ?? '—' }}</td>
                 <td>
                   <div class="comments-cell">
                     <span class="comments-text">

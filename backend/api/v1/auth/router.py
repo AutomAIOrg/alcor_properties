@@ -8,6 +8,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends
 
 from api.dependencies import (
+    get_change_initial_password_use_case,
     get_change_password_use_case,
     get_current_user,
     get_forgot_password_use_case,
@@ -17,6 +18,7 @@ from api.dependencies import (
 )
 from api.v1.auth.schemas import (
     AccessTokenResponse,
+    ChangeInitialPasswordRequest,
     ChangePasswordRequest,
     ForgotPasswordRequest,
     LoginRequest,
@@ -24,6 +26,10 @@ from api.v1.auth.schemas import (
     MessageResponse,
     RefreshTokenRequest,
     ResetPasswordRequest,
+)
+from application.auth.change_initial_password_use_case import (
+    ChangeInitialPasswordCommand,
+    ChangeInitialPasswordUseCase,
 )
 from application.auth.change_password_use_case import ChangePasswordCommand, ChangePasswordUseCase
 from application.auth.forgot_password_use_case import ForgotPasswordUseCase
@@ -103,6 +109,32 @@ async def change_password(
         )
     )
     return MessageResponse(message="Contraseña actualizada correctamente.")
+
+
+@router.post("/change-initial-password", response_model=LoginResponse)
+async def change_initial_password(
+    request: ChangeInitialPasswordRequest,
+    current_user: Annotated[User, Depends(get_current_user)],
+    change_initial_password_use_case: Annotated[
+        ChangeInitialPasswordUseCase, Depends(get_change_initial_password_use_case)
+    ],
+):
+    """Fija la contraseña propia de un usuario que aún tiene la inicial del sistema.
+
+    No exige la contraseña actual y devuelve tokens nuevos: el usuario sigue
+    autenticado sin volver a pasar por el login.
+    """
+    logger.info("Cambio de la contraseña inicial del usuario autenticado")
+    result = change_initial_password_use_case.execute(
+        ChangeInitialPasswordCommand(
+            user_id=current_user.id,
+            new_password=request.new_password,
+        )
+    )
+    return LoginResponse(
+        access_token=result.access_token,
+        refresh_token=result.refresh_token,
+    )
 
 
 @router.post("/refresh", response_model=AccessTokenResponse)

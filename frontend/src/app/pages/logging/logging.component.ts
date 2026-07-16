@@ -2,6 +2,7 @@ import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AuthService } from '../../auth/auth.service';
+import { CHANGE_INITIAL_PASSWORD_ROUTE } from '../../auth/auth.guard';
 
 @Component({
   selector: 'app-logging',
@@ -28,7 +29,12 @@ export class LoggingComponent {
     this.loading.set(true);
 
     this.authService.login({ username: this.username, password: this.password }).subscribe({
-      next: () => this.router.navigate([this.authService.getDefaultRoute()]),
+      next: () =>
+        this.router.navigate([
+          this.authService.mustChangePassword()
+            ? CHANGE_INITIAL_PASSWORD_ROUTE
+            : this.authService.getDefaultRoute(),
+        ]),
       error: () => {
         this.errorMsg = 'Usuario o contraseña incorrectos.';
         this.loading.set(false);

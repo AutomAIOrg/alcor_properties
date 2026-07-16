@@ -33,4 +33,7 @@ export interface CleaningOpportunity {
   bill_state: string | null;
   address: string | null;
   apartment_description: string | null;
+  /** Ocupación de la reserva de entrada. null si aún no hay reserva siguiente. */
+  next_persons: number | null;
+  next_nights: number | null;
 }
