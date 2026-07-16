@@ -3,11 +3,13 @@ Enrutador de facturas.
 """
 
 import logging
+import unicodedata
 from datetime import date
 from decimal import Decimal
 from typing import Annotated
+from urllib.parse import quote
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, Query, Response, status
 
 from api.dependencies import (
     get_create_bill_use_case,
@@ -17,6 +19,7 @@ from api.dependencies import (
     get_list_pending_bills_use_case,
     get_move_paid_bill_document_use_case,
     get_rectify_bill_use_case,
+    get_render_bill_document_use_case,
     get_update_bill_state_use_case,
     require_cleaning,
 )
@@ -26,12 +29,14 @@ from api.v1.bills.schemas import (
     BillResponse,
     BillUpdateStateRequest,
 )
+from application.bills.bill_document_helpers import CONTENT_TYPE_PDF
 from application.bills.create_bill_use_case import CreateBillData, CreateBillUseCase
 from application.bills.generate_and_store_bill_document_use_case import (
     GenerateAndStoreBillDocumentUseCase,
 )
 from application.bills.list_bills_use_cases import ListBillsUseCase, ListPendingBillsUseCase
 from application.bills.move_paid_bill_document_use_case import MovePaidBillDocumentUseCase
+from application.bills.render_bill_document_use_case import RenderBillDocumentUseCase
 from application.bills.update_bill_use_case import RectifyBillUseCase, UpdateBillStateUseCase
 from domain.auth.user_entity import User
 from domain.bills.entity import BILL_STATE_PAID, BILL_STATE_PENDING
@@ -80,6 +85,49 @@ async def list_bills(
         date_to=date_to,
     )
     return pending + real_bills
+
+
+def _content_disposition(filename: str) -> str:
+    """
+    Cabecera de descarga para el recibo.
+
+    El nombre del archivo lleva espacios y puntos ("A101 LIMPIEZA 03.07.2026.pdf"), así que
+    debe ir entrecomillado o el navegador lo trunca en el primer espacio. Se acompaña de
+    filename* (RFC 5987) por si el ID del apartamento trae algún carácter no ASCII, que no
+    cabe en la forma entrecomillada.
+    """
+    ascii_name = (
+        unicodedata.normalize("NFKD", filename).encode("ascii", "ignore").decode().replace('"', "")
+    )
+    return f"attachment; filename=\"{ascii_name}\"; filename*=UTF-8''{quote(filename)}"
+
+
+@router.get(
+    "/{bill_id}/document",
+    response_class=Response,
+    responses={200: {"content": {CONTENT_TYPE_PDF: {}}, "description": "Recibo de la factura"}},
+)
+def download_bill_document(
+    bill_id: int,
+    render_use_case: Annotated[
+        RenderBillDocumentUseCase, Depends(get_render_bill_document_use_case)
+    ],
+    _: User = Depends(require_cleaning),
+):
+    """
+    Descarga el recibo de una factura, generado al vuelo y servido directamente.
+
+    No pasa por el NAS: el PDF archivado allí es el registro contable, este es una copia
+    para el usuario. Se declara síncrono (no `async`) a propósito: el render invoca a
+    Chromium y tarda un segundo o dos, así que FastAPI lo ejecuta en un hilo aparte en lugar
+    de bloquear el bucle de eventos.
+    """
+    document = render_use_case.execute(bill_id)
+    return Response(
+        content=document.content,
+        media_type=CONTENT_TYPE_PDF,
+        headers={"Content-Disposition": _content_disposition(document.filename)},
+    )
 
 
 @router.post("/", response_model=BillResponse, status_code=status.HTTP_201_CREATED)

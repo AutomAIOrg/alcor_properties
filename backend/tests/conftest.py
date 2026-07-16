@@ -170,6 +170,11 @@ def mock_move_paid_bill_document_use_case() -> MagicMock:
 
 
 @pytest.fixture
+def mock_render_bill_document_use_case() -> MagicMock:
+    return MagicMock()
+
+
+@pytest.fixture
 def bills_cleaning_user() -> User:
     """Usuario limpiadora usado en tests de API de facturas."""
     return User(
@@ -191,6 +196,7 @@ def bills_api_client(
     mock_list_pending_bills_use_case: MagicMock,
     mock_generate_bill_document_use_case: MagicMock,
     mock_move_paid_bill_document_use_case: MagicMock,
+    mock_render_bill_document_use_case: MagicMock,
     bills_cleaning_user: User,
 ) -> Iterator[TestClient]:
     """
@@ -205,6 +211,7 @@ def bills_api_client(
         get_list_bills_use_case,
         get_list_pending_bills_use_case,
         get_move_paid_bill_document_use_case,
+        get_render_bill_document_use_case,
         get_update_bill_state_use_case,
     )
     from main import app
@@ -225,6 +232,9 @@ def bills_api_client(
     app.dependency_overrides[get_move_paid_bill_document_use_case] = lambda: (
         mock_move_paid_bill_document_use_case
     )
+    app.dependency_overrides[get_render_bill_document_use_case] = lambda: (
+        mock_render_bill_document_use_case
+    )
     app.dependency_overrides[get_current_user] = lambda: bills_cleaning_user
 
     try:
@@ -237,6 +247,7 @@ def bills_api_client(
         app.dependency_overrides.pop(get_list_pending_bills_use_case, None)
         app.dependency_overrides.pop(get_generate_and_store_bill_document_use_case, None)
         app.dependency_overrides.pop(get_move_paid_bill_document_use_case, None)
+        app.dependency_overrides.pop(get_render_bill_document_use_case, None)
         app.dependency_overrides.pop(get_current_user, None)
 
 

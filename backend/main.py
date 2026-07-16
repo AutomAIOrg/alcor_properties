@@ -89,6 +89,9 @@ app.add_middleware(
     allow_credentials=not _allow_all_origins,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type"],
+    # La descarga del recibo lee el nombre del archivo de Content-Disposition; sin exponerla
+    # el navegador se la oculta al front y la factura se guardaría con un nombre genérico.
+    expose_headers=["Content-Disposition"],
 )
 
 # Excepción de dominio → Respuesta HTTP
