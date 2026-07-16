@@ -254,7 +254,22 @@
         <app-bill-receipt [data]="billReceiptView()!" />
 
         <div class="dialog-actions">
-          <button class="secondary-btn" type="button" (click)="closeBillReceipt()">Cerrar</button>
+          <button
+            class="primary-btn"
+            type="button"
+            [disabled]="isDownloading()"
+            (click)="downloadBillReceipt()"
+          >
+            {{ isDownloading() ? 'Generando PDF...' : 'Descargar PDF' }}
+          </button>
+          <button
+            class="secondary-btn"
+            type="button"
+            [disabled]="isDownloading()"
+            (click)="closeBillReceipt()"
+          >
+            Cerrar
+          </button>
         </div>
       </section>
     </div>

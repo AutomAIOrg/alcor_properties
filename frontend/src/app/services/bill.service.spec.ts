@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
-import { provideHttpClient } from '@angular/common/http';
+import { HttpResponse, provideHttpClient } from '@angular/common/http';
 
 import { environment } from '../../environments/environment';
 import { Bill, BillCreateRequest } from '../models/bill.model';
@@ -108,6 +108,28 @@ describe('BillService', () => {
       req.flush(bills);
 
       expect(result).toEqual(bills);
+    });
+  });
+
+  describe('downloadBillDocument', () => {
+    it('hace GET del PDF como blob y devuelve la respuesta completa', () => {
+      const pdf = new Blob(['%PDF-1.4'], { type: 'application/pdf' });
+      let result: HttpResponse<Blob> | undefined;
+
+      service.downloadBillDocument(1).subscribe(response => {
+        result = response;
+      });
+
+      const req = httpMock.expectOne(`${API}/bills/1/document`);
+      expect(req.request.method).toBe('GET');
+      // La respuesta completa (no solo el cuerpo) permite leer el nombre del archivo.
+      expect(req.request.responseType).toBe('blob');
+      req.flush(pdf, {
+        headers: { 'Content-Disposition': 'attachment; filename="R180 LIMPIEZA 02.06.2026.pdf"' },
+      });
+
+      expect(result?.body).toBe(pdf);
+      expect(result?.headers.get('Content-Disposition')).toContain('R180 LIMPIEZA 02.06.2026.pdf');
     });
   });
 

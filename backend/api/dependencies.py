@@ -32,6 +32,7 @@ from application.bills.generate_and_store_bill_document_use_case import (
 )
 from application.bills.list_bills_use_cases import ListBillsUseCase, ListPendingBillsUseCase
 from application.bills.move_paid_bill_document_use_case import MovePaidBillDocumentUseCase
+from application.bills.render_bill_document_use_case import RenderBillDocumentUseCase
 from application.bills.retry_bill_document_sync_use_case import RetryBillDocumentSyncUseCase
 from application.bills.update_bill_use_case import RectifyBillUseCase, UpdateBillStateUseCase
 from application.bookings.commands import (
@@ -509,6 +510,15 @@ def get_generate_and_store_bill_document_use_case(
         file_storage,
         settings.NAS_BASE_PATH,
     )
+
+
+def get_render_bill_document_use_case(
+    bill_repository: IBillRepository = Depends(get_bill_repository),
+    apartment_repository: IApartmentRepository = Depends(get_apartment_repository),
+    pdf_renderer: IBillPdfRenderer = Depends(get_bill_pdf_renderer),
+) -> RenderBillDocumentUseCase:
+    """Inyección de dependencias para descargar el recibo de una factura (sin NAS)."""
+    return RenderBillDocumentUseCase(bill_repository, apartment_repository, pdf_renderer)
 
 
 def get_move_paid_bill_document_use_case(
