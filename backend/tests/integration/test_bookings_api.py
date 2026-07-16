@@ -272,7 +272,9 @@ class TestSpecialCollectionEndpoints:
                 "next_nights": None,
             }
         ]
-        mock_use_cases.get_cleaning_opportunities_query.execute.assert_called_once_with()
+        mock_use_cases.get_cleaning_opportunities_query.execute.assert_called_once_with(
+            week_start=None
+        )
         mock_use_cases.get_by_id_query.execute.assert_not_called()
 
     def test_cleaning_opportunities_allows_limpiadora_role(self, api_client, mock_use_cases):
@@ -292,7 +294,9 @@ class TestSpecialCollectionEndpoints:
 
         assert response.status_code == 200
         assert response.json() == []
-        mock_use_cases.get_cleaning_opportunities_query.execute.assert_called_once_with()
+        mock_use_cases.get_cleaning_opportunities_query.execute.assert_called_once_with(
+            week_start=None
+        )
 
 
 # ---------------------------------------------------------------------------
