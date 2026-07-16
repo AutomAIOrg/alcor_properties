@@ -24,8 +24,10 @@ export class BookingService {
     return this.http.get<Booking[]>(`${this.API}/`);
   }
 
-  getCleaningOpportunities(): Observable<CleaningOpportunity[]> {
-    return this.http.get<CleaningOpportunity[]>(`${this.API}/cleaning-opportunities`);
+  getCleaningOpportunities(weekStart?: string): Observable<CleaningOpportunity[]> {
+    const params = weekStart ? new HttpParams().set('week_start', weekStart) : undefined;
+
+    return this.http.get<CleaningOpportunity[]>(`${this.API}/cleaning-opportunities`, { params });
   }
 
   getCalendarBookings(startDate: string, days: number): Observable<Booking[]> {

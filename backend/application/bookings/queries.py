@@ -429,16 +429,28 @@ class GetCleaningOpportunitiesUseCase:
         self._bills = bill_repository
         self._apartments = apartment_repository
 
-    def execute(self, reference_date: date | None = None) -> list[CleaningOpportunity]:
+    def execute(
+        self,
+        reference_date: date | None = None,
+        week_start: date | None = None,
+    ) -> list[CleaningOpportunity]:
         reference_datetime = (
             datetime.combine(reference_date, datetime.min.time()) if reference_date else None
         )
-        return self.execute_at(reference_datetime)
+        return self.execute_at(reference_datetime, week_start=week_start)
 
-    def execute_at(self, reference_datetime: datetime | None = None) -> list[CleaningOpportunity]:
-        """Igual que :meth:`execute` pero con un instante exacto (para calcular ``can_bill``)."""
+    def execute_at(
+        self,
+        reference_datetime: datetime | None = None,
+        week_start: date | None = None,
+    ) -> list[CleaningOpportunity]:
+        """Igual que :meth:`execute` pero con un instante exacto (para calcular ``can_bill``).
+
+        ``week_start`` ancla el rango operativo en otra semana (cualquiera, también
+        pasada) sin alterar el instante con el que se calcula ``can_bill``.
+        """
         now = reference_datetime or datetime.now()
-        range_start, range_end = _cleaning_operational_range(now.date())
+        range_start, range_end = _cleaning_operational_range(week_start or now.date())
         bookings = self._repo.search_bookings(
             start_date=range_start - timedelta(days=_CLEANING_BOOKING_LOOKBACK_DAYS),
             end_date=range_end + timedelta(days=_CLEANING_BOOKING_LOOKAHEAD_DAYS),

@@ -182,42 +182,44 @@ describe('CleaningOrganizationComponent', () => {
     ]);
   });
 
-  it('limita la navegación de limpiadora a la semana actual y la siguiente', () => {
+  it('limita la navegación hacia delante de limpiadora a la semana siguiente', () => {
     setup([], false);
 
     const currentWeek = component.weekStartIso();
 
-    expect(component.canGoPrevWeek()).toBe(false);
     expect(component.canGoNextWeek()).toBe(true);
-
-    component.prevWeek();
-    expect(component.weekStartIso()).toBe(currentWeek);
 
     component.nextWeek();
     const nextWeek = component.weekStartIso();
     expect(nextWeek).not.toBe(currentWeek);
-    expect(component.canGoPrevWeek()).toBe(true);
     expect(component.canGoNextWeek()).toBe(false);
 
     component.nextWeek();
     expect(component.weekStartIso()).toBe(nextWeek);
   });
 
-  it('permite a admin avanzar semanas pero no retroceder antes de la actual', () => {
+  it('permite retroceder semanas sin límite y recarga la semana visible', () => {
+    setup([], false);
+
+    const currentWeek = component.weekStartIso();
+
+    for (let i = 0; i < 10; i++) component.prevWeek();
+
+    const tenWeeksBack = component.weekStartIso();
+    expect(tenWeeksBack < currentWeek).toBe(true);
+    expect(bookingServiceSpy.getCleaningOpportunities).toHaveBeenLastCalledWith(tenWeeksBack);
+
+    component.goToToday();
+    expect(component.weekStartIso()).toBe(currentWeek);
+  });
+
+  it('permite a admin retroceder antes de la semana actual', () => {
     setup([], true);
 
     const currentWeek = component.weekStartIso();
 
-    expect(component.canGoPrevWeek()).toBe(false);
-    expect(component.canGoNextWeek()).toBe(true);
-
     component.prevWeek();
-    expect(component.weekStartIso()).toBe(currentWeek);
-
-    component.nextWeek();
-    component.nextWeek();
-    expect(component.weekStartIso()).not.toBe(currentWeek);
-    expect(component.canGoPrevWeek()).toBe(true);
+    expect(component.weekStartIso() < currentWeek).toBe(true);
   });
 
   it('muestra solo las limpiezas con check-in en la semana seleccionada', () => {

@@ -6,14 +6,7 @@
     </div>
 
     <div class="week-navigation" aria-label="Navegación semanal">
-      <button
-        type="button"
-        [disabled]="!canGoPrevWeek()"
-        (click)="prevWeek()"
-        aria-label="Semana anterior"
-      >
-        &#8592;
-      </button>
+      <button type="button" (click)="prevWeek()" aria-label="Semana anterior">&#8592;</button>
       <button class="today-btn" type="button" (click)="goToToday()">Hoy</button>
       <button
         type="button"

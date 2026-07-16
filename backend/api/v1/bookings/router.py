@@ -128,10 +128,13 @@ async def get_calendar_events(
 
 @router.get("/cleaning-opportunities", response_model=list[CleaningOpportunityResponse])
 async def get_cleaning_opportunities(
+    week_start: date | None = Query(
+        None, description="Ancla el rango operativo en esa semana (por defecto, la actual)"
+    ),
     use_cases: BookingUseCases = Depends(get_booking_use_cases),
     _: User = Depends(require_cleaning),
 ):
-    return use_cases.get_cleaning_opportunities_query.execute()
+    return use_cases.get_cleaning_opportunities_query.execute(week_start=week_start)
 
 
 @router.get("/{record_id}", response_model=BookingResponse)
