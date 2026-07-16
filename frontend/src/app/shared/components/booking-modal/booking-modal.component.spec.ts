@@ -71,6 +71,35 @@ describe('BookingModalComponent', () => {
 
   // ── initials ──────────────────────────────────────────────────────────────────
 
+  describe('fechas de la cabecera', () => {
+    // El TestBed no hereda el LOCALE_ID 'es' de app.config.ts y el fichero de locale no se
+    // puede importar aquí (es ESM y Jest corre en CJS), así que estas fechas salen en inglés.
+    // Lo que se comprueba es nuestro formato —día de la semana + día + mes—, que en la
+    // aplicación se pinta "Jue 16 Jul": en español con la inicial en mayúscula por CSS.
+    function renderDates(booking: Booking): NodeListOf<Element> {
+      fixture.componentRef.setInput('booking', booking);
+      fixture.detectChanges();
+      return fixture.nativeElement.querySelectorAll('.stat-date');
+    }
+
+    it('muestran el día de la semana junto a la fecha', () => {
+      // 16/07/2026 es jueves; 20/07/2026, lunes.
+      const dates = renderDates(makeBooking({ check_in: '2026-07-16', check_out: '2026-07-20' }));
+
+      expect(dates[0].textContent?.trim()).toBe('Thu 16 Jul');
+      expect(dates[1].textContent?.trim()).toBe('Mon 20 Jul');
+    });
+
+    it('la capitalización la pone el CSS, no el texto', () => {
+      // El locale español da día y mes en minúscula ("jue 16 jul"); es .stat-date quien los
+      // muestra como "Jue 16 Jul", así que la clase debe estar en ambas fechas.
+      const dates = renderDates(makeBooking());
+
+      expect(dates).toHaveLength(2);
+      dates.forEach(date => expect(date.classList).toContain('stat-date'));
+    });
+  });
+
   describe('initials', () => {
     it('"Ana García" → "AG"', () => {
       fixture.componentRef.setInput('booking', makeBooking({ guest_name: 'Ana García' }));
