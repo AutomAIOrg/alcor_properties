@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { DismissableBackdropDirective } from '../../shared/directives/dismissable-backdrop.directive';
 import { ChangePasswordFormComponent } from '../../shared/components/change-password-form/change-password-form.component';
 import { AuthService } from '../../auth/auth.service';
+import { DEFAULT_ELECTRIC_ALLOWANCE_RATE } from '../../models/apartment.model';
 import { Role } from '../../models/user.model';
 import { ApartmentColorService, autoApartmentColor } from '../../services/apartment-color.service';
 import {
@@ -67,12 +68,9 @@ interface AdminPropertyDraft {
   email: string;
   phone: string;
   color: string | null;
-}
-
-interface AdminCleaningTypeDraft {
-  name: string;
-  hourly_rate: number | string;
-  active: boolean;
+  electric_allowance_enabled: boolean;
+  // Se admite string porque el input numérico entrega '' mientras el campo está vacío.
+  electric_allowance_rate: number | string;
 }
 
 interface AdminCleaningTypeDraft {
@@ -434,6 +432,25 @@ export class AdminComponent implements OnInit, OnDestroy {
     this.newProperty.update(property => ({ ...property, color }));
   }
 
+  /**
+   * Al activar el cupo se repone la tarifa por defecto si el campo quedó vacío, para que
+   * nunca se guarde un apartamento con el cupo activo y sin importe.
+   */
+  updateNewPropertyElectricAllowanceEnabled(enabled: boolean): void {
+    this.newProperty.update(property => ({
+      ...property,
+      electric_allowance_enabled: enabled,
+      electric_allowance_rate:
+        enabled && property.electric_allowance_rate === ''
+          ? DEFAULT_ELECTRIC_ALLOWANCE_RATE
+          : property.electric_allowance_rate,
+    }));
+  }
+
+  updateNewPropertyElectricAllowanceRate(rate: number | string): void {
+    this.newProperty.update(property => ({ ...property, electric_allowance_rate: rate }));
+  }
+
   /** Quita el color personalizado: el apartamento vuelve al color automático. */
   resetNewPropertyColor(): void {
     this.newProperty.update(property => ({ ...property, color: null }));
@@ -650,6 +667,8 @@ export class AdminComponent implements OnInit, OnDestroy {
       email: apartment.email ?? '',
       phone: apartment.phone ?? '',
       color: apartment.color ?? null,
+      electric_allowance_enabled: apartment.electric_allowance_enabled,
+      electric_allowance_rate: apartment.electric_allowance_rate,
     });
     this.isPropertyFormModalOpen.set(true);
   }
@@ -734,6 +753,8 @@ export class AdminComponent implements OnInit, OnDestroy {
       email: draft.email.trim() || null,
       phone: draft.phone.trim() || null,
       color: draft.color,
+      electric_allowance_enabled: draft.electric_allowance_enabled,
+      electric_allowance_rate: this.electricAllowanceRateOf(draft),
     };
   }
 
@@ -750,6 +771,8 @@ export class AdminComponent implements OnInit, OnDestroy {
       email: draft.email.trim() || null,
       phone: draft.phone.trim() || null,
       color: draft.color,
+      electric_allowance_enabled: draft.electric_allowance_enabled,
+      electric_allowance_rate: this.electricAllowanceRateOf(draft),
     };
   }
 
@@ -767,7 +790,25 @@ export class AdminComponent implements OnInit, OnDestroy {
       email: '',
       phone: '',
       color: null,
+      electric_allowance_enabled: false,
+      electric_allowance_rate: DEFAULT_ELECTRIC_ALLOWANCE_RATE,
     };
+  }
+
+  /**
+   * Importe que se envía a la API. Un campo vacío o inválido se guarda como la tarifa por
+   * defecto, de modo que un apartamento con el cupo activo siempre tiene importe.
+   */
+  private electricAllowanceRateOf(draft: AdminPropertyDraft): number {
+    const parsed =
+      typeof draft.electric_allowance_rate === 'number'
+        ? draft.electric_allowance_rate
+        : Number(draft.electric_allowance_rate);
+
+    if (draft.electric_allowance_rate === '' || !Number.isFinite(parsed) || parsed < 0) {
+      return DEFAULT_ELECTRIC_ALLOWANCE_RATE;
+    }
+    return parsed;
   }
 
   private toNonNegativeNumber(value: number | string): number {

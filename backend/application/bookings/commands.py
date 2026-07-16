@@ -5,7 +5,7 @@ Casos de uso (comandos) para el dominio de Reservas.
 from dataclasses import dataclass
 from datetime import date, time
 
-from application.bookings.helpers import apply_electric_allowance
+from application.bookings.helpers import ElectricRates, apply_electric_allowance
 from domain.bookings.entity import Booking
 from domain.bookings.repository import IBookingRepository
 from domain.exceptions import BookingConflict
@@ -43,25 +43,16 @@ class BookingUpdateData:
         return {k: v for k, v in vars(self).items() if v is not _UNSET}
 
 
-def _apply_electric_allowance(booking: Booking, electric_ids: set[str]) -> Booking:
-    """Establece electric_allowance en una reserva según los IDs configurados."""
-    if booking.apartment_id.strip() in electric_ids:
-        booking.electric_allowance = booking.nights * 4.0
-    else:
-        booking.electric_allowance = None
-    return booking
-
-
 class CreateBookingUseCase:
     """Persiste una nueva reserva y la devuelve con la bonificación eléctrica aplicada."""
 
     def __init__(
         self,
         repository: IBookingRepository,
-        electric_apartment_ids: set[str],
+        electric_rates: ElectricRates,
     ) -> None:
         self._repo = repository
-        self._electric_ids = electric_apartment_ids
+        self._electric_rates = electric_rates
 
     def execute(self, booking: Booking) -> Booking:
         # Validar que no haya otra reserva bloqueante para el mismo apartamento y rango de fechas
@@ -77,7 +68,7 @@ class CreateBookingUseCase:
             )
 
         created = self._repo.create(booking)
-        return apply_electric_allowance(created, self._electric_ids)
+        return apply_electric_allowance(created, self._electric_rates)
 
 
 class UpdateBookingUseCase:
@@ -86,10 +77,10 @@ class UpdateBookingUseCase:
     def __init__(
         self,
         repository: IBookingRepository,
-        electric_apartment_ids: set[str],
+        electric_rates: ElectricRates,
     ) -> None:
         self._repo = repository
-        self._electric_ids = electric_apartment_ids
+        self._electric_rates = electric_rates
 
     def execute(self, record_id: int, data: BookingUpdateData) -> Booking:
         existing = self._repo.get_by_id(record_id)  # lanza BookingNotFound si no existe
@@ -113,7 +104,7 @@ class UpdateBookingUseCase:
                 )
 
         saved = self._repo.update(updated)
-        return apply_electric_allowance(saved, self._electric_ids)
+        return apply_electric_allowance(saved, self._electric_rates)
 
 
 class DeleteBookingUseCase:

@@ -211,6 +211,8 @@ class TestGetAllApartments:
             "email": "owner@example.com",
             "phone": "+34 600 000 000",
             "color": None,
+            "electric_allowance_enabled": False,
+            "electric_allowance_rate": 4.0,
         }
 
 

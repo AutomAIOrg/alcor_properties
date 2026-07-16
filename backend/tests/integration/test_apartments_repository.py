@@ -6,6 +6,7 @@ sin conectar contra MySQL.
 """
 
 from datetime import date
+from decimal import Decimal
 
 import pytest
 
@@ -365,6 +366,62 @@ class TestCreateApartment:
         assert stored.email == "owner@test.com"
         assert stored.phone == "+34 611 222 333"
 
+    def test_persists_electric_allowance_configuration(self, sqlite_session):
+        from tests.helpers import make_apartment
+
+        repo = SQLAlchemyApartmentRepository(sqlite_session)
+
+        repo.create_apartment(
+            make_apartment(
+                apartment_id="R999",
+                electric_allowance_enabled=True,
+                electric_allowance_rate=5.5,
+            )
+        )
+        stored = repo.get_by_apartment_id("R999")
+
+        assert stored is not None
+        assert stored.electric_allowance_enabled is True
+        assert stored.electric_allowance_rate == 5.5
+
+    def test_electric_allowance_defaults_to_disabled_at_the_standard_rate(self, sqlite_session):
+        from tests.helpers import make_apartment
+
+        repo = SQLAlchemyApartmentRepository(sqlite_session)
+
+        repo.create_apartment(make_apartment(apartment_id="R999"))
+        stored = repo.get_by_apartment_id("R999")
+
+        assert stored is not None
+        assert stored.electric_allowance_enabled is False
+        assert stored.electric_allowance_rate == 4.0
+
+
+class TestGetElectricAllowanceRates:
+    def test_returns_rate_only_for_apartments_with_the_allowance_enabled(self, sqlite_session):
+        _insert_apartment(
+            sqlite_session,
+            apartment_id="R100",
+            electric_allowance_enabled=True,
+            electric_allowance_rate=Decimal("4.00"),
+        )
+        _insert_apartment(
+            sqlite_session,
+            apartment_id="R200",
+            electric_allowance_enabled=True,
+            electric_allowance_rate=Decimal("6.50"),
+        )
+        _insert_apartment(
+            sqlite_session,
+            apartment_id="R300",
+            electric_allowance_enabled=False,
+            electric_allowance_rate=Decimal("9.00"),
+        )
+
+        rates = SQLAlchemyApartmentRepository(sqlite_session).get_electric_allowance_rates()
+
+        assert rates == {"R100": 4.0, "R200": 6.5}
+
 
 class TestGetAll:
     def test_returns_apartments_ordered_by_apartment_id(self, sqlite_session):
@@ -408,6 +465,30 @@ class TestUpdateApartment:
         assert stored.rooms == 4
         assert stored.parking == "P-NEW"
         assert stored.color == "#aabbcc"
+
+    def test_persists_electric_allowance_changes(self, sqlite_session):
+        from tests.helpers import make_apartment
+
+        repo = SQLAlchemyApartmentRepository(sqlite_session)
+        _insert_apartment(
+            sqlite_session,
+            apartment_id="R180",
+            electric_allowance_enabled=False,
+            electric_allowance_rate=Decimal("4.00"),
+        )
+
+        repo.update_apartment(
+            make_apartment(
+                apartment_id="R180",
+                electric_allowance_enabled=True,
+                electric_allowance_rate=7.25,
+            )
+        )
+
+        stored = repo.get_by_apartment_id("R180")
+        assert stored is not None
+        assert stored.electric_allowance_enabled is True
+        assert stored.electric_allowance_rate == 7.25
 
     def test_raises_not_found_for_missing_apartment(self, sqlite_session):
         from domain.exceptions import ApartmentNotFoundError

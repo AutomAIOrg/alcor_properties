@@ -205,27 +205,55 @@ class TestCalendarFlow:
 
 
 class TestElectricAllowanceFlow:
-    def test_electric_allowance_calculated_when_apartment_id_in_electric_setting(
-        self, e2e_client, admin_auth_headers, monkeypatch
-    ):
-        from config import settings
+    @staticmethod
+    def _create_apartment(sqlite_session, apartment_id: str, *, enabled: bool, rate: str) -> None:
+        from decimal import Decimal
 
-        monkeypatch.setattr(settings, "ELECTRIC", "ELEC-E2E-001")
+        from infrastructure.models.apartment import ApartmentORM
 
-        payload = {
-            "apartment_id": "ELEC-E2E-001",
+        sqlite_session.add(
+            ApartmentORM(
+                apartment_id=apartment_id,
+                electric_allowance_enabled=enabled,
+                electric_allowance_rate=Decimal(rate),
+            )
+        )
+        sqlite_session.commit()
+
+    @staticmethod
+    def _booking_payload(apartment_id: str) -> dict:
+        return {
+            "apartment_id": apartment_id,
             "guest_name": "Huésped Eléctrico",
             "check_in": "2026-09-01",
             "check_out": "2026-09-04",
             "nights": 3,
         }
 
+    def test_electric_allowance_uses_the_rate_configured_in_the_apartment(
+        self, e2e_client, admin_auth_headers, sqlite_session
+    ):
+        self._create_apartment(sqlite_session, "ELEC-E2E-001", enabled=True, rate="5.50")
+
         r = e2e_client.post(
             "/api/v1/bookings/",
-            json=payload,
+            json=self._booking_payload("ELEC-E2E-001"),
             headers=admin_auth_headers,
         )
 
         assert r.status_code == 201
-        data = r.json()
-        assert data["electric_allowance"] == 3 * 4.0
+        assert r.json()["electric_allowance"] == 3 * 5.50
+
+    def test_electric_allowance_is_none_when_apartment_has_it_disabled(
+        self, e2e_client, admin_auth_headers, sqlite_session
+    ):
+        self._create_apartment(sqlite_session, "NO-ELEC-E2E-001", enabled=False, rate="4.00")
+
+        r = e2e_client.post(
+            "/api/v1/bookings/",
+            json=self._booking_payload("NO-ELEC-E2E-001"),
+            headers=admin_auth_headers,
+        )
+
+        assert r.status_code == 201
+        assert r.json()["electric_allowance"] is None

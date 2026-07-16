@@ -187,7 +187,8 @@
   border-radius: 10px;
 
   label,
-  .color-field {
+  .color-field,
+  .electric-field {
     display: flex;
     flex-direction: column;
     gap: 0.35rem;
@@ -296,6 +297,36 @@
       border-color: #2563eb;
       color: #2563eb;
     }
+  }
+}
+
+.electric-field {
+  &__toggle {
+    flex-direction: row !important;
+    align-items: center;
+    gap: 0.5rem !important;
+    font-weight: 500 !important;
+
+    // La regla general del formulario estira los inputs al 100%; la casilla debe
+    // conservar su tamaño natural junto al texto.
+    input[type='checkbox'] {
+      width: auto;
+      min-width: 0;
+      min-height: 0;
+      margin: 0;
+      cursor: pointer;
+    }
+  }
+
+  &__rate {
+    max-width: 220px;
+  }
+
+  &__hint {
+    margin: 0;
+    color: #475467;
+    font-size: 0.75rem;
+    font-weight: 500;
   }
 }
 

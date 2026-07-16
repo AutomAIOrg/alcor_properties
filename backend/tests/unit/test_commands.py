@@ -34,15 +34,27 @@ class TestCreateBookingUseCase:
         )
         mock_repo.create.return_value = booking
 
-        result = CreateBookingUseCase(mock_repo, {"ELEC-001"}).execute(booking)
+        result = CreateBookingUseCase(mock_repo, {"ELEC-001": 4.0}).execute(booking)
 
         assert result.electric_allowance == booking.nights * 4.0
 
-    def test_electric_allowance_is_none_when_apartment_id_not_in_electric_ids(self, mock_repo):
+    def test_electric_allowance_uses_the_rate_configured_for_the_apartment(self, mock_repo):
+        booking = make_booking(
+            apartment_id="ELEC-001",
+            check_in=date(2026, 6, 1),
+            check_out=date(2026, 6, 4),
+        )
+        mock_repo.create.return_value = booking
+
+        result = CreateBookingUseCase(mock_repo, {"ELEC-001": 6.5}).execute(booking)
+
+        assert result.electric_allowance == booking.nights * 6.5
+
+    def test_electric_allowance_is_none_when_apartment_has_no_rate(self, mock_repo):
         booking = make_booking(apartment_id="NORMAL-001")
         mock_repo.create.return_value = booking
 
-        result = CreateBookingUseCase(mock_repo, {"ELEC-001"}).execute(booking)
+        result = CreateBookingUseCase(mock_repo, {"ELEC-001": 4.0}).execute(booking)
 
         assert result.electric_allowance is None
 
@@ -51,7 +63,7 @@ class TestCreateBookingUseCase:
         mock_repo.find_overlapping_active.return_value = True
 
         with pytest.raises(BookingConflict):
-            CreateBookingUseCase(mock_repo, set()).execute(booking)
+            CreateBookingUseCase(mock_repo, {}).execute(booking)
 
         mock_repo.create.assert_not_called()
 
@@ -74,7 +86,7 @@ class TestUpdateBookingUseCase:
         mock_repo.get_by_id.return_value = existing
         mock_repo.update.side_effect = lambda booking: booking
 
-        result = UpdateBookingUseCase(mock_repo, set()).execute(
+        result = UpdateBookingUseCase(mock_repo, {}).execute(
             1, BookingUpdateData(guest_name="Carlos López")
         )
 
@@ -92,7 +104,7 @@ class TestUpdateBookingUseCase:
         mock_repo.get_by_id.return_value = existing
         mock_repo.update.side_effect = lambda booking: booking
 
-        result = UpdateBookingUseCase(mock_repo, set()).execute(1, BookingUpdateData(email=None))
+        result = UpdateBookingUseCase(mock_repo, {}).execute(1, BookingUpdateData(email=None))
 
         assert result.email is None
         assert result.phone == "+34 600 000 000"
@@ -109,7 +121,7 @@ class TestUpdateBookingUseCase:
         mock_repo.find_overlapping_active.return_value = True
 
         with pytest.raises(BookingConflict):
-            UpdateBookingUseCase(mock_repo, set()).execute(
+            UpdateBookingUseCase(mock_repo, {}).execute(
                 1,
                 BookingUpdateData(
                     check_in=date(2026, 6, 4),
@@ -135,7 +147,7 @@ class TestUpdateBookingUseCase:
         mock_repo.get_by_id.return_value = existing
         mock_repo.update.return_value = cancelled
 
-        result = UpdateBookingUseCase(mock_repo, set()).execute(
+        result = UpdateBookingUseCase(mock_repo, {}).execute(
             1,
             BookingUpdateData(status="Cancelled"),
         )
@@ -147,7 +159,7 @@ class TestUpdateBookingUseCase:
         mock_repo.get_by_id.side_effect = BookingNotFound(99)
 
         with pytest.raises(BookingNotFound):
-            UpdateBookingUseCase(mock_repo, set()).execute(99, BookingUpdateData())
+            UpdateBookingUseCase(mock_repo, {}).execute(99, BookingUpdateData())
 
 
 # ---------------------------------------------------------------------------

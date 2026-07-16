@@ -629,6 +629,36 @@
             </div>
           </div>
 
+          <div class="wide-field electric-field">
+            Cupo eléctrico
+            <label class="electric-field__toggle">
+              <input
+                type="checkbox"
+                name="electricAllowanceEnabled"
+                [ngModel]="newProperty().electric_allowance_enabled"
+                (ngModelChange)="updateNewPropertyElectricAllowanceEnabled($event)"
+              />
+              <span>Aplicar cargos por consumo eléctrico a las reservas</span>
+            </label>
+
+            @if (newProperty().electric_allowance_enabled) {
+              <label class="electric-field__rate">
+                Importe por noche (€)
+                <input
+                  type="number"
+                  name="electricAllowanceRate"
+                  min="0"
+                  step="0.01"
+                  [ngModel]="newProperty().electric_allowance_rate"
+                  (ngModelChange)="updateNewPropertyElectricAllowanceRate($event)"
+                />
+              </label>
+              <p class="electric-field__hint">
+                Se cobra este importe por cada noche de la reserva.
+              </p>
+            }
+          </div>
+
           <div class="dialog-actions">
             <button
               class="secondary-btn"

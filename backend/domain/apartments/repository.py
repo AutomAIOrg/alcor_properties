@@ -55,3 +55,11 @@ class IApartmentRepository(ABC):
         Devuelve la lista de todos los apartamentos.
         """
         pass
+
+    @abstractmethod
+    def get_electric_allowance_rates(self) -> dict[str, float]:
+        """
+        Devuelve {apartment_id: importe por noche} de los apartamentos con el cupo
+        eléctrico activado. Los apartamentos sin cupo no aparecen en el diccionario.
+        """
+        pass

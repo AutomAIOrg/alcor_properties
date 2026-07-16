@@ -41,7 +41,10 @@ class Settings(BaseSettings):
     MYSQL_DATABASE: str | None = None
     MYSQL_PORT: str | None = None
 
-    # Cupo eléctrico — IDs de reservas separados por comas
+    # Cupo eléctrico — OBSOLETO. Ahora se configura por apartamento desde la gestión de
+    # apartamentos (columnas 'Electric Allowance' / 'Electric Allowance Rate'). Solo lo lee
+    # la migración b7d2e9f4a1c3, que activa el cupo de los IDs listados aquí. Puede
+    # eliminarse del .env una vez aplicada la migración.
     ELECTRIC: str = ""
 
     # API

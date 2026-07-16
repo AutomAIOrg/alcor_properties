@@ -18,6 +18,8 @@ export interface ApartmentResponse {
   email: string | null;
   phone: string | null;
   color: string | null;
+  electric_allowance_enabled: boolean;
+  electric_allowance_rate: number;
 }
 
 export type ApartmentCreateRequest = ApartmentResponse;
@@ -34,6 +36,8 @@ export interface ApartmentUpdateRequest {
   email: string | null;
   phone: string | null;
   color: string | null;
+  electric_allowance_enabled: boolean;
+  electric_allowance_rate: number;
 }
 
 export interface ApartmentMessageResponse {
