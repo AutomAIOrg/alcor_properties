@@ -422,6 +422,9 @@ export class BookingCreateModalComponent implements OnInit {
       guest_name: d.guest_name!,
       check_in: d.check_in!,
       check_out: d.check_out!,
+      // Horas estándar; se ajustan luego desde la lista de limpiezas si esta reserva difiere.
+      check_in_time: null,
+      check_out_time: null,
       status: d.status ?? 'Confirmed',
       nights: this.nights(),
       persons: (d.adults ?? 1) + (d.children ?? 0),
