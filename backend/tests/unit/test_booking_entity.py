@@ -4,7 +4,7 @@ Unit tests — entidad de dominio Booking y excepciones de dominio.
 Sin I/O, sin mocks, sin dependencias externas.
 """
 
-from datetime import date
+from datetime import date, datetime, time
 
 import pytest
 
@@ -163,6 +163,39 @@ class TestUpcomingCheckinCheckout:
         ref = date(2026, 6, 1)
         b = make_booking(check_in=date(2026, 6, 1), check_out=date(2026, 6, 15))
         assert not b.has_upcoming_checkout(days=7, reference_date=ref)
+
+
+# ---------------------------------------------------------------------------
+# Horas de entrada y salida
+# ---------------------------------------------------------------------------
+
+
+class TestCheckTimes:
+    def test_standard_times_when_the_booking_agrees_none(self):
+        b = make_booking()
+        assert b.effective_check_in_time() == time(16, 0)
+        assert b.effective_check_out_time() == time(11, 0)
+
+    def test_agreed_times_take_precedence(self):
+        b = make_booking(check_in_time=time(18, 0), check_out_time=time(13, 30))
+        assert b.effective_check_in_time() == time(18, 0)
+        assert b.effective_check_out_time() == time(13, 30)
+
+    def test_cleaning_starts_at_the_standard_checkout_time(self):
+        b = make_booking(check_in=date(2026, 6, 1), check_out=date(2026, 6, 5))
+        assert b.cleaning_available_at() == datetime(2026, 6, 5, 11, 0)
+
+    def test_a_late_agreed_checkout_delays_the_cleaning(self):
+        b = make_booking(
+            check_in=date(2026, 6, 1),
+            check_out=date(2026, 6, 5),
+            check_out_time=time(13, 30),
+        )
+
+        assert b.cleaning_available_at() == datetime(2026, 6, 5, 13, 30)
+        # A las 12:00 el piso ya estaría libre con la hora estándar, pero no con la pactada.
+        assert not b.is_cleanable(datetime(2026, 6, 5, 12, 0))
+        assert b.is_cleanable(datetime(2026, 6, 5, 13, 30))
 
 
 # ---------------------------------------------------------------------------

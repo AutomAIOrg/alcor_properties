@@ -135,9 +135,39 @@
                   </span>
                 </td>
                 <td>{{ formatDate(opportunity.availableFromDate) }}</td>
-                <td>{{ opportunity.availableFromTime }}</td>
+                <td>
+                  <div class="time-cell">
+                    <span>{{ formatTime(opportunity.availableFromTime) }}</span>
+                    @if (isAdmin()) {
+                      <button
+                        class="icon-btn time-edit-btn"
+                        type="button"
+                        title="Editar hora de salida"
+                        aria-label="Editar hora de salida"
+                        (click)="openTimesModal(opportunity, 'checkOut')"
+                      >
+                        ✎
+                      </button>
+                    }
+                  </div>
+                </td>
                 <td>{{ formatDate(opportunity.availableUntilDate) }}</td>
-                <td>{{ opportunity.availableUntilTime }}</td>
+                <td>
+                  <div class="time-cell">
+                    <span>{{ formatTime(opportunity.availableUntilTime) }}</span>
+                    @if (isAdmin() && opportunity.nextBookingRecordId !== null) {
+                      <button
+                        class="icon-btn time-edit-btn"
+                        type="button"
+                        title="Editar hora de entrada"
+                        aria-label="Editar hora de entrada"
+                        (click)="openTimesModal(opportunity, 'checkIn')"
+                      >
+                        ✎
+                      </button>
+                    }
+                  </div>
+                </td>
                 <td>{{ opportunity.nextPersons ?? '—' }}</td>
                 <td>{{ opportunity.nextNights ?? '—' }}</td>
                 <td>
@@ -422,6 +452,63 @@
             type="button"
             [disabled]="isSavingComment()"
             (click)="closeCommentModal()"
+          >
+            Cancelar
+          </button>
+        </div>
+      </section>
+    </div>
+  }
+
+  @if (selectedTimesOpportunity()) {
+    <div
+      class="modal-backdrop"
+      role="presentation"
+      appDismissableBackdrop
+      (backdropDismiss)="closeTimesModal()"
+    >
+      <section
+        class="comment-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="times-dialog-title"
+      >
+        <h2 id="times-dialog-title">Editar hora de {{ editingTimeLabel() }}</h2>
+        <p>
+          Piso
+          <strong>{{ selectedTimesOpportunity()!.apartmentId }}</strong>
+          · {{ formatDate(editingTimeDate()) }}
+        </p>
+        <p class="times-hint">
+          Por defecto la {{ editingTimeLabel() }} es a las {{ editingDefaultTime() }}. Cámbiala solo
+          si esta reserva tiene una hora distinta.
+        </p>
+
+        <div class="times-form-grid">
+          <label class="comment-field">
+            Hora de {{ editingTimeLabel() }}
+            <input type="time" [value]="timeDraft()" required (input)="updateTimeDraft($event)" />
+          </label>
+        </div>
+
+        @if (timesFormError()) {
+          <div class="notice error-notice">{{ timesFormError() }}</div>
+        }
+
+        <div class="dialog-actions">
+          <button
+            class="primary-btn"
+            type="button"
+            [disabled]="isSavingTimes()"
+            (click)="saveTime()"
+          >
+            {{ isSavingTimes() ? 'Guardando...' : 'Aceptar' }}
+          </button>
+          <button
+            class="secondary-btn"
+            type="button"
+            [disabled]="isSavingTimes()"
+            (click)="closeTimesModal()"
           >
             Cancelar
           </button>

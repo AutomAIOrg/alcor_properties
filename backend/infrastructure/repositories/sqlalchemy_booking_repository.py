@@ -118,6 +118,8 @@ class SQLAlchemyBookingRepository(IBookingRepository):
         orm.guest_name = booking.guest_name
         orm.check_in = booking.check_in
         orm.check_out = booking.check_out
+        orm.check_in_time = booking.check_in_time
+        orm.check_out_time = booking.check_out_time
         orm.nights = booking.nights
         orm.status = booking.status
         orm.persons = booking.persons
@@ -187,6 +189,8 @@ class SQLAlchemyBookingRepository(IBookingRepository):
             guest_name=orm.guest_name or "Unknown",
             check_in=orm.check_in,
             check_out=orm.check_out,
+            check_in_time=orm.check_in_time,
+            check_out_time=orm.check_out_time,
             nights=nights,
             status=orm.status or "Confirmed",
             persons=orm.persons or 1,
@@ -209,6 +213,8 @@ class SQLAlchemyBookingRepository(IBookingRepository):
             guest_name=booking.guest_name,
             check_in=booking.check_in,
             check_out=booking.check_out,
+            check_in_time=booking.check_in_time,
+            check_out_time=booking.check_out_time,
             nights=booking.nights,
             status=booking.status,
             persons=booking.persons,

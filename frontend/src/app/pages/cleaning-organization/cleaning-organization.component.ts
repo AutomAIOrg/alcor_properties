@@ -2,7 +2,7 @@ import { CurrencyPipe } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, computed, inject, OnDestroy, OnInit, signal } from '@angular/core';
 import { AuthService } from '../../auth/auth.service';
-import { CleaningOpportunity as CleaningOpportunityDto } from '../../models/booking.model';
+import { Booking, CleaningOpportunity as CleaningOpportunityDto } from '../../models/booking.model';
 import { CleaningType } from '../../models/cleaning-type.model';
 import { ApartmentColorService } from '../../services/apartment-color.service';
 import { BillService } from '../../services/bill.service';
@@ -20,15 +20,18 @@ import { billStateLabel } from '../../shared/utils/bill-transitions';
 interface CleaningWindow {
   apartmentId: string;
   availableFromDate: string;
+  // Horas resueltas por el backend ("HH:MM:SS"): la pactada en la reserva o la estándar.
   availableFromTime: string;
   availableUntilDate: string | null;
-  availableUntilTime: string;
+  availableUntilTime: string | null;
   comments: string;
   sourceBookingRecordId: number;
   canBill: boolean;
   hasBill: boolean;
   billState: string | null;
   address: string | null;
+  // Reserva de entrada; null mientras no haya reserva siguiente.
+  nextBookingRecordId: number | null;
   // Ocupación de la reserva de entrada; null mientras no haya reserva siguiente.
   nextPersons: number | null;
   nextNights: number | null;
@@ -53,6 +56,9 @@ interface CleaningBar {
 }
 
 type PendingCleaningBar = Omit<CleaningBar, 'laneIndex' | 'top' | 'color'>;
+// Cuál de las dos horas de la fila se está editando: la salida de la reserva que se va
+// o la entrada de la que llega.
+type TimeField = 'checkOut' | 'checkIn';
 type ToastType = 'success' | 'error';
 
 interface ToastMessage {
@@ -79,6 +85,8 @@ export class CleaningOrganizationComponent implements OnInit, OnDestroy {
   readonly weekdays = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
   readonly pendingTime = 'Pendiente';
   readonly billStateLabel = billStateLabel;
+  readonly defaultCheckOutTime = '11:00';
+  readonly defaultCheckInTime = '16:00';
   readonly barHeight = 22;
 
   private readonly barGap = 4;
@@ -92,6 +100,11 @@ export class CleaningOrganizationComponent implements OnInit, OnDestroy {
   selectedCommentOpportunity = signal<CleaningWindow | null>(null);
   commentDraft = signal('');
   isSavingComment = signal(false);
+  selectedTimesOpportunity = signal<CleaningWindow | null>(null);
+  editingTimeField = signal<TimeField | null>(null);
+  timeDraft = signal('');
+  isSavingTimes = signal(false);
+  timesFormError = signal<string | null>(null);
   selectedInvoiceOpportunity = signal<CleaningWindow | null>(null);
   cleaningDate = signal('');
   startTime = signal('');
@@ -108,6 +121,21 @@ export class CleaningOrganizationComponent implements OnInit, OnDestroy {
   toast = signal<ToastMessage | null>(null);
   isAdmin = computed(() => this.authService.hasRole('admin'));
   canCreateBill = computed(() => this.authService.hasPermission('bills:create'));
+
+  // El diálogo edita una sola hora: la que se ha pulsado manda en el título, la etiqueta,
+  // la fecha mostrada y la hora estándar de referencia.
+  isEditingCheckOutTime = computed(() => this.editingTimeField() === 'checkOut');
+  editingTimeLabel = computed(() => (this.isEditingCheckOutTime() ? 'salida' : 'entrada'));
+  editingTimeDate = computed(() => {
+    const opportunity = this.selectedTimesOpportunity();
+    if (!opportunity) return null;
+    return this.isEditingCheckOutTime()
+      ? opportunity.availableFromDate
+      : opportunity.availableUntilDate;
+  });
+  editingDefaultTime = computed(() =>
+    this.isEditingCheckOutTime() ? this.defaultCheckOutTime : this.defaultCheckInTime
+  );
 
   selectedCleaningType = computed<CleaningType | null>(() => {
     const id = this.selectedCleaningTypeId();
@@ -200,15 +228,16 @@ export class CleaningOrganizationComponent implements OnInit, OnDestroy {
       .map(opportunity => ({
         apartmentId: opportunity.apartment_id,
         availableFromDate: opportunity.available_from,
-        availableFromTime: this.pendingTime,
+        availableFromTime: opportunity.available_from_time,
         availableUntilDate: opportunity.available_until,
-        availableUntilTime: this.pendingTime,
+        availableUntilTime: opportunity.available_until_time,
         comments: opportunity.comments,
         sourceBookingRecordId: opportunity.source_booking_record_id,
         canBill: opportunity.can_bill,
         hasBill: opportunity.has_bill,
         billState: opportunity.bill_state,
         address: opportunity.address,
+        nextBookingRecordId: opportunity.next_booking_record_id,
         nextPersons: opportunity.next_persons,
         nextNights: opportunity.next_nights,
       }))
@@ -316,6 +345,11 @@ export class CleaningOrganizationComponent implements OnInit, OnDestroy {
 
     const [year, month, day] = iso.split('-');
     return `${day}/${month}/${year}`;
+  }
+
+  // Sin reserva siguiente no hay hora de entrada que mostrar.
+  formatTime(time: string | null): string {
+    return time ? time.slice(0, 5) : this.pendingTime;
   }
 
   getApartmentColor(apartmentId: string): string {
@@ -537,6 +571,94 @@ export class CleaningOrganizationComponent implements OnInit, OnDestroy {
           this.showToast('error', 'Ha fallado al guardar el comentario');
         },
       });
+  }
+
+  openTimesModal(opportunity: CleaningWindow, field: TimeField): void {
+    if (!this.isAdmin()) return;
+    // Sin reserva de entrada no hay hora de entrada que editar.
+    if (field === 'checkIn' && opportunity.nextBookingRecordId === null) return;
+
+    this.selectedTimesOpportunity.set(opportunity);
+    this.editingTimeField.set(field);
+    this.timeDraft.set(
+      this.toTimeInputValue(
+        field === 'checkOut' ? opportunity.availableFromTime : opportunity.availableUntilTime
+      )
+    );
+    this.timesFormError.set(null);
+  }
+
+  closeTimesModal(): void {
+    if (this.isSavingTimes()) return;
+
+    this.selectedTimesOpportunity.set(null);
+    this.editingTimeField.set(null);
+    this.timeDraft.set('');
+    this.timesFormError.set(null);
+  }
+
+  updateTimeDraft(event: Event): void {
+    this.timeDraft.set((event.target as HTMLInputElement).value);
+    this.timesFormError.set(null);
+  }
+
+  // Cada hora vive en su reserva: la de salida en la que se va y la de entrada en la que llega.
+  saveTime(): void {
+    const opportunity = this.selectedTimesOpportunity();
+    const field = this.editingTimeField();
+    if (!opportunity || !field || this.isSavingTimes()) return;
+
+    const time = this.timeDraft();
+    if (!time) {
+      this.timesFormError.set('Indica una hora válida.');
+      return;
+    }
+
+    const editsCheckOut = field === 'checkOut';
+    const current = editsCheckOut ? opportunity.availableFromTime : opportunity.availableUntilTime;
+    if (time === this.toTimeInputValue(current)) {
+      this.closeTimesModal();
+      return;
+    }
+
+    const recordId = editsCheckOut
+      ? opportunity.sourceBookingRecordId
+      : opportunity.nextBookingRecordId!;
+    const payload: Partial<Booking> = editsCheckOut
+      ? { check_out_time: time }
+      : { check_in_time: time };
+
+    this.isSavingTimes.set(true);
+
+    this.bookingService.updateBooking(recordId, payload).subscribe({
+      next: () => {
+        this.apiCleaningOpportunities.update(opportunities =>
+          opportunities.map(item =>
+            item.source_booking_record_id === opportunity.sourceBookingRecordId
+              ? {
+                  ...item,
+                  ...(editsCheckOut
+                    ? { available_from_time: time }
+                    : { available_until_time: time }),
+                }
+              : item
+          )
+        );
+        this.isSavingTimes.set(false);
+        this.selectedTimesOpportunity.set(null);
+        this.editingTimeField.set(null);
+        this.showToast('success', 'Hora guardada con éxito');
+      },
+      error: () => {
+        this.isSavingTimes.set(false);
+        this.showToast('error', 'Ha fallado al guardar la hora');
+      },
+    });
+  }
+
+  // "HH:MM:SS" (o "HH:MM") → "HH:MM", el formato que espera <input type="time">.
+  private toTimeInputValue(time: string | null): string {
+    return time ? time.slice(0, 5) : '';
   }
 
   private resolveInvoiceErrorMessage(error: HttpErrorResponse): string {

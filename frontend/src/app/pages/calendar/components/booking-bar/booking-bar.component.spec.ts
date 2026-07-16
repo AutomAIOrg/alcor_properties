@@ -13,6 +13,8 @@ function makeBooking(overrides: Partial<Booking> = {}): Booking {
     guest_name: 'Ana García',
     check_in: '2025-06-01',
     check_out: '2025-06-07',
+    check_in_time: null,
+    check_out_time: null,
     status: 'Confirmed',
     nights: 6,
     persons: 2,

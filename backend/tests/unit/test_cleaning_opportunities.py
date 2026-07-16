@@ -2,7 +2,7 @@
 Unit tests — cálculo de ventanas de limpieza.
 """
 
-from datetime import date
+from datetime import date, time
 
 import pytest
 
@@ -245,6 +245,68 @@ class TestBuildCleaningOpportunities:
         opportunities = _build_cleaning_opportunities(bookings)
 
         assert opportunities[0].comments == ""
+
+    def test_uses_standard_times_when_bookings_do_not_set_them(self):
+        bookings = [
+            make_booking(
+                record_id=1,
+                apartment_id="R180",
+                check_in=date(2026, 6, 1),
+                check_out=date(2026, 6, 5),
+            ),
+            make_booking(
+                record_id=2,
+                apartment_id="R180",
+                check_in=date(2026, 6, 8),
+                check_out=date(2026, 6, 12),
+            ),
+        ]
+
+        opportunities = _build_cleaning_opportunities(bookings)
+
+        assert opportunities[0].available_from_time == time(11, 0)
+        assert opportunities[0].available_until_time == time(16, 0)
+
+    def test_uses_times_agreed_on_each_booking(self):
+        bookings = [
+            make_booking(
+                record_id=1,
+                apartment_id="R180",
+                check_in=date(2026, 6, 1),
+                check_out=date(2026, 6, 5),
+                check_out_time=time(13, 30),
+            ),
+            make_booking(
+                record_id=2,
+                apartment_id="R180",
+                check_in=date(2026, 6, 8),
+                check_out=date(2026, 6, 12),
+                check_in_time=time(18, 0),
+            ),
+        ]
+
+        opportunities = _build_cleaning_opportunities(bookings)
+
+        # La hora de salida sale de la reserva que se va y la de entrada de la que llega.
+        assert opportunities[0].available_from_time == time(13, 30)
+        assert opportunities[0].available_until_time == time(18, 0)
+        assert opportunities[0].next_booking_record_id == 2
+
+    def test_without_next_booking_there_is_no_check_in_time(self):
+        bookings = [
+            make_booking(
+                record_id=1,
+                apartment_id="R180",
+                check_in=date(2026, 6, 1),
+                check_out=date(2026, 6, 5),
+            )
+        ]
+
+        opportunities = _build_cleaning_opportunities(bookings)
+
+        assert opportunities[0].available_from_time == time(11, 0)
+        assert opportunities[0].available_until_time is None
+        assert opportunities[0].next_booking_record_id is None
 
 
 class TestCleaningOperationalRange:
