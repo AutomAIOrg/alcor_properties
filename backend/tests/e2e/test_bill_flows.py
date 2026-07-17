@@ -343,9 +343,11 @@ class TestBillabilityValidation:
         assert r.status_code == 422
         assert "cancelada" in r.json()["detail"]
 
-    def test_future_checkout_returns_422(self, e2e_client, admin_auth_headers):
-        # Fechas relativas a hoy: un check-out fijo dejaría de ser futuro con el tiempo.
-        check_in = date.today() + timedelta(days=5)
+    def test_cleaning_window_not_started_returns_422(self, e2e_client, admin_auth_headers):
+        # Fechas relativas a hoy: unas fijas dejarían de ser futuras con el tiempo. El piso no
+        # tiene reserva anterior, así que la ventana abre el lunes de la semana del check-in;
+        # con 14 días de margen ese lunes cae siempre en el futuro, sea hoy el día que sea.
+        check_in = date.today() + timedelta(days=14)
         check_out = check_in + timedelta(days=5)
 
         r = e2e_client.post(
@@ -369,4 +371,4 @@ class TestBillabilityValidation:
             headers=admin_auth_headers,
         )
         assert r.status_code == 422
-        assert "check-out" in r.json()["detail"]
+        assert "ventana no ha empezado" in r.json()["detail"]

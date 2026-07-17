@@ -37,9 +37,10 @@ class TestBuildCleaningOpportunities:
 
         opportunities = _build_cleaning_opportunities(bookings)
 
+        # La cancelada no llega a entrar, así que no hay nada que preparar para ella.
         assert len(opportunities) == 1
         assert opportunities[0].source_booking_record_id == 1
-        assert opportunities[0].available_until is None
+        assert opportunities[0].available_until == date(2026, 6, 1)
 
     def test_enriches_with_apartment_address_and_description(self):
         bookings = [
@@ -94,7 +95,7 @@ class TestBuildCleaningOpportunities:
         assert len(opportunities) == 1
         assert opportunities[0].source_booking_record_id == 2
 
-    def test_sets_available_until_to_next_booking_check_in(self):
+    def test_window_runs_from_previous_checkout_to_own_check_in(self):
         bookings = [
             make_booking(
                 record_id=1,
@@ -112,12 +113,81 @@ class TestBuildCleaningOpportunities:
 
         opportunities = _build_cleaning_opportunities(bookings)
 
+        # Una limpieza por cada entrada: la de la reserva 1 (sin anterior, arranca el lunes de
+        # su semana) y la que prepara la entrada de la 2 (la abre la salida de la 1).
         assert len(opportunities) == 2
         first, second = opportunities
-        assert first.available_from == date(2026, 6, 5)
-        assert first.available_until == date(2026, 6, 10)
-        assert second.available_from == date(2026, 6, 15)
-        assert second.available_until is None
+        assert first.source_booking_record_id == 1
+        assert first.available_from == date(2026, 6, 1)
+        assert first.available_until == date(2026, 6, 1)
+        assert first.previous_booking_record_id is None
+        assert second.source_booking_record_id == 2
+        assert second.available_from == date(2026, 6, 5)
+        assert second.available_until == date(2026, 6, 10)
+        assert second.previous_booking_record_id == 1
+
+    def test_head_window_opens_on_the_monday_of_the_check_in_week(self):
+        bookings = [
+            make_booking(
+                record_id=1,
+                apartment_id="R180",
+                check_in=date(2026, 6, 10),  # miércoles
+                check_out=date(2026, 6, 15),
+            )
+        ]
+
+        opportunities = _build_cleaning_opportunities(bookings)
+
+        # Sin reserva anterior no hay salida que esperar: la ventana abre el lunes a la hora
+        # estándar de salida.
+        assert len(opportunities) == 1
+        assert opportunities[0].available_from == date(2026, 6, 8)
+        assert opportunities[0].available_from_time == time(11, 0)
+        assert opportunities[0].available_until == date(2026, 6, 10)
+        assert opportunities[0].previous_booking_record_id is None
+
+    def test_head_window_can_bill_flips_at_monday_checkout_time(self):
+        bookings = [
+            make_booking(
+                record_id=1,
+                apartment_id="R180",
+                check_in=date(2026, 6, 10),
+                check_out=date(2026, 6, 15),
+            )
+        ]
+
+        before = _build_cleaning_opportunities(
+            bookings, reference_datetime=datetime(2026, 6, 8, 10, 59)
+        )
+        at = _build_cleaning_opportunities(bookings, reference_datetime=datetime(2026, 6, 8, 11, 0))
+
+        assert not before[0].can_bill
+        assert at[0].can_bill
+
+    def test_persons_and_nights_come_from_the_arriving_booking(self):
+        bookings = [
+            make_booking(
+                record_id=1,
+                apartment_id="R180",
+                check_in=date(2026, 6, 1),
+                check_out=date(2026, 6, 5),
+                persons=2,
+            ),
+            make_booking(
+                record_id=2,
+                apartment_id="R180",
+                check_in=date(2026, 6, 10),
+                check_out=date(2026, 6, 15),
+                persons=4,
+            ),
+        ]
+
+        opportunities = _build_cleaning_opportunities(bookings)
+
+        # La limpieza prepara la entrada: la ocupación que importa es la de quien llega.
+        assert opportunities[1].source_booking_record_id == 2
+        assert opportunities[1].persons == 4
+        assert opportunities[1].nights == 5
 
     def test_groups_by_apartment(self):
         bookings = [
@@ -139,7 +209,7 @@ class TestBuildCleaningOpportunities:
 
         assert len(opportunities) == 2
         assert {opportunity.apartment_id for opportunity in opportunities} == {"R180", "R200"}
-        assert all(opportunity.available_until is None for opportunity in opportunities)
+        assert all(opportunity.previous_booking_record_id is None for opportunity in opportunities)
 
     def test_orders_bookings_within_apartment_by_check_in_check_out_record_id(self):
         bookings = [
@@ -165,12 +235,18 @@ class TestBuildCleaningOpportunities:
 
         opportunities = _build_cleaning_opportunities(bookings)
 
+        # Cada reserva ancla la limpieza de su propia entrada; la cadena encadena las ventanas.
         assert [opportunity.source_booking_record_id for opportunity in opportunities] == [1, 2, 3]
-        assert opportunities[0].available_until == date(2026, 6, 5)
-        assert opportunities[1].available_until == date(2026, 6, 10)
-        assert opportunities[2].available_until is None
+        assert [opportunity.previous_booking_record_id for opportunity in opportunities] == [
+            None,
+            1,
+            2,
+        ]
+        assert opportunities[0].available_until == date(2026, 6, 1)
+        assert opportunities[1].available_until == date(2026, 6, 5)
+        assert opportunities[2].available_until == date(2026, 6, 10)
 
-    def test_sorts_opportunities_with_available_until_before_open_ended(self):
+    def test_sorts_opportunities_by_check_in(self):
         bookings = [
             make_booking(
                 record_id=1,
@@ -194,9 +270,11 @@ class TestBuildCleaningOpportunities:
 
         opportunities = _build_cleaning_opportunities(bookings)
 
-        assert opportunities[0].available_until == date(2026, 6, 20)
-        assert opportunities[1].available_until is None
-        assert opportunities[2].available_until is None
+        assert [opportunity.available_until for opportunity in opportunities] == [
+            date(2026, 6, 1),
+            date(2026, 6, 2),
+            date(2026, 6, 20),
+        ]
 
     def test_trims_comments_from_notes_cleaning(self):
         bookings = [
@@ -213,6 +291,30 @@ class TestBuildCleaningOpportunities:
         opportunities = _build_cleaning_opportunities(bookings)
 
         assert opportunities[0].comments == "dejar llaves en conserjería"
+
+    def test_comments_come_from_the_arriving_booking(self):
+        bookings = [
+            make_booking(
+                record_id=1,
+                apartment_id="R180",
+                check_in=date(2026, 6, 1),
+                check_out=date(2026, 6, 5),
+                notes_cleaning="notas de quien se va",
+            ),
+            make_booking(
+                record_id=2,
+                apartment_id="R180",
+                check_in=date(2026, 6, 10),
+                check_out=date(2026, 6, 15),
+                notes_cleaning="notas de quien llega",
+            ),
+        ]
+
+        opportunities = _build_cleaning_opportunities(bookings)
+
+        # La limpieza la identifica la reserva que llega: sus notas son las que se ven y editan.
+        assert opportunities[1].source_booking_record_id == 2
+        assert opportunities[1].comments == "notas de quien llega"
 
     def test_empty_comments_when_notes_cleaning_are_none(self):
         bookings = [
@@ -264,8 +366,8 @@ class TestBuildCleaningOpportunities:
 
         opportunities = _build_cleaning_opportunities(bookings)
 
-        assert opportunities[0].available_from_time == time(11, 0)
-        assert opportunities[0].available_until_time == time(16, 0)
+        assert opportunities[1].available_from_time == time(11, 0)
+        assert opportunities[1].available_until_time == time(16, 0)
 
     def test_uses_times_agreed_on_each_booking(self):
         bookings = [
@@ -288,25 +390,9 @@ class TestBuildCleaningOpportunities:
         opportunities = _build_cleaning_opportunities(bookings)
 
         # La hora de salida sale de la reserva que se va y la de entrada de la que llega.
-        assert opportunities[0].available_from_time == time(13, 30)
-        assert opportunities[0].available_until_time == time(18, 0)
-        assert opportunities[0].next_booking_record_id == 2
-
-    def test_without_next_booking_there_is_no_check_in_time(self):
-        bookings = [
-            make_booking(
-                record_id=1,
-                apartment_id="R180",
-                check_in=date(2026, 6, 1),
-                check_out=date(2026, 6, 5),
-            )
-        ]
-
-        opportunities = _build_cleaning_opportunities(bookings)
-
-        assert opportunities[0].available_from_time == time(11, 0)
-        assert opportunities[0].available_until_time is None
-        assert opportunities[0].next_booking_record_id is None
+        assert opportunities[1].available_from_time == time(13, 30)
+        assert opportunities[1].available_until_time == time(18, 0)
+        assert opportunities[1].previous_booking_record_id == 1
 
 
 class TestCleaningOperationalRange:
@@ -326,18 +412,18 @@ class TestCleaningWindowOverlapsRange:
             date(2026, 7, 12),
         )
 
-    def test_excludes_open_ended_window_before_range(self):
+    def test_excludes_window_entirely_before_range(self):
         assert not _cleaning_window_overlaps_range(
             date(2026, 5, 1),
-            None,
+            date(2026, 5, 10),
             date(2026, 6, 15),
             date(2026, 7, 12),
         )
 
-    def test_includes_open_ended_window_with_checkout_in_range(self):
-        assert _cleaning_window_overlaps_range(
-            date(2026, 6, 20),
-            None,
+    def test_excludes_window_entirely_after_range(self):
+        assert not _cleaning_window_overlaps_range(
+            date(2026, 7, 20),
+            date(2026, 7, 25),
             date(2026, 6, 15),
             date(2026, 7, 12),
         )
@@ -439,9 +525,9 @@ class TestGetCleaningOpportunitiesUseCase:
 
         assert use_case.execute(reference_date=date(2026, 6, 18)) == []
 
-    def test_sets_available_until_when_next_booking_is_beyond_operational_range(self):
-        """La ventana dentro del rango debe conocer su siguiente check-in aunque caiga
-        después de range_end (gracias al lookahead del fetch)."""
+    def test_window_exists_when_arriving_booking_is_beyond_operational_range(self):
+        """La reserva que llega es la que ancla la limpieza, así que el lookahead del fetch es
+        lo que hace existir la ventana aunque ese check-in caiga después de range_end."""
 
         class _FilteringRepo:
             """Repo falso con la misma semántica de solapamiento que el real."""
@@ -456,21 +542,23 @@ class TestGetCleaningOpportunitiesUseCase:
                     if b.check_in <= end_date and b.check_out >= start_date
                 ]
 
-        source = make_booking(
+        previous = make_booking(
             record_id=1,
             apartment_id="R180",
             check_in=date(2026, 7, 5),
             check_out=date(2026, 7, 10),  # checkout dentro del rango operativo
         )
-        next_booking = make_booking(
+        arriving = make_booking(
             record_id=2,
             apartment_id="R180",
             check_in=date(2026, 7, 20),  # check-in pasado range_end (2026-07-12)
             check_out=date(2026, 7, 25),
         )
-        use_case = GetCleaningOpportunitiesUseCase(_FilteringRepo([source, next_booking]))
+        use_case = GetCleaningOpportunitiesUseCase(_FilteringRepo([previous, arriving]))
 
         opportunities = use_case.execute(reference_date=date(2026, 6, 18))
 
-        window = next(o for o in opportunities if o.source_booking_record_id == 1)
+        window = next(o for o in opportunities if o.source_booking_record_id == 2)
+        assert window.available_from == date(2026, 7, 10)
         assert window.available_until == date(2026, 7, 20)
+        assert window.previous_booking_record_id == 1

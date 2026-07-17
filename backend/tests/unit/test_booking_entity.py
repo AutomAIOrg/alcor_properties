@@ -192,10 +192,8 @@ class TestCheckTimes:
             check_out_time=time(13, 30),
         )
 
-        assert b.cleaning_available_at() == datetime(2026, 6, 5, 13, 30)
         # A las 12:00 el piso ya estaría libre con la hora estándar, pero no con la pactada.
-        assert not b.is_cleanable(datetime(2026, 6, 5, 12, 0))
-        assert b.is_cleanable(datetime(2026, 6, 5, 13, 30))
+        assert b.cleaning_available_at() == datetime(2026, 6, 5, 13, 30)
 
 
 # ---------------------------------------------------------------------------

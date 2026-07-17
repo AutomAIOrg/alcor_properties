@@ -112,15 +112,15 @@ class CleaningOpportunityResponse(BaseModel):
     source_booking_record_id: int
     apartment_id: str
     available_from: date
-    available_until: date | None = None
+    available_until: date
     available_from_time: time
-    available_until_time: time | None = None
+    available_until_time: time
     comments: str = ""
     can_bill: bool = False
     has_bill: bool = False
     bill_state: str | None = None
     address: str | None = None
     apartment_description: str | None = None
-    next_booking_record_id: int | None = None
-    next_persons: int | None = None
-    next_nights: int | None = None
+    previous_booking_record_id: int | None = None
+    persons: int
+    nights: int

@@ -17,11 +17,10 @@ function makeCleaningOpportunity(
   overrides: Partial<CleaningOpportunityDto> = {}
 ): CleaningOpportunityDto {
   return {
+    // La limpieza la identifica la reserva que llega (source); la que se va abre la ventana.
     source_booking_record_id: 1,
     apartment_id: 'R180',
     available_from: '2026-06-02',
-    // Solo se muestran las ventanas con check-in en la semana, así que el caso
-    // representativo siempre tiene entrada.
     available_until: '2026-06-05',
     available_from_time: '11:00:00',
     available_until_time: '16:00:00',
@@ -31,9 +30,9 @@ function makeCleaningOpportunity(
     bill_state: null,
     address: null,
     apartment_description: null,
-    next_booking_record_id: 2,
-    next_persons: null,
-    next_nights: null,
+    previous_booking_record_id: 2,
+    persons: 2,
+    nights: 3,
     ...overrides,
   };
 }
@@ -244,13 +243,6 @@ describe('CleaningOrganizationComponent', () => {
         available_from: '2026-06-04',
         available_until: '2026-06-20',
       }),
-      // Sin reserva siguiente: no hay entrada, no se muestra.
-      makeCleaningOpportunity({
-        source_booking_record_id: 4,
-        apartment_id: 'R183',
-        available_from: '2026-06-04',
-        available_until: null,
-      }),
     ]);
 
     component.currentDate.set(new Date(2026, 5, 3));
@@ -268,9 +260,9 @@ describe('CleaningOrganizationComponent', () => {
         hasBill: false,
         billState: null,
         address: null,
-        nextBookingRecordId: 2,
-        nextPersons: null,
-        nextNights: null,
+        previousBookingRecordId: 2,
+        persons: 2,
+        nights: 3,
       },
     ]);
   });
@@ -363,20 +355,24 @@ describe('CleaningOrganizationComponent', () => {
     expect(component.cleaningBars()).toEqual([]);
   });
 
-  it('no repite indefinidamente limpiezas sin siguiente check-in en semanas futuras', () => {
+  it('pinta la limpieza de una reserva sin reserva anterior', () => {
+    // Ventana de cabecera: el backend la abre el lunes de la semana del check-in.
     setup([
       makeCleaningOpportunity({
         source_booking_record_id: 1,
         apartment_id: 'R180',
-        available_from: '2026-06-02',
-        available_until: null,
+        available_from: '2026-06-01',
+        available_until: '2026-06-03',
+        previous_booking_record_id: null,
       }),
     ]);
 
-    component.currentDate.set(new Date(2026, 5, 10));
+    component.currentDate.set(new Date(2026, 5, 3));
 
-    expect(component.cleaningOpportunities()).toEqual([]);
-    expect(component.cleaningBars()).toEqual([]);
+    expect(component.cleaningOpportunities().length).toBe(1);
+    const [bar] = component.cleaningBars();
+    expect(bar.isStartInWeek).toBe(true);
+    expect(bar.isEndInWeek).toBe(true);
   });
 
   it('asigna el mismo color a barras del mismo piso y colores distintos a pisos diferentes', () => {
@@ -904,7 +900,7 @@ describe('CleaningOrganizationComponent', () => {
       [
         makeCleaningOpportunity({
           source_booking_record_id: 1,
-          next_booking_record_id: 2,
+          previous_booking_record_id: 2,
           available_from_time: '11:00:00',
           available_until_time: '16:00:00',
         }),
@@ -937,7 +933,8 @@ describe('CleaningOrganizationComponent', () => {
     fixture.detectChanges();
 
     expect(bookingServiceSpy.updateBooking).toHaveBeenCalledTimes(1);
-    expect(bookingServiceSpy.updateBooking).toHaveBeenCalledWith(1, { check_out_time: '13:30' });
+    // La hora de salida vive en la reserva anterior, no en la que ancla la limpieza.
+    expect(bookingServiceSpy.updateBooking).toHaveBeenCalledWith(2, { check_out_time: '13:30' });
     expect(component.cleaningOpportunities()[0].availableFromTime).toBe('13:30');
     expect(component.cleaningOpportunities()[0].availableUntilTime).toBe('16:00:00');
     expect(fixture.nativeElement.textContent).toContain('Hora guardada con éxito');
@@ -948,7 +945,7 @@ describe('CleaningOrganizationComponent', () => {
       [
         makeCleaningOpportunity({
           source_booking_record_id: 1,
-          next_booking_record_id: 2,
+          previous_booking_record_id: 2,
           available_from_time: '11:00:00',
           available_until_time: '16:00:00',
         }),
@@ -980,7 +977,8 @@ describe('CleaningOrganizationComponent', () => {
     fixture.detectChanges();
 
     expect(bookingServiceSpy.updateBooking).toHaveBeenCalledTimes(1);
-    expect(bookingServiceSpy.updateBooking).toHaveBeenCalledWith(2, { check_in_time: '18:00' });
+    // La hora de entrada vive en la reserva que llega, que es la que ancla la limpieza.
+    expect(bookingServiceSpy.updateBooking).toHaveBeenCalledWith(1, { check_in_time: '18:00' });
     expect(component.cleaningOpportunities()[0].availableFromTime).toBe('11:00:00');
     expect(component.cleaningOpportunities()[0].availableUntilTime).toBe('18:00');
   });
@@ -1012,14 +1010,12 @@ describe('CleaningOrganizationComponent', () => {
     expect(fixture.nativeElement.querySelector('.comment-dialog')).toBeNull();
   });
 
-  it('no ofrece editar la hora de entrada si no hay reserva siguiente', () => {
+  it('no ofrece editar la hora de salida si no hay reserva anterior', () => {
     setup(
       [
         makeCleaningOpportunity({
           source_booking_record_id: 1,
-          available_until: '2026-06-05',
-          available_until_time: null,
-          next_booking_record_id: null,
+          previous_booking_record_id: null,
         }),
       ],
       true
@@ -1028,8 +1024,10 @@ describe('CleaningOrganizationComponent', () => {
     component.currentDate.set(new Date(2026, 5, 3));
     fixture.detectChanges();
 
-    // Solo queda el lápiz de la hora de salida.
-    expect(fixture.nativeElement.querySelectorAll('.time-edit-btn').length).toBe(1);
+    // Sin salida real que editar solo queda el lápiz de la hora de entrada.
+    const pencils = fixture.nativeElement.querySelectorAll('.time-edit-btn');
+    expect(pencils.length).toBe(1);
+    expect(pencils[0].getAttribute('title')).toBe('Editar hora de entrada');
   });
 
   it('muestra toast de error si falla al guardar la hora', () => {

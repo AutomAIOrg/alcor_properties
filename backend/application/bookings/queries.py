@@ -15,13 +15,17 @@ from application.bookings.helpers import (
 from domain.apartments.entity import Apartment
 from domain.apartments.repository import IApartmentRepository
 from domain.bills.repository import IBillRepository
+from domain.bookings.cleaning import cleaning_window_start, sort_for_cleaning
 from domain.bookings.entity import Booking, CleaningOpportunity
 from domain.bookings.repository import IBookingRepository
 
 _CLEANING_OPERATIONAL_WEEKS = 4
+# Margen hacia atrás para encontrar la reserva anterior, que es la que abre la ventana. Si su
+# estancia terminó antes de este margen, la limpieza degrada a ventana de cabecera (lunes de
+# la semana del check-in): tras semanas de piso vacío, esa es la información útil.
 _CLEANING_BOOKING_LOOKBACK_DAYS = 28
-# Margen hacia delante para detectar la siguiente reserva (y así calcular available_until)
-# aunque su check-in caiga después del rango operativo.
+# Margen hacia delante para traer la reserva que llega. Es la que ancla la limpieza, así que
+# sin ella la ventana no existe: este margen decide hasta dónde se ven limpiezas futuras.
 _CLEANING_BOOKING_LOOKAHEAD_DAYS = 90
 
 
@@ -35,13 +39,11 @@ def _cleaning_operational_range(reference_date: date | None = None) -> tuple[dat
 
 def _cleaning_window_overlaps_range(
     available_from: date,
-    available_until: date | None,
+    available_until: date,
     range_start: date,
     range_end: date,
 ) -> bool:
     """True si la ventana es relevante dentro del rango operativo de limpiezas."""
-    if available_until is None:
-        return range_start <= available_from <= range_end
     return available_from <= range_end and available_until >= range_start
 
 
@@ -356,59 +358,51 @@ def _build_cleaning_opportunities(
     bill_states_by_booking: dict[int, str] | None = None,
     apartments_by_id: dict[str, Apartment] | None = None,
 ) -> list[CleaningOpportunity]:
-    """Calcula ventanas de limpieza a partir de reservas activas agrupadas por apartamento."""
+    """Calcula una limpieza por cada check-in: solo se limpia para preparar una entrada.
+
+    La ventana la cierra el check-in de la reserva y la abre la salida de la reserva anterior
+    del mismo apartamento; si no hay reserva anterior, el lunes de la semana del check-in.
+    """
     billed = billed_booking_ids or set()
     bill_states = bill_states_by_booking or {}
     apartments = apartments_by_id or {}
     now = reference_datetime or datetime.now()
-    active_bookings = [
-        booking
-        for booking in bookings
-        if not booking.is_cancelled() and booking.record_id is not None
-    ]
 
     by_apartment: dict[str, list[Booking]] = {}
-    for booking in active_bookings:
+    for booking in sort_for_cleaning(bookings):
         by_apartment.setdefault(booking.apartment_id, []).append(booking)
 
     opportunities: list[CleaningOpportunity] = []
     for apartment_bookings in by_apartment.values():
-        apartment_bookings.sort(key=lambda b: (b.check_in, b.check_out, b.record_id))
         for index, booking in enumerate(apartment_bookings):
-            if booking.record_id is None:
-                continue
+            assert booking.record_id is not None  # sort_for_cleaning ya descarta las sin ID
 
-            next_booking = (
-                apartment_bookings[index + 1] if index + 1 < len(apartment_bookings) else None
-            )
-            bill_st = bill_states.get(booking.record_id)
+            previous = apartment_bookings[index - 1] if index else None
+            window_start = cleaning_window_start(booking, previous)
             apartment = apartments.get(booking.apartment_id)
             opportunities.append(
                 CleaningOpportunity(
                     source_booking_record_id=booking.record_id,
                     apartment_id=booking.apartment_id,
-                    available_from=booking.check_out,
-                    available_until=next_booking.check_in if next_booking else None,
-                    available_from_time=booking.effective_check_out_time(),
-                    available_until_time=(
-                        next_booking.effective_check_in_time() if next_booking else None
-                    ),
+                    available_from=window_start.date(),
+                    available_until=booking.check_in,
+                    available_from_time=window_start.time(),
+                    available_until_time=booking.effective_check_in_time(),
                     comments=(booking.notes_cleaning or "").strip(),
                     has_bill=booking.record_id in billed,
-                    can_bill=booking.is_cleanable(now),
-                    bill_state=bill_st,
+                    can_bill=now >= window_start,
+                    bill_state=bill_states.get(booking.record_id),
                     address=apartment.address if apartment else None,
                     apartment_description=(apartment.apartment_description if apartment else None),
-                    next_booking_record_id=next_booking.record_id if next_booking else None,
-                    next_persons=next_booking.persons if next_booking else None,
-                    next_nights=next_booking.nights if next_booking else None,
+                    previous_booking_record_id=previous.record_id if previous else None,
+                    persons=booking.persons,
+                    nights=booking.nights,
                 )
             )
 
     opportunities.sort(
         key=lambda opportunity: (
-            opportunity.available_until is None,
-            opportunity.available_until or date.min,
+            opportunity.available_until,
             opportunity.available_from,
             opportunity.apartment_id,
         )

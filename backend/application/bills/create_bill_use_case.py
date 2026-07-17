@@ -4,6 +4,7 @@ from decimal import Decimal
 
 from domain.bills.entity import BILL_STATE_CREATED, Bill
 from domain.bills.repository import IBillRepository
+from domain.bookings.cleaning import cleaning_window_start, find_previous_booking
 from domain.bookings.repository import IBookingRepository
 from domain.cleaning_types.repository import ICleaningTypeRepository
 from domain.exceptions import (
@@ -58,9 +59,20 @@ class CreateBillUseCase:
         if booking.is_cancelled():
             raise DomainValidationError("No se puede facturar una reserva cancelada.")
 
-        if not booking.is_cleanable():
+        # La limpieza prepara la entrada de esta reserva: solo puede facturarse una vez el piso
+        # está libre, es decir, tras la salida de la reserva anterior (o desde el lunes de la
+        # semana si no hay ninguna anterior).
+        #
+        # Aquí se buscan TODAS las reservas del apartamento, mientras que la lista de limpiezas
+        # solo mira las de los últimos 28 días. Ese conjunto mayor es siempre un superconjunto,
+        # así que la ventana que sale aquí empieza igual o antes: este check nunca puede
+        # rechazar una limpieza que la pantalla sí ofrece.
+        previous = find_previous_booking(
+            booking, self._booking_repository.get_all_by_apartment_id(booking.apartment_id)
+        )
+        if datetime.now() < cleaning_window_start(booking, previous):
             raise DomainValidationError(
-                "La limpieza aún no puede facturarse: el check-out no ha ocurrido."
+                "La limpieza aún no puede facturarse: su ventana no ha empezado todavía."
             )
 
         # El tipo de limpieza debe existir y estar activo para facturar con él.
