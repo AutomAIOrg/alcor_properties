@@ -362,6 +362,49 @@
     }
   </article>
 
+  @if (isDeveloper()) {
+    <article class="accordion-card">
+      <button
+        class="accordion-trigger"
+        type="button"
+        [attr.aria-expanded]="isBannerSectionOpen()"
+        (click)="toggleBannerSection()"
+      >
+        <span>
+          <strong>Modal de avisos</strong>
+          <small>
+            Enciende o apaga el modal de aviso que se muestra a los administradores. El cambio
+            afecta a todos ellos.
+          </small>
+        </span>
+        <span class="accordion-icon" [class.open]="isBannerSectionOpen()">▾</span>
+      </button>
+
+      @if (isBannerSectionOpen()) {
+        <div class="accordion-content">
+          <article class="admin-card">
+            <label class="banner-toggle">
+              <input
+                type="checkbox"
+                [checked]="bannerService.enabled()"
+                [disabled]="isSavingBanner()"
+                (change)="setBannerEnabled(bannerToggle.checked)"
+                #bannerToggle
+              />
+              <span>
+                {{ bannerService.enabled() ? 'Modal activado' : 'Modal desactivado' }}
+              </span>
+            </label>
+            <p class="banner-toggle__hint">
+              Si lo desactivas, el modal deja de aparecer a los administradores hasta que
+              vuelvas a activarlo.
+            </p>
+          </article>
+        </div>
+      }
+    </article>
+  }
+
   @if (isUserFormModalOpen()) {
     <div
       class="modal-backdrop"

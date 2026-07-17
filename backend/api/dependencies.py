@@ -180,6 +180,23 @@ def require_cleaning(
     return current_user
 
 
+# Cuenta de desarrollo: identificada por su username, no por un rol. Es la única que
+# puede activar o desactivar el banner de avisos global.
+DEVELOPER_USERNAME = "developer"
+
+
+def require_developer(
+    current_user: User = Depends(get_current_user),
+) -> User:
+    """Restringe la acción a la cuenta de desarrollo (identificada por username)."""
+    if current_user.username != DEVELOPER_USERNAME:
+        raise HTTPException(
+            status_code=403,
+            detail="Permiso denegado. Acción reservada a la cuenta de desarrollo.",
+        )
+    return current_user
+
+
 def get_booking_repository(db: Session = Depends(get_db)) -> IBookingRepository:
     """Repositorio de reservas."""
     return SQLAlchemyBookingRepository(db)

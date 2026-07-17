@@ -1,9 +1,11 @@
-import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
 import { DismissableBackdropDirective } from '../../shared/directives/dismissable-backdrop.directive';
 import { ChangePasswordFormComponent } from '../../shared/components/change-password-form/change-password-form.component';
 import { AuthService } from '../../auth/auth.service';
+import { BannerService } from '../../services/banner.service';
+import { BANNER_DEVELOPER_USERNAME } from '../../config/banner.config';
 import { DEFAULT_ELECTRIC_ALLOWANCE_RATE } from '../../models/apartment.model';
 import { Role } from '../../models/user.model';
 import { ApartmentColorService, autoApartmentColor } from '../../services/apartment-color.service';
@@ -88,6 +90,7 @@ interface AdminCleaningTypeDraft {
 })
 export class AdminComponent implements OnInit, OnDestroy {
   readonly authService = inject(AuthService);
+  readonly bannerService = inject(BannerService);
   private adminUserService = inject(AdminUserService);
   private apartmentService = inject(ApartmentService);
   private cleaningTypeService = inject(CleaningTypeService);
@@ -122,6 +125,13 @@ export class AdminComponent implements OnInit, OnDestroy {
   isPropertiesSectionOpen = signal(false);
   isCleaningTypesSectionOpen = signal(false);
   isPasswordSectionOpen = signal(false);
+  isBannerSectionOpen = signal(false);
+
+  // Solo la cuenta de desarrollo ve la sección para encender/apagar el banner de avisos.
+  isDeveloper = computed(
+    () => this.authService.currentUser()?.username === BANNER_DEVELOPER_USERNAME
+  );
+  isSavingBanner = signal(false);
 
   cleaningTypes = signal<CleaningType[]>([]);
   isLoadingCleaningTypes = signal(false);
@@ -192,6 +202,7 @@ export class AdminComponent implements OnInit, OnDestroy {
     this.isPropertiesSectionOpen.set(false);
     this.isCleaningTypesSectionOpen.set(false);
     this.isPasswordSectionOpen.set(false);
+    this.isBannerSectionOpen.set(false);
   }
 
   toggleUsersSection(): void {
@@ -219,6 +230,35 @@ export class AdminComponent implements OnInit, OnDestroy {
     const willOpen = !this.isPasswordSectionOpen();
     this.closeAllSections();
     this.isPasswordSectionOpen.set(willOpen);
+  }
+
+  toggleBannerSection(): void {
+    const willOpen = !this.isBannerSectionOpen();
+    this.closeAllSections();
+    this.isBannerSectionOpen.set(willOpen);
+    // Refresca el estado global al abrir, por si otra sesión lo ha cambiado.
+    if (willOpen) {
+      this.bannerService.load();
+    }
+  }
+
+  // Activa o desactiva el banner de avisos de forma global (persistido en el backend).
+  setBannerEnabled(enabled: boolean): void {
+    this.isSavingBanner.set(true);
+    this.bannerService.setEnabled(enabled).subscribe({
+      next: () => {
+        this.isSavingBanner.set(false);
+        this.showToast('success', enabled ? 'Modal activado.' : 'Modal desactivado.');
+      },
+      error: (error: HttpErrorResponse) => {
+        this.isSavingBanner.set(false);
+        this.showToast(
+          'error',
+          'No se ha podido cambiar el estado del modal.',
+          this.getApiErrorMessage(error)
+        );
+      },
+    });
   }
 
   loadCleaningTypes(): void {

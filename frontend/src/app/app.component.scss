@@ -116,3 +116,53 @@
   display: flex;
   flex-direction: column;
 }
+
+.banner-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  // Muy por encima del resto de modales de la app (máx. 1100) para salir siempre encima.
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.banner-modal {
+  position: relative;
+  width: 100%;
+  max-width: 420px;
+  padding: 32px 28px;
+  background: #e5e7eb;
+  border: 5px solid #000;
+  border-radius: 8px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+  text-align: center;
+
+  &__close {
+    position: absolute;
+    top: 8px;
+    right: 12px;
+    padding: 0;
+    background: none;
+    border: none;
+    color: #64748b;
+    font-size: 1.6rem;
+    line-height: 1;
+    cursor: pointer;
+    transition: color 0.2s;
+
+    &:hover {
+      color: #1e293b;
+    }
+  }
+
+  &__text {
+    margin: 0.5rem 0 0;
+    color: #1e293b;
+    font-size: 1.5rem;
+    font-weight: 700;
+    line-height: 1.5;
+  }
+}

@@ -4,6 +4,7 @@ import { provideRouter, Router } from '@angular/router';
 
 import { AppComponent } from './app.component';
 import { AuthService } from './auth/auth.service';
+import { BannerService } from './services/banner.service';
 import { Permission, User } from './models/user.model';
 
 @Component({
@@ -50,6 +51,7 @@ describe('AppComponent', () => {
           { path: 'change-initial-password', component: StubRouteComponent },
         ]),
         { provide: AuthService, useValue: authServiceSpy },
+        { provide: BannerService, useValue: { enabled: () => false, load: jest.fn() } },
       ],
     });
 
