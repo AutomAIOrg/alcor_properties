@@ -3,6 +3,7 @@ import { of, throwError } from 'rxjs';
 
 import { AdminComponent } from './admin.component';
 import { AuthService } from '../../auth/auth.service';
+import { BannerService } from '../../services/banner.service';
 import { Role } from '../../models/user.model';
 import { ApartmentResponse, ApartmentService } from '../../services/apartment.service';
 import { AdminUserResponse, AdminUserService } from '../../services/admin-user.service';
@@ -96,6 +97,7 @@ describe('AdminComponent', () => {
       hasPermission: jest
         .fn()
         .mockImplementation((permission: string) => permission === 'settings:manage'),
+      currentUser: jest.fn(() => null),
     } as unknown as jest.Mocked<AuthService>;
 
     await TestBed.configureTestingModule({
@@ -105,6 +107,7 @@ describe('AdminComponent', () => {
         { provide: ApartmentService, useValue: apartmentServiceSpy },
         { provide: CleaningTypeService, useValue: cleaningTypeServiceSpy },
         { provide: AuthService, useValue: authServiceSpy },
+        { provide: BannerService, useValue: { enabled: () => false, load: jest.fn() } },
       ],
     }).compileComponents();
 

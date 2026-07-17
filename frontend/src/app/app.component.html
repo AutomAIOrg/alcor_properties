@@ -55,3 +55,26 @@
     <router-outlet></router-outlet>
   </main>
 </div>
+
+<!--
+  Modal de aviso: se renderiza fuera de .main-container y con un z-index muy alto para
+  que aparezca SIEMPRE por encima de cualquier otro modal de la aplicación.
+-->
+@if (showSidebar() && canViewBanner() && bannerService.enabled() && showBanner()) {
+  <div class="banner-modal-backdrop" role="presentation">
+    <div class="banner-modal" role="dialog" aria-modal="true" aria-label="Aviso">
+      <button
+        class="banner-modal__close"
+        type="button"
+        aria-label="Cerrar aviso"
+        (click)="closeBanner($event)"
+      >
+        ×
+      </button>
+      <p class="banner-modal__text">
+        <!-- 👇 CAMBIA AQUÍ EL TEXTO DEL MODAL -->
+        Aviso: paga el regalo de Moha 32€.
+      </p>
+    </div>
+  </div>
+}
