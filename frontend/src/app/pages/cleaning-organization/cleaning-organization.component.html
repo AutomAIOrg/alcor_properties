@@ -95,7 +95,7 @@
         <thead>
           <tr>
             <th>Piso</th>
-            <th>Fecha salida</th>
+            <th>Disponible desde</th>
             <th>Hora</th>
             <th>Fecha entrada</th>
             <th>Hora</th>
@@ -131,7 +131,7 @@
                 <td>
                   <div class="time-cell">
                     <span>{{ formatTime(opportunity.availableFromTime) }}</span>
-                    @if (isAdmin()) {
+                    @if (isAdmin() && opportunity.previousBookingRecordId !== null) {
                       <button
                         class="icon-btn time-edit-btn"
                         type="button"
@@ -148,7 +148,7 @@
                 <td>
                   <div class="time-cell">
                     <span>{{ formatTime(opportunity.availableUntilTime) }}</span>
-                    @if (isAdmin() && opportunity.nextBookingRecordId !== null) {
+                    @if (isAdmin()) {
                       <button
                         class="icon-btn time-edit-btn"
                         type="button"
@@ -161,8 +161,8 @@
                     }
                   </div>
                 </td>
-                <td>{{ opportunity.nextPersons ?? '—' }}</td>
-                <td>{{ opportunity.nextNights ?? '—' }}</td>
+                <td>{{ opportunity.persons }}</td>
+                <td>{{ opportunity.nights }}</td>
                 <td>
                   <div class="comments-cell">
                     <span class="comments-text">
@@ -246,12 +246,9 @@
           {{ showInvoicePreview() ? 'Revisar factura' : 'Generar factura' }}
         </h2>
         <p>
-          Piso <strong>{{ selectedInvoiceOpportunity()!.apartmentId }}</strong> · Salida
-          {{ formatDate(selectedInvoiceOpportunity()!.availableFromDate) }}
-          @if (selectedInvoiceOpportunity()!.availableUntilDate) {
-            · Próxima entrada
-            {{ formatDate(selectedInvoiceOpportunity()!.availableUntilDate) }}
-          }
+          Piso <strong>{{ selectedInvoiceOpportunity()!.apartmentId }}</strong> · Disponible desde
+          {{ formatDate(selectedInvoiceOpportunity()!.availableFromDate) }} · Entrada
+          {{ formatDate(selectedInvoiceOpportunity()!.availableUntilDate) }}
         </p>
 
         @if (!showInvoicePreview()) {

@@ -78,9 +78,13 @@ class ListPendingBillsUseCase:
 
     Para garantizar la paridad entre ambas vistas, se reutiliza el mismo cálculo de
     oportunidades de limpieza y se filtran las que aún no tienen factura activa
-    (``has_bill == False``) y ya son facturables (``can_bill == True``, es decir, el
-    check-out ya ha ocurrido). Una oportunidad con una factura cancelada vuelve a contar
+    (``has_bill == False``) y ya son facturables (``can_bill == True``, es decir, la ventana
+    de limpieza ya ha empezado). Una oportunidad con una factura cancelada vuelve a contar
     como pendiente y se marca con ``previously_cancelled``.
+
+    Solo se limpia para preparar una entrada: una limpieza sin check-in por delante no existe
+    y, por tanto, tampoco aparece aquí como pendiente. Tras la salida del último huésped de un
+    apartamento no hay nada pendiente hasta que entre una nueva reserva.
     """
 
     def __init__(

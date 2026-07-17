@@ -2,7 +2,7 @@
 Unit tests — casos de uso de facturas (crear, actualizar estado, listar pendientes).
 """
 
-from datetime import date, datetime, time
+from datetime import date, datetime, time, timedelta
 from decimal import Decimal
 from unittest.mock import MagicMock, patch
 
@@ -159,20 +159,51 @@ class TestCreateBillUseCase:
         bills.exists_for_booking.assert_not_called()
         bills.create.assert_not_called()
 
-    def test_raises_when_checkout_not_yet_occurred(self):
+    def test_raises_when_cleaning_window_has_not_started(self):
         bookings = MagicMock(spec=IBookingRepository)
+        # Sin reserva anterior la ventana abre el lunes de la semana del check-in, que aquí
+        # está en el futuro: todavía no hay nada que limpiar.
         bookings.get_by_id.return_value = make_booking(
             record_id=5,
-            check_in=date(2026, 12, 1),
-            check_out=date(2026, 12, 10),
+            check_in=date(2099, 12, 1),
+            check_out=date(2099, 12, 10),
         )
+        bookings.get_all_by_apartment_id.return_value = []
         bills = MagicMock(spec=IBillRepository)
 
-        with pytest.raises(DomainValidationError, match="check-out"):
+        with pytest.raises(DomainValidationError, match="ventana no ha empezado"):
             _create_use_case(bills, bookings).execute(_create_data())
 
         bills.exists_for_booking.assert_not_called()
         bills.create.assert_not_called()
+
+    def test_previous_booking_checkout_opens_the_window(self):
+        bookings = MagicMock(spec=IBookingRepository)
+        arriving = make_booking(
+            record_id=5,
+            apartment_id="R180",
+            check_in=date(2099, 12, 1),
+            check_out=date(2099, 12, 10),
+        )
+        bookings.get_by_id.return_value = arriving
+        # La reserva anterior ya salió, así que el piso está libre y la limpieza es facturable
+        # aunque la entrada que prepara sea futura.
+        bookings.get_all_by_apartment_id.return_value = [
+            make_booking(
+                record_id=4,
+                apartment_id="R180",
+                check_in=date(2026, 1, 5),
+                check_out=date(2026, 1, 9),
+            ),
+            arriving,
+        ]
+        bills = MagicMock(spec=IBillRepository)
+        bills.exists_for_booking.return_value = False
+        bills.create.side_effect = lambda bill: bill
+
+        result = _create_use_case(bills, bookings).execute(_create_data())
+
+        assert result.record_id == 5
 
     def test_raises_when_end_time_not_after_start_time(self):
         bookings = MagicMock(spec=IBookingRepository)
@@ -579,6 +610,36 @@ class TestListBillsUseCase:
 # ---------------------------------------------------------------------------
 
 
+def _cleaning_pair(
+    record_id: int,
+    checkout: date,
+    check_in: date,
+    apartment_id: str = "R180",
+) -> list:
+    """Par de reservas que produce la limpieza que prepara la entrada de la segunda.
+
+    La ventana va del *checkout* de la que se va al *check_in* de la que llega, y la ancla
+    esta última: *record_id* es el suyo, que es el que acaba en la factura pendiente.
+
+    La reserva que se va entra el 1 de junio (lunes) a propósito: así su propia limpieza de
+    cabecera cae fuera del rango operativo y no ensucia las aserciones.
+    """
+    return [
+        make_booking(
+            record_id=record_id + 90,
+            apartment_id=apartment_id,
+            check_in=date(2026, 6, 1),
+            check_out=checkout,
+        ),
+        make_booking(
+            record_id=record_id,
+            apartment_id=apartment_id,
+            check_in=check_in,
+            check_out=check_in + timedelta(days=2),
+        ),
+    ]
+
+
 def _pending_query(
     bookings: list,
     billed_ids: set[int] | None = None,
@@ -594,9 +655,7 @@ def _pending_query(
 
 class TestListPendingBillsUseCase:
     def test_includes_cleanable_booking_without_bill(self):
-        bookings = [
-            make_booking(record_id=1, check_in=date(2026, 6, 20), check_out=date(2026, 6, 23))
-        ]
+        bookings = _cleaning_pair(1, checkout=date(2026, 6, 23), check_in=date(2026, 6, 25))
 
         result = _pending_query(bookings).execute(reference_datetime=_NOW)
 
@@ -606,27 +665,21 @@ class TestListPendingBillsUseCase:
         assert result[0].bill_id is None
 
     def test_excludes_already_billed_bookings(self):
-        bookings = [
-            make_booking(record_id=1, check_in=date(2026, 6, 20), check_out=date(2026, 6, 23))
-        ]
+        bookings = _cleaning_pair(1, checkout=date(2026, 6, 23), check_in=date(2026, 6, 25))
 
         result = _pending_query(bookings, billed_ids={1}).execute(reference_datetime=_NOW)
 
         assert result == []
 
     def test_excludes_not_yet_cleanable_checkout(self):
-        bookings = [
-            make_booking(record_id=1, check_in=date(2026, 6, 20), check_out=date(2026, 6, 24))
-        ]
+        bookings = _cleaning_pair(1, checkout=date(2026, 6, 24), check_in=date(2026, 6, 26))
 
         result = _pending_query(bookings).execute(reference_datetime=datetime(2026, 6, 24, 9, 0))
 
         assert result == []
 
     def test_includes_today_checkout_after_default_checkout_time(self):
-        bookings = [
-            make_booking(record_id=1, check_in=date(2026, 6, 20), check_out=date(2026, 6, 24))
-        ]
+        bookings = _cleaning_pair(1, checkout=date(2026, 6, 24), check_in=date(2026, 6, 26))
 
         result = _pending_query(bookings).execute(reference_datetime=datetime(2026, 6, 24, 11, 30))
 
@@ -634,35 +687,39 @@ class TestListPendingBillsUseCase:
         assert result[0].record_id == 1
 
     def test_excludes_future_checkout(self):
-        bookings = [
-            make_booking(record_id=1, check_in=date(2026, 6, 24), check_out=date(2026, 6, 26))
-        ]
+        bookings = _cleaning_pair(1, checkout=date(2026, 6, 26), check_in=date(2026, 6, 28))
 
         result = _pending_query(bookings).execute(reference_datetime=_NOW)
 
         assert result == []
 
-    def test_excludes_checkout_before_current_week(self):
-        bookings = [
-            make_booking(record_id=1, check_in=date(2026, 6, 12), check_out=date(2026, 6, 15))
-        ]
+    def test_excludes_window_before_current_week(self):
+        bookings = _cleaning_pair(1, checkout=date(2026, 6, 15), check_in=date(2026, 6, 17))
 
         result = _pending_query(bookings).execute(reference_datetime=_NOW)
 
         assert result == []
 
     def test_includes_checkout_on_week_start_monday(self):
-        bookings = [make_booking(record_id=1, check_in=date(2026, 6, 19), check_out=_WEEK_START)]
+        bookings = _cleaning_pair(1, checkout=_WEEK_START, check_in=date(2026, 6, 24))
 
         result = _pending_query(bookings).execute(reference_datetime=_NOW)
 
         assert len(result) == 1
         assert result[0].cleaning_date == _WEEK_START
 
-    def test_pending_with_cancelled_bill_is_flagged(self):
+    def test_cleaning_without_upcoming_check_in_is_not_pending(self):
+        # Tras la salida del último huésped no hay entrada que preparar: nada pendiente.
         bookings = [
-            make_booking(record_id=1, check_in=date(2026, 6, 20), check_out=date(2026, 6, 23))
+            make_booking(record_id=1, check_in=date(2026, 6, 1), check_out=date(2026, 6, 23))
         ]
+
+        result = _pending_query(bookings).execute(reference_datetime=_NOW)
+
+        assert result == []
+
+    def test_pending_with_cancelled_bill_is_flagged(self):
+        bookings = _cleaning_pair(1, checkout=date(2026, 6, 23), check_in=date(2026, 6, 25))
 
         result = _pending_query(bookings, bill_states={1: "Cancelada"}).execute(
             reference_datetime=_NOW
@@ -673,17 +730,11 @@ class TestListPendingBillsUseCase:
 
     def test_date_to_filters_out_later_checkouts(self):
         bookings = [
-            make_booking(
-                record_id=1,
-                apartment_id="A1",
-                check_in=date(2026, 6, 20),
-                check_out=date(2026, 6, 22),
+            *_cleaning_pair(
+                1, checkout=date(2026, 6, 22), check_in=date(2026, 6, 24), apartment_id="A1"
             ),
-            make_booking(
-                record_id=2,
-                apartment_id="A2",
-                check_in=date(2026, 6, 21),
-                check_out=date(2026, 6, 23),
+            *_cleaning_pair(
+                2, checkout=date(2026, 6, 23), check_in=date(2026, 6, 25), apartment_id="A2"
             ),
         ]
 
@@ -695,17 +746,11 @@ class TestListPendingBillsUseCase:
 
     def test_apartment_filter_keeps_only_matching_apartment(self):
         bookings = [
-            make_booking(
-                record_id=1,
-                apartment_id="R180",
-                check_in=date(2026, 6, 20),
-                check_out=date(2026, 6, 22),
+            *_cleaning_pair(
+                1, checkout=date(2026, 6, 22), check_in=date(2026, 6, 24), apartment_id="R180"
             ),
-            make_booking(
-                record_id=2,
-                apartment_id="R200",
-                check_in=date(2026, 6, 20),
-                check_out=date(2026, 6, 23),
+            *_cleaning_pair(
+                2, checkout=date(2026, 6, 23), check_in=date(2026, 6, 25), apartment_id="R200"
             ),
         ]
 

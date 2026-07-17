@@ -145,39 +145,34 @@ class Booking(BaseModel):
         """Momento a partir del cual el piso puede limpiarse: check-out + hora de salida."""
         return datetime.combine(self.check_out, self.effective_check_out_time())
 
-    def is_cleanable(self, reference: datetime | None = None) -> bool:
-        """
-        Devuelve True si el check-out ya se ha producido y, por tanto, la limpieza
-        (y su facturación) es posible.
-        """
-        now = reference or datetime.now()
-        return now >= self.cleaning_available_at()
-
 
 class CleaningOpportunity(BaseModel):
-    """Ventana de limpieza entre el checkout de una reserva y el check-in de la siguiente."""
+    """Limpieza que prepara el check-in de una reserva: solo se limpia cuando hay entrada."""
 
     model_config = ConfigDict(from_attributes=True)
 
+    # La reserva que llega. Identifica la limpieza: contra ella se factura, se guardan los
+    # comentarios y se edita la hora de entrada.
     source_booking_record_id: int
     apartment_id: str
+    # Ambos extremos existen siempre: la ventana la cierra el check-in y la abre la salida de
+    # la reserva anterior (o el lunes de esa semana si no hay ninguna reserva anterior).
     available_from: date
-    available_until: date | None = None
-    # Horas ya resueltas (hora pactada de la reserva o estándar): la de salida siempre
-    # existe; la de entrada acompaña a available_until y es None si no hay reserva siguiente.
-    available_from_time: time = DEFAULT_CHECKOUT_TIME
-    available_until_time: time | None = None
+    available_until: date
+    # Horas ya resueltas (la pactada en la reserva o la estándar).
+    available_from_time: time
+    available_until_time: time
     comments: str = ""
     can_bill: bool = False
     has_bill: bool = False
     bill_state: str | None = None
-    # Reserva de entrada (la que llega en available_until). Su ID permite al administrador
-    # editar la hora de entrada desde la lista de limpiezas; None si aún no hay siguiente.
-    next_booking_record_id: int | None = None
-    # Ocupación registrada en la reserva de entrada (la que llega en available_until).
-    # None si aún no hay reserva siguiente, igual que available_until.
-    next_persons: int | None = None
-    next_nights: int | None = None
+    # Reserva que se va. Su ID permite al administrador editar la hora de salida desde la
+    # lista de limpiezas; None si no hay reserva anterior (entonces available_from es el
+    # lunes de la semana, no una salida real, y no hay dónde escribir esa hora).
+    previous_booking_record_id: int | None = None
+    # Ocupación que la limpieza prepara: la de la reserva que llega.
+    persons: int
+    nights: int
     # Datos del apartamento congelados para el recibo (dirección y descripción).
     # Se rellenan en la capa de aplicación; permiten a la limpiadora ver la
     # dirección completa sin necesidad de acceder al endpoint (solo-admin) de apartamentos.

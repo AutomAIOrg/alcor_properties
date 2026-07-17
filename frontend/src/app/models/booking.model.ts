@@ -25,23 +25,26 @@ export interface Booking {
 export const BASE_STATUSES = ['Confirmed', 'Pending', 'Cancelled', 'ok'] as const;
 export type BookingStatus = (typeof BASE_STATUSES)[number];
 
+/** Limpieza que prepara el check-in de una reserva: solo se limpia cuando hay entrada. */
 export interface CleaningOpportunity {
+  /** La reserva que llega: identifica la limpieza (factura, comentarios, hora de entrada). */
   source_booking_record_id: number;
   apartment_id: string;
+  /** La ventana la cierra el check-in y la abre la salida anterior (o el lunes de esa semana). */
   available_from: string;
-  available_until: string | null;
+  available_until: string;
   /** Horas ya resueltas por el backend ("HH:MM:SS"): la pactada o la estándar. */
   available_from_time: string;
-  available_until_time: string | null;
+  available_until_time: string;
   comments: string;
   can_bill: boolean;
   has_bill: boolean;
   bill_state: string | null;
   address: string | null;
   apartment_description: string | null;
-  /** Reserva de entrada. null si aún no hay reserva siguiente. */
-  next_booking_record_id: number | null;
-  /** Ocupación de la reserva de entrada. null si aún no hay reserva siguiente. */
-  next_persons: number | null;
-  next_nights: number | null;
+  /** Reserva que se va. null si no hay anterior: entonces available_from es el lunes. */
+  previous_booking_record_id: number | null;
+  /** Ocupación que la limpieza prepara: la de la reserva que llega. */
+  persons: number;
+  nights: number;
 }

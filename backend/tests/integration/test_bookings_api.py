@@ -245,7 +245,9 @@ class TestSpecialCollectionEndpoints:
                 comments="",
                 address="C/ Raquero 6 Bloque 3",
                 apartment_description="Porto Fino",
-                next_booking_record_id=8,
+                previous_booking_record_id=6,
+                persons=3,
+                nights=5,
             )
         ]
 
@@ -267,9 +269,9 @@ class TestSpecialCollectionEndpoints:
                 "bill_state": None,
                 "address": "C/ Raquero 6 Bloque 3",
                 "apartment_description": "Porto Fino",
-                "next_booking_record_id": 8,
-                "next_persons": None,
-                "next_nights": None,
+                "previous_booking_record_id": 6,
+                "persons": 3,
+                "nights": 5,
             }
         ]
         mock_use_cases.get_cleaning_opportunities_query.execute.assert_called_once_with(
