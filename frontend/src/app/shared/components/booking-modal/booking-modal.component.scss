@@ -164,6 +164,13 @@
     color: #101828;
   }
 
+  // Fechas de entrada/salida ("jue 16 jul"): el locale español da día y mes en minúscula.
+  // El formato no lleva preposiciones, así que capitalize deja "Jue 16 Jul" sin tocar el texto.
+  &-date {
+    text-transform: capitalize;
+    white-space: nowrap;
+  }
+
   &-label {
     font-size: 0.7rem;
     color: #98a2b3;

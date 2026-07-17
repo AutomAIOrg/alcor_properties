@@ -1,5 +1,5 @@
 import { CurrencyPipe } from '@angular/common';
-import { HttpErrorResponse } from '@angular/common/http';
+import { HttpErrorResponse, HttpResponse } from '@angular/common/http';
 import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
 import { AuthService } from '../../auth/auth.service';
 import {
@@ -93,6 +93,10 @@ export class BillsComponent implements OnInit, OnDestroy {
   filterCostMax = signal('');
 
   billReceiptView = signal<BillReceiptData | null>(null);
+  // Factura del recibo abierto: el modal muestra billReceiptView (datos ya formateados),
+  // pero la descarga necesita el bill_id.
+  billReceiptBill = signal<Bill | null>(null);
+  isDownloading = signal(false);
   markPaidBill = signal<Bill | null>(null);
   paidAtDate = signal('');
 
@@ -394,10 +398,55 @@ export class BillsComponent implements OnInit, OnDestroy {
       return;
     }
     this.billReceiptView.set(receipt);
+    this.billReceiptBill.set(bill);
   }
 
   closeBillReceipt(): void {
+    if (this.isDownloading()) return;
     this.billReceiptView.set(null);
+    this.billReceiptBill.set(null);
+  }
+
+  // Descarga el recibo del modal abierto. El PDF lo genera el backend con los datos actuales
+  // de la factura: es la misma plantilla que se ve en pantalla y que se archiva en el NAS.
+  downloadBillReceipt(): void {
+    const bill = this.billReceiptBill();
+    if (!bill?.bill_id || this.isDownloading()) return;
+
+    const billId = bill.bill_id;
+    this.isDownloading.set(true);
+    this.billService.downloadBillDocument(billId).subscribe({
+      next: response => {
+        this.isDownloading.set(false);
+        const blob = response.body;
+        if (!blob) {
+          this.showToast('error', 'No se ha podido descargar la factura.');
+          return;
+        }
+        this.saveFile(blob, this.filenameFrom(response, `factura-${billId}.pdf`));
+      },
+      error: () => {
+        this.isDownloading.set(false);
+        this.showToast('error', 'No se ha podido descargar la factura.');
+      },
+    });
+  }
+
+  // Nombre del archivo tal y como lo nombra el backend (misma convención que en el NAS);
+  // si la cabecera no llega, se recurre a un nombre genérico.
+  private filenameFrom(response: HttpResponse<Blob>, fallback: string): string {
+    const disposition = response.headers.get('Content-Disposition') ?? '';
+    const match = /filename="([^"]+)"/.exec(disposition);
+    return match ? match[1] : fallback;
+  }
+
+  private saveFile(blob: Blob, filename: string): void {
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    link.click();
+    URL.revokeObjectURL(url);
   }
 
   // ¿Puede el usuario generar facturas? (mismo permiso que en Organización Limpiezas).

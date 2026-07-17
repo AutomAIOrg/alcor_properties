@@ -1,5 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { HttpErrorResponse } from '@angular/common/http';
+import { HttpErrorResponse, HttpHeaders, HttpResponse } from '@angular/common/http';
 import { provideRouter } from '@angular/router';
 import { of, throwError } from 'rxjs';
 
@@ -50,6 +50,7 @@ describe('BillsComponent', () => {
       updateBillState: jest.fn(),
       rectifyBill: jest.fn(),
       createBill: jest.fn(),
+      downloadBillDocument: jest.fn(),
     } as unknown as jest.Mocked<BillService>;
 
     cleaningTypeServiceSpy = {
@@ -505,5 +506,79 @@ describe('BillsComponent', () => {
     });
     // El modal se cierra tras generar.
     expect(component.creatingBillFor()).toBeNull();
+  });
+
+  describe('descarga del recibo', () => {
+    let createObjectURL: jest.Mock;
+    let revokeObjectURL: jest.Mock;
+    let clickSpy: jest.SpyInstance;
+    let anchor: HTMLAnchorElement;
+
+    function pdfResponse(disposition: string | null): HttpResponse<Blob> {
+      return new HttpResponse({
+        body: new Blob(['%PDF-1.4'], { type: 'application/pdf' }),
+        headers: new HttpHeaders(disposition ? { 'Content-Disposition': disposition } : {}),
+      });
+    }
+
+    beforeEach(() => {
+      // jsdom no implementa las URL de objeto ni la descarga por enlace: se sustituyen para
+      // poder comprobar con qué nombre se guardaría el archivo.
+      createObjectURL = jest.fn().mockReturnValue('blob:fake-url');
+      revokeObjectURL = jest.fn();
+      Object.assign(URL, { createObjectURL, revokeObjectURL });
+
+      anchor = document.createElement('a');
+      clickSpy = jest.spyOn(anchor, 'click').mockImplementation(() => undefined);
+      jest.spyOn(document, 'createElement').mockReturnValue(anchor);
+    });
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it('guarda el PDF con el nombre que envía el backend', () => {
+      billServiceSpy.downloadBillDocument.mockReturnValue(
+        of(pdfResponse('attachment; filename="R180 LIMPIEZA 02.06.2026.pdf"'))
+      );
+
+      component.openBillReceipt(makeBill({ bill_id: 4 }));
+      component.downloadBillReceipt();
+
+      expect(billServiceSpy.downloadBillDocument).toHaveBeenCalledWith(4);
+      expect(anchor.download).toBe('R180 LIMPIEZA 02.06.2026.pdf');
+      expect(clickSpy).toHaveBeenCalled();
+      expect(revokeObjectURL).toHaveBeenCalledWith('blob:fake-url');
+      expect(component.isDownloading()).toBe(false);
+    });
+
+    it('usa un nombre genérico si no llega la cabecera Content-Disposition', () => {
+      billServiceSpy.downloadBillDocument.mockReturnValue(of(pdfResponse(null)));
+
+      component.openBillReceipt(makeBill({ bill_id: 4 }));
+      component.downloadBillReceipt();
+
+      expect(anchor.download).toBe('factura-4.pdf');
+    });
+
+    it('avisa si la generación del PDF falla', () => {
+      billServiceSpy.downloadBillDocument.mockReturnValue(
+        throwError(() => new HttpErrorResponse({ status: 500 }))
+      );
+
+      component.openBillReceipt(makeBill({ bill_id: 4 }));
+      component.downloadBillReceipt();
+
+      expect(clickSpy).not.toHaveBeenCalled();
+      expect(component.isDownloading()).toBe(false);
+      expect(component.toast()?.type).toBe('error');
+    });
+
+    it('no descarga las facturas pendientes, que aún no existen', () => {
+      component.openBillReceipt(makeBill({ bill_id: null, state: 'Pendiente' }));
+      component.downloadBillReceipt();
+
+      expect(billServiceSpy.downloadBillDocument).not.toHaveBeenCalled();
+    });
   });
 });

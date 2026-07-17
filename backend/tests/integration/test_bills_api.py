@@ -11,6 +11,7 @@ import pytest
 from starlette.testclient import TestClient
 
 from api.dependencies import get_current_user
+from application.bills.render_bill_document_use_case import RenderedBillDocument
 from domain.auth.user_entity import Role
 from domain.bills.bill_document import BILL_DOCUMENT_STATUS_ERROR
 from domain.bills.entity import BILL_STATE_PENDING
@@ -71,10 +72,16 @@ class TestCreateBill:
         mock_create_bill_use_case.execute.assert_called_once()
         mock_generate_bill_document_use_case.execute.assert_called_once_with(1, uploaded_by=2)
 
-    def test_manual_document_endpoint_no_longer_exists(self, bills_api_client):
+    def test_manual_document_generation_endpoint_no_longer_exists(self, bills_api_client):
+        """
+        No hay generación manual del documento: se archiva solo al crear la factura.
+
+        La ruta responde 405 (no 404) porque existe para GET —la descarga del recibo—, que
+        no archiva nada en el NAS.
+        """
         response = bills_api_client.post("/api/v1/bills/1/document")
 
-        assert response.status_code == 404
+        assert response.status_code == 405
 
     def test_missing_required_field_returns_422(self, bills_api_client):
         response = bills_api_client.post("/api/v1/bills/", json={"record_id": 5})
@@ -270,6 +277,69 @@ class TestErrorHandlers:
 
         assert response.status_code == 422
         assert "check-out" in response.json()["detail"]
+
+
+class TestDownloadBillDocument:
+    def test_returns_pdf_as_attachment(self, bills_api_client, mock_render_bill_document_use_case):
+        mock_render_bill_document_use_case.execute.return_value = RenderedBillDocument(
+            filename="TEST-001 LIMPIEZA 01.06.2026.pdf",
+            content=b"%PDF-1.4 stub",
+        )
+
+        response = bills_api_client.get("/api/v1/bills/1/document")
+
+        assert response.status_code == 200
+        assert response.content == b"%PDF-1.4 stub"
+        assert response.headers["content-type"] == "application/pdf"
+        mock_render_bill_document_use_case.execute.assert_called_once_with(1)
+
+    def test_filename_with_spaces_is_quoted(
+        self, bills_api_client, mock_render_bill_document_use_case
+    ):
+        """Sin comillas el navegador corta el nombre en el primer espacio."""
+        mock_render_bill_document_use_case.execute.return_value = RenderedBillDocument(
+            filename="TEST-001 LIMPIEZA 01.06.2026.pdf",
+            content=b"%PDF-1.4 stub",
+        )
+
+        response = bills_api_client.get("/api/v1/bills/1/document")
+
+        disposition = response.headers["content-disposition"]
+        assert 'filename="TEST-001 LIMPIEZA 01.06.2026.pdf"' in disposition
+        assert disposition.startswith("attachment;")
+
+    def test_non_ascii_filename_falls_back_to_rfc_5987(
+        self, bills_api_client, mock_render_bill_document_use_case
+    ):
+        mock_render_bill_document_use_case.execute.return_value = RenderedBillDocument(
+            filename="PEÑA-1 LIMPIEZA 01.06.2026.pdf",
+            content=b"%PDF-1.4 stub",
+        )
+
+        response = bills_api_client.get("/api/v1/bills/1/document")
+
+        assert response.status_code == 200
+        disposition = response.headers["content-disposition"]
+        assert 'filename="PENA-1 LIMPIEZA 01.06.2026.pdf"' in disposition
+        assert "filename*=UTF-8''PE%C3%91A-1%20LIMPIEZA%2001.06.2026.pdf" in disposition
+
+    def test_unknown_bill_returns_404(self, bills_api_client, mock_render_bill_document_use_case):
+        mock_render_bill_document_use_case.execute.side_effect = BillNotFoundError(99)
+
+        response = bills_api_client.get("/api/v1/bills/99/document")
+
+        assert response.status_code == 404
+
+    def test_incomplete_bill_returns_422(
+        self, bills_api_client, mock_render_bill_document_use_case
+    ):
+        mock_render_bill_document_use_case.execute.side_effect = DomainValidationError(
+            "La factura no tiene fecha de limpieza; no se puede generar el documento."
+        )
+
+        response = bills_api_client.get("/api/v1/bills/1/document")
+
+        assert response.status_code == 422
 
 
 class TestPermissions:

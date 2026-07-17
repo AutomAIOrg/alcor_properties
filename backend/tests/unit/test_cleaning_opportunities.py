@@ -2,7 +2,7 @@
 Unit tests — cálculo de ventanas de limpieza.
 """
 
-from datetime import date, time
+from datetime import date, datetime, time
 
 import pytest
 
@@ -354,6 +354,37 @@ class TestGetCleaningOpportunitiesUseCase:
             start_date=date(2026, 5, 18),
             end_date=date(2026, 10, 10),
         )
+
+    def test_week_start_anchors_range_on_a_past_week(self, mock_repo):
+        mock_repo.search_bookings.return_value = []
+        use_case = GetCleaningOpportunitiesUseCase(mock_repo)
+
+        assert use_case.execute(reference_date=date(2026, 6, 18), week_start=date(2026, 3, 4)) == []
+        # El rango arranca el lunes de la semana pedida, no el de la semana de hoy.
+        mock_repo.search_bookings.assert_called_once_with(
+            start_date=date(2026, 2, 2),
+            end_date=date(2026, 6, 27),
+        )
+
+    def test_week_start_does_not_shift_the_instant_used_for_can_bill(self, mock_repo):
+        # Ventana ya limpiable "ahora"; mirar una semana pasada no debe cambiarlo.
+        mock_repo.search_bookings.return_value = [
+            make_booking(
+                record_id=1,
+                apartment_id="R106",
+                check_in=date(2026, 3, 2),
+                check_out=date(2026, 3, 5),
+            ),
+        ]
+        use_case = GetCleaningOpportunitiesUseCase(mock_repo)
+
+        opportunities = use_case.execute_at(
+            reference_datetime=datetime(2026, 6, 18, 12, 0),
+            week_start=date(2026, 3, 2),
+        )
+
+        window = next(o for o in opportunities if o.source_booking_record_id == 1)
+        assert window.can_bill is True
 
     def test_populates_apartment_address_from_repository(self, mock_repo):
         mock_repo.search_bookings.return_value = [

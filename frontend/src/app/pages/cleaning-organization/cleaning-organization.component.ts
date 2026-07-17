@@ -213,13 +213,11 @@ export class CleaningOrganizationComponent implements OnInit, OnDestroy {
   weekLabel = computed(
     () => `${this.formatDate(this.weekStartIso())} al ${this.formatDate(this.weekEndIso())}`
   );
-  currentWeekStartIso = computed(() => this.layout.toIso(this.getWeekStart(new Date())));
   nextWeekStartIso = computed(() => {
     const nextWeekStart = this.getWeekStart(new Date());
     nextWeekStart.setDate(nextWeekStart.getDate() + 7);
     return this.layout.toIso(nextWeekStart);
   });
-  canGoPrevWeek = computed(() => this.weekStartIso() > this.currentWeekStartIso());
   canGoNextWeek = computed(() => this.isAdmin() || this.weekStartIso() < this.nextWeekStartIso());
 
   cleaningOpportunities = computed<CleaningWindow[]>(() =>
@@ -307,7 +305,7 @@ export class CleaningOrganizationComponent implements OnInit, OnDestroy {
     this.isLoading.set(true);
     this.loadError.set(null);
 
-    this.bookingService.getCleaningOpportunities().subscribe({
+    this.bookingService.getCleaningOpportunities(this.weekStartIso()).subscribe({
       next: opportunities => {
         this.apiCleaningOpportunities.set(opportunities);
         this.isLoading.set(false);
@@ -321,11 +319,10 @@ export class CleaningOrganizationComponent implements OnInit, OnDestroy {
   }
 
   prevWeek(): void {
-    if (!this.canGoPrevWeek()) return;
-
     const date = new Date(this.currentDate());
     date.setDate(date.getDate() - 7);
     this.currentDate.set(date);
+    this.loadBookings();
   }
 
   nextWeek(): void {
@@ -334,10 +331,12 @@ export class CleaningOrganizationComponent implements OnInit, OnDestroy {
     const date = new Date(this.currentDate());
     date.setDate(date.getDate() + 7);
     this.currentDate.set(date);
+    this.loadBookings();
   }
 
   goToToday(): void {
     this.currentDate.set(new Date());
+    this.loadBookings();
   }
 
   formatDate(iso: string | null): string {

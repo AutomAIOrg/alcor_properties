@@ -602,6 +602,10 @@ table td .status-chip {
 .confirm-dialog {
   width: 100%;
   max-width: 420px;
+  // The backdrop reserves 1rem of padding on each side.
+  max-height: calc(100vh - 2rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 1.25rem;
   background: #fff;
   border-radius: 12px;
