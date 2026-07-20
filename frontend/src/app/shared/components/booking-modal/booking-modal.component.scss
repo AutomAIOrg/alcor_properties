@@ -325,6 +325,16 @@
   padding: 0.6rem 0.75rem;
 }
 
+.range-error {
+  font-size: 0.82rem;
+  color: #b42318;
+  background: #fef3f2;
+  border: 1px solid #fecdca;
+  border-radius: 8px;
+  padding: 0.6rem 0.75rem;
+  margin: -0.25rem 0 0.25rem;
+}
+
 // ── BOOKING REF ─────────────────────────────────────────────────────────────
 .refs-row {
   display: flex;
