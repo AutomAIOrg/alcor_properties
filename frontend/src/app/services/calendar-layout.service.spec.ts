@@ -94,7 +94,7 @@ describe('CalendarLayoutService', () => {
       expect(svc.buildLaneAssignment([]).size).toBe(0);
     });
 
-    it('dos reservas sin solapamiento comparten el carril 0', () => {
+    it('dos reservas sin solapamiento (mismo piso) comparten el carril 0', () => {
       const b1 = makeBooking({ record_id: 1, check_in: '2025-06-01', check_out: '2025-06-07' });
       const b2 = makeBooking({ record_id: 2, check_in: '2025-06-10', check_out: '2025-06-15' });
       const map = svc.buildLaneAssignment([b1, b2]);
@@ -102,32 +102,110 @@ describe('CalendarLayoutService', () => {
       expect(map.get(2)).toBe(0);
     });
 
-    it('dos reservas solapadas reciben carriles distintos', () => {
-      const b1 = makeBooking({ record_id: 1, check_in: '2025-06-01', check_out: '2025-06-10' });
-      const b2 = makeBooking({ record_id: 2, check_in: '2025-06-05', check_out: '2025-06-15' });
+    it('dos pisos sin solapamiento pueden compartir el carril 0', () => {
+      const b1 = makeBooking({
+        record_id: 1,
+        apartment_id: 'R180',
+        check_in: '2025-06-01',
+        check_out: '2025-06-07',
+      });
+      const b2 = makeBooking({
+        record_id: 2,
+        apartment_id: 'R101',
+        check_in: '2025-06-10',
+        check_out: '2025-06-15',
+      });
+      const map = svc.buildLaneAssignment([b1, b2]);
+      expect(map.get(1)).toBe(0);
+      expect(map.get(2)).toBe(0);
+    });
+
+    it('dos pisos solapados reciben carriles distintos', () => {
+      const b1 = makeBooking({
+        record_id: 1,
+        apartment_id: 'R180',
+        check_in: '2025-06-01',
+        check_out: '2025-06-10',
+      });
+      const b2 = makeBooking({
+        record_id: 2,
+        apartment_id: 'R101',
+        check_in: '2025-06-05',
+        check_out: '2025-06-15',
+      });
       const map = svc.buildLaneAssignment([b1, b2]);
       expect(map.get(1)).toBe(0);
       expect(map.get(2)).toBe(1);
     });
 
-    it('tres reservas con solapamiento parcial aplica greedy correctamente', () => {
-      const b1 = makeBooking({ record_id: 1, check_in: '2025-06-01', check_out: '2025-06-05' });
-      const b2 = makeBooking({ record_id: 2, check_in: '2025-06-03', check_out: '2025-06-10' });
-      const b3 = makeBooking({ record_id: 3, check_in: '2025-06-06', check_out: '2025-06-12' });
+    it('tres pisos con solapamiento parcial aplica greedy correctamente', () => {
+      const b1 = makeBooking({
+        record_id: 1,
+        apartment_id: 'R180',
+        check_in: '2025-06-01',
+        check_out: '2025-06-05',
+      });
+      const b2 = makeBooking({
+        record_id: 2,
+        apartment_id: 'R101',
+        check_in: '2025-06-03',
+        check_out: '2025-06-10',
+      });
+      const b3 = makeBooking({
+        record_id: 3,
+        apartment_id: 'R202',
+        check_in: '2025-06-06',
+        check_out: '2025-06-12',
+      });
       const map = svc.buildLaneAssignment([b1, b2, b3]);
-      // b1 → lane 0, b2 → lane 1 (solapa b1), b3 → lane 0 (b1 ya terminó)
+      // R180 → L0, R101 → L1 (solapa R180), R202 → L0 (no solapa R180; solapa R101 en L1)
       expect(map.get(1)).toBe(0);
       expect(map.get(2)).toBe(1);
       expect(map.get(3)).toBe(0);
     });
 
-    it('checkout y checkin el mismo día comparten carril (≤ en la comparación)', () => {
-      const b1 = makeBooking({ record_id: 1, check_in: '2025-06-01', check_out: '2025-06-07' });
-      const b2 = makeBooking({ record_id: 2, check_in: '2025-06-07', check_out: '2025-06-14' });
+    it('checkout y checkin el mismo día (pisos distintos) comparten carril', () => {
+      const b1 = makeBooking({
+        record_id: 1,
+        apartment_id: 'R180',
+        check_in: '2025-06-01',
+        check_out: '2025-06-07',
+      });
+      const b2 = makeBooking({
+        record_id: 2,
+        apartment_id: 'R101',
+        check_in: '2025-06-07',
+        check_out: '2025-06-14',
+      });
       const map = svc.buildLaneAssignment([b1, b2]);
-      // check_out de b1 === check_in de b2 → end '2025-06-07' <= '2025-06-07' → mismo carril
       expect(map.get(1)).toBe(0);
       expect(map.get(2)).toBe(0);
+    });
+
+    it('reservas del mismo piso quedan en el mismo carril aunque otro piso se intercale', () => {
+      // Caso que el greedy por reserva separaba: A lun–mar + vie–sáb, B mié–dom
+      const a1 = makeBooking({
+        record_id: 1,
+        apartment_id: 'R180',
+        check_in: '2025-06-02',
+        check_out: '2025-06-04',
+      });
+      const b = makeBooking({
+        record_id: 2,
+        apartment_id: 'R101',
+        check_in: '2025-06-04',
+        check_out: '2025-06-08',
+      });
+      const a2 = makeBooking({
+        record_id: 3,
+        apartment_id: 'R180',
+        check_in: '2025-06-06',
+        check_out: '2025-06-08',
+      });
+      const map = svc.buildLaneAssignment([a1, b, a2]);
+      expect(map.get(1)).toBe(0);
+      expect(map.get(3)).toBe(0);
+      expect(map.get(2)).toBe(1);
     });
   });
 
