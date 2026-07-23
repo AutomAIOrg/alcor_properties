@@ -183,6 +183,15 @@
         </tbody>
       </table>
     </div>
+    <div class="results-footer-actions">
+      <button
+        type="button"
+        class="btn-secondary btn-secondary--compact"
+        (click)="downloadModelo210()"
+      >
+        Descargar Modelo 210
+      </button>
+    </div>
   }
 
   @if (!bkg.loading() && !bkg.error() && bkg.stats() && bkg.results().length === 0) {
