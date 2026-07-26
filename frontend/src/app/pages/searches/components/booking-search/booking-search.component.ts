@@ -11,6 +11,7 @@ import {
   type DateRangeValue,
 } from '../../../../shared/components/date-range-picker/date-range-picker.component';
 import { exportBookingStatsToExcel } from '../../../../shared/utils/stats-excel-export';
+import { exportModelo210ToExcel } from '../../../../shared/utils/modelo-210-excel-export';
 
 @Component({
   selector: 'app-booking-search',
@@ -216,6 +217,31 @@ export class BookingSearchComponent {
     if (!stats) return;
 
     exportBookingStatsToExcel(stats);
+  }
+
+  async downloadModelo210(): Promise<void> {
+    const apartmentId = this.bkg.apartmentId().trim();
+    if (!apartmentId) {
+      this.bkg.error.set('Selecciona un ID de piso para descargar el Modelo 210.');
+      return;
+    }
+
+    const bookings = this.bkg
+      .results()
+      .filter(booking => booking.apartment_id.trim() === apartmentId);
+
+    if (bookings.length === 0) {
+      this.bkg.error.set('No hay reservas del piso seleccionado para exportar.');
+      return;
+    }
+
+    this.bkg.error.set('');
+
+    try {
+      await exportModelo210ToExcel(bookings, apartmentId);
+    } catch {
+      this.bkg.error.set('No se pudo generar el Modelo 210.');
+    }
   }
 
   openModal(booking: Booking): void {

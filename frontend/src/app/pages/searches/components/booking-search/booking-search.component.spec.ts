@@ -5,10 +5,15 @@ import { Booking } from '../../../../models/booking.model';
 import { BookingStatsResponse } from '../../../../models/search.model';
 import { BookingService } from '../../../../services/booking.service';
 import { exportBookingStatsToExcel } from '../../../../shared/utils/stats-excel-export';
+import { exportModelo210ToExcel } from '../../../../shared/utils/modelo-210-excel-export';
 import { BookingSearchComponent } from './booking-search.component';
 
 jest.mock('../../../../shared/utils/stats-excel-export', () => ({
   exportBookingStatsToExcel: jest.fn(),
+}));
+
+jest.mock('../../../../shared/utils/modelo-210-excel-export', () => ({
+  exportModelo210ToExcel: jest.fn(),
 }));
 
 function makeBooking(overrides: Partial<Booking> = {}): Booking {
@@ -330,5 +335,47 @@ describe('BookingSearchComponent', () => {
     component.downloadStatsExcel();
 
     expect(exportBookingStatsToExcel).toHaveBeenCalledWith(stats);
+  });
+
+  describe('downloadModelo210', () => {
+    beforeEach(() => {
+      (exportModelo210ToExcel as jest.Mock).mockReset();
+      (exportModelo210ToExcel as jest.Mock).mockResolvedValue(undefined);
+    });
+
+    it('exige un ID de piso seleccionado', async () => {
+      component.bkg.apartmentId.set('');
+      component.bkg.results.set([makeBooking()]);
+
+      await component.downloadModelo210();
+
+      expect(exportModelo210ToExcel).not.toHaveBeenCalled();
+      expect(component.bkg.error()).toContain('ID de piso');
+    });
+
+    it('exporta solo las reservas del piso filtrado', async () => {
+      component.bkg.apartmentId.set('R223');
+      component.bkg.results.set([
+        makeBooking({ record_id: 1, apartment_id: 'R223', price: 100 }),
+        makeBooking({ record_id: 2, apartment_id: 'R101', price: 200 }),
+      ]);
+
+      await component.downloadModelo210();
+
+      expect(exportModelo210ToExcel).toHaveBeenCalledWith(
+        [expect.objectContaining({ record_id: 1, apartment_id: 'R223' })],
+        'R223'
+      );
+    });
+
+    it('muestra error si no hay reservas del piso', async () => {
+      component.bkg.apartmentId.set('R223');
+      component.bkg.results.set([makeBooking({ apartment_id: 'R101' })]);
+
+      await component.downloadModelo210();
+
+      expect(exportModelo210ToExcel).not.toHaveBeenCalled();
+      expect(component.bkg.error()).toContain('No hay reservas del piso');
+    });
   });
 });
