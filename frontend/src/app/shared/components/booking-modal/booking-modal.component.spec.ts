@@ -1,4 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { HttpErrorResponse } from '@angular/common/http';
 import { of, throwError } from 'rxjs';
 import { BookingModalComponent } from './booking-modal.component';
 import { BookingService } from '../../../services/booking.service';
@@ -44,8 +45,10 @@ describe('BookingModalComponent', () => {
   beforeEach(async () => {
     bookingServiceSpy = {
       updateBooking: jest.fn(),
+      searchBookings: jest.fn(),
     } as unknown as jest.Mocked<BookingService>;
     bookingServiceSpy.updateBooking.mockReturnValue(of(makeBooking({ guest_name: 'Updated' })));
+    bookingServiceSpy.searchBookings.mockReturnValue(of([]));
 
     const authServiceMock = {
       hasPermission: jest.fn().mockReturnValue(true),
@@ -162,6 +165,72 @@ describe('BookingModalComponent', () => {
       expect(component.editing()).toBe(true);
       expect(component.draft().guest_name).toBe('Ana García');
     });
+
+    it('carga las reservas del piso para detectar solapes', () => {
+      component.startEdit();
+      expect(bookingServiceSpy.searchBookings).toHaveBeenCalledWith({ apartment_id: 'R180' });
+    });
+  });
+
+  describe('selectedRangeHasConflicts', () => {
+    const otherBooking = makeBooking({
+      record_id: 99,
+      guest_name: 'Otra',
+      check_in: '2025-06-10',
+      check_out: '2025-06-15',
+    });
+
+    beforeEach(() => {
+      bookingServiceSpy.searchBookings.mockReturnValue(of([makeBooking(), otherBooking]));
+      component.startEdit();
+    });
+
+    it('no hay conflicto con las fechas originales (se excluye a sí misma)', () => {
+      expect(component.selectedRangeHasConflicts()).toBe(false);
+    });
+
+    it('detecta solape al extender fechas hacia otra reserva', () => {
+      component.patchDraft('check_out', '2025-06-12');
+      expect(component.selectedRangeHasConflicts()).toBe(true);
+    });
+
+    it('muestra el aviso en el DOM al haber solape', () => {
+      component.patchDraft('check_out', '2025-06-12');
+      fixture.detectChanges();
+      expect(fixture.nativeElement.textContent).toContain(
+        'El piso ya tiene una reserva en ese rango de fechas.'
+      );
+    });
+
+    it('no bloquea si el estado pasa a Cancelled', () => {
+      component.patchDraft('check_out', '2025-06-12');
+      component.patchDraft('status', 'Cancelled');
+      expect(component.selectedRangeHasConflicts()).toBe(false);
+    });
+
+    it('ignora reservas canceladas del mismo piso', () => {
+      bookingServiceSpy.searchBookings.mockReturnValue(
+        of([
+          makeBooking(),
+          makeBooking({
+            record_id: 99,
+            status: 'Cancelled',
+            check_in: '2025-06-10',
+            check_out: '2025-06-15',
+          }),
+        ])
+      );
+      component.startEdit();
+      component.patchDraft('check_out', '2025-06-12');
+      expect(component.selectedRangeHasConflicts()).toBe(false);
+    });
+
+    it('no guarda si hay solape', () => {
+      component.patchDraft('check_out', '2025-06-12');
+      component.saveEdit();
+      expect(bookingServiceSpy.updateBooking).not.toHaveBeenCalled();
+      expect(component.saveError()).toContain('reserva en ese rango');
+    });
   });
 
   describe('cancelEdit', () => {
@@ -267,6 +336,24 @@ describe('BookingModalComponent', () => {
       component.saved.subscribe(b => emitted.push(b));
       component.saveEdit();
       expect(emitted.length).toBe(0);
+    });
+
+    it('en conflicto 409 muestra el aviso de fechas', () => {
+      bookingServiceSpy.updateBooking.mockReturnValue(
+        throwError(
+          () =>
+            new HttpErrorResponse({
+              status: 409,
+              error: { detail: 'El piso ya tiene una reserva en ese rango de fechas.' },
+            })
+        )
+      );
+      component.saveEdit();
+      fixture.detectChanges();
+      expect(component.saveError()).toContain('reserva en ese rango');
+      expect(fixture.nativeElement.textContent).toContain(
+        'El piso ya tiene una reserva en ese rango de fechas.'
+      );
     });
   });
 

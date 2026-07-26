@@ -217,6 +217,12 @@
           </div>
         </div>
 
+        @if (selectedRangeHasConflicts() || saveError()) {
+          <div class="range-error">
+            {{ saveError() || 'El piso ya tiene una reserva en ese rango de fechas.' }}
+          </div>
+        }
+
         <p class="edit-section-title">Huéspedes</p>
 
         <div class="field-row field-row--3">
@@ -331,7 +337,11 @@
         <!-- ACCIONES -->
         <div class="edit-actions">
           <button class="btn-cancel" (click)="cancelEdit()" [disabled]="saving()">Cancelar</button>
-          <button class="btn-save" (click)="saveEdit()" [disabled]="saving()">
+          <button
+            class="btn-save"
+            (click)="saveEdit()"
+            [disabled]="saving() || selectedRangeHasConflicts()"
+          >
             {{ saving() ? 'Guardando…' : 'Guardar cambios' }}
           </button>
         </div>

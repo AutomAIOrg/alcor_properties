@@ -36,23 +36,79 @@ export class CalendarLayoutService {
   }
 
   /**
-   * Asigna a cada reserva (record_id) un índice de carril fijo
-   * usando un algoritmo greedy: busca el primer carril libre.
-   * Usa record_id (único en BD) como clave, NO apartment_id (identificador de piso).
+   * Asigna a cada reserva (record_id) un índice de carril fijo.
+   *
+   * El carril se decide a nivel de apartamento: todas las reservas del mismo
+   * piso comparten fila. Los pisos se empaquetan con greedy por orden de
+   * primer check-in; dos pisos solo comparten carril si ninguno de sus
+   * intervalos se solapa (half-open: check_in < other.check_out).
    */
   buildLaneAssignment(bookings: Booking[]): Map<number, number> {
-    const sorted = [...bookings].sort((a, b) => a.check_in.localeCompare(b.check_in));
-    const laneEnd: string[] = [];
-    const assignment = new Map<number, number>();
+    const byApartment = new Map<string, Booking[]>();
 
-    for (const b of sorted) {
-      let lane = laneEnd.findIndex(end => end <= b.check_in);
-      if (lane === -1) lane = laneEnd.length;
-      assignment.set(b.record_id, lane);
-      laneEnd[lane] = b.check_out;
+    for (const booking of bookings) {
+      const apartment = booking.apartment_id?.trim() || '';
+      const group = byApartment.get(apartment);
+      if (group) {
+        group.push(booking);
+      } else {
+        byApartment.set(apartment, [booking]);
+      }
+    }
+
+    const apartments = [...byApartment.entries()].sort((a, b) => {
+      const aFirst = a[1].reduce(
+        (min, booking) => (booking.check_in < min ? booking.check_in : min),
+        a[1][0].check_in
+      );
+      const bFirst = b[1].reduce(
+        (min, booking) => (booking.check_in < min ? booking.check_in : min),
+        b[1][0].check_in
+      );
+      const byDate = aFirst.localeCompare(bFirst);
+      return byDate !== 0 ? byDate : a[0].localeCompare(b[0]);
+    });
+
+    type Interval = { check_in: string; check_out: string };
+    const laneIntervals: Interval[][] = [];
+    const apartmentLane = new Map<string, number>();
+
+    for (const [apartment, group] of apartments) {
+      const intervals: Interval[] = group.map(booking => ({
+        check_in: booking.check_in,
+        check_out: booking.check_out,
+      }));
+
+      let lane = laneIntervals.findIndex(
+        occupied =>
+          !intervals.some(candidate =>
+            occupied.some(existing => this.intervalsOverlap(candidate, existing))
+          )
+      );
+      if (lane === -1) {
+        lane = laneIntervals.length;
+        laneIntervals.push([]);
+      }
+
+      laneIntervals[lane].push(...intervals);
+      apartmentLane.set(apartment, lane);
+    }
+
+    const assignment = new Map<number, number>();
+    for (const booking of bookings) {
+      const apartment = booking.apartment_id?.trim() || '';
+      assignment.set(booking.record_id, apartmentLane.get(apartment) ?? 0);
     }
 
     return assignment;
+  }
+
+  /** Solape half-open: [a.check_in, a.check_out) ∩ [b.check_in, b.check_out) ≠ ∅ */
+  private intervalsOverlap(
+    a: { check_in: string; check_out: string },
+    b: { check_in: string; check_out: string }
+  ): boolean {
+    return a.check_in < b.check_out && a.check_out > b.check_in;
   }
 
   /**
@@ -93,9 +149,9 @@ export class CalendarLayoutService {
       }
 
       // Reindexar carriles: mantener orden relativo pero compactar a 0, 1, 2...
-      // El alto de la fila = nº de reservas visibles en esa semana, no su posición global.
-      // Usar Set para deduplicar carriles globales, de modo que checkout+checkin el mismo día
-      // en el mismo apartamento compartan el mismo índice visual.
+      // El alto de la fila = nº de carriles de apartamento visibles en esa semana.
+      // Usar Set para deduplicar: varias reservas del mismo piso (mismo lane global)
+      // comparten el mismo índice visual.
       rawBars.sort((a, b) => a.laneIndex - b.laneIndex);
       const uniqueLanes = [...new Set(rawBars.map(b => b.laneIndex))];
       const laneRemap = new Map(uniqueLanes.map((lane, i) => [lane, i]));

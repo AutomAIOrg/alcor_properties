@@ -10,7 +10,7 @@
 
       <div class="field-row">
         <div class="field">
-          <label>Referencia piso *</label>
+          <label>Referencia del piso *</label>
           <select (change)="patchSelect('apartment_id', $event)">
             <option value="" disabled [selected]="!draft().apartment_id">
               {{ apartmentPlaceholder() }}
@@ -53,6 +53,18 @@
             placeholder="Nombre y apellidos"
             [value]="draft().guest_name ?? ''"
             (input)="patchInput('guest_name', $event)"
+          />
+        </div>
+      </div>
+
+      <div class="field-row">
+        <div class="field field--full">
+          <label>Nº de reserva en plataforma</label>
+          <input
+            type="text"
+            placeholder="—"
+            [value]="draft().booking_number ?? ''"
+            (input)="patchInput('booking_number', $event)"
           />
         </div>
       </div>
@@ -144,7 +156,12 @@
 
       <div class="field-row">
         <div class="field">
-          <label>Adultos</label>
+          <label>Nº total de personas</label>
+          <input type="number" readonly [value]="(draft().adults ?? 1) + (draft().children ?? 0)" />
+        </div>
+
+        <div class="field">
+          <label>Nº de adultos</label>
           <input
             type="number"
             min="1"
@@ -152,9 +169,11 @@
             (input)="patchNumber('adults', $event)"
           />
         </div>
+      </div>
 
+      <div class="field-row">
         <div class="field">
-          <label>Niños</label>
+          <label>Nº de niños</label>
           <input
             type="number"
             min="0"
@@ -180,7 +199,7 @@
         </div>
 
         <div class="field">
-          <label>Cargos extra (€)</label>
+          <label>Comm y Cargos (€)</label>
           <input
             type="number"
             min="0"
@@ -212,20 +231,6 @@
             placeholder="sin teléfono"
             [value]="draft().phone ?? ''"
             (input)="patchInput('phone', $event)"
-          />
-        </div>
-      </div>
-
-      <p class="section-title">Referencias</p>
-
-      <div class="field-row">
-        <div class="field field--full">
-          <label>Nº reserva plataforma</label>
-          <input
-            type="text"
-            placeholder="—"
-            [value]="draft().booking_number ?? ''"
-            (input)="patchInput('booking_number', $event)"
           />
         </div>
       </div>

@@ -165,6 +165,12 @@
     &::placeholder {
       color: #c1c9d4;
     }
+
+    &[readonly] {
+      background: #f9fafb;
+      color: #667085;
+      cursor: default;
+    }
   }
 
   textarea {
