@@ -94,8 +94,18 @@ export class CalendarComponent implements OnInit {
   showIdDropdown = signal(false);
   showStateDropdown = signal(false);
 
-  // Lista de IDs únicos de reserva para las opciones del filtro.
-  bookingIdOptions = computed(() => [...new Set(this.bookings().map(b => b.apartment_id))].sort());
+  // Texto de búsqueda dentro del desplegable de pisos.
+  apartmentFilterQuery = signal('');
+
+  // Todos los pisos disponibles (no solo los de la vista actual), filtrados por el buscador del panel.
+  bookingIdOptions = computed(() => {
+    const query = this.apartmentFilterQuery().trim().toLowerCase();
+    const ids = [...this.allApartmentIds()].sort((a, b) =>
+      a.localeCompare(b, undefined, { numeric: true })
+    );
+    if (!query) return ids;
+    return ids.filter(id => id.toLowerCase().includes(query));
+  });
 
   // Estados posibles — viene del modelo, éditalos en booking.model.ts.
   readonly BASE_STATUSES = BASE_STATUSES;
@@ -215,6 +225,7 @@ export class CalendarComponent implements OnInit {
   // Se ejecuta una vez al montar el componente: carga solo las reservas visibles.
   ngOnInit(): void {
     this.apartmentColor.ensureLoaded();
+    this.ensureApartmentIdsLoaded();
     this.loadCalendarBookings();
   }
 
@@ -280,6 +291,7 @@ export class CalendarComponent implements OnInit {
   onDocumentClick(target: HTMLElement): void {
     if (!target.closest('.id-filter-dropdown')) {
       this.showIdDropdown.set(false);
+      this.apartmentFilterQuery.set('');
     }
     if (!target.closest('.state-filter-dropdown')) {
       this.showStateDropdown.set(false);
@@ -308,9 +320,20 @@ export class CalendarComponent implements OnInit {
     this.filterBookingIds.set([]);
     this.filterBookingStates.set([]);
     this.searchQuery.set('');
+    this.apartmentFilterQuery.set('');
     this.resetSearchLookup();
 
     this.goToToday();
+  }
+
+  onApartmentFilterInput(event: Event): void {
+    this.apartmentFilterQuery.set((event.target as HTMLInputElement).value);
+  }
+
+  toggleIdDropdown(): void {
+    const next = !this.showIdDropdown();
+    this.showIdDropdown.set(next);
+    if (!next) this.apartmentFilterQuery.set('');
   }
 
   // ─── Buscador con autocompletado ──────────────────────────────────────────────

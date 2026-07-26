@@ -35,7 +35,7 @@
     <div class="filter-group">
       <!-- Filtro: Piso -->
       <div class="filter-dropdown id-filter-dropdown" [class.open]="showIdDropdown()">
-        <button class="filter-trigger" (click)="showIdDropdown.set(!showIdDropdown())">
+        <button class="filter-trigger" (click)="toggleIdDropdown()">
           Piso
           @if (filterBookingIds().length) {
             <span class="badge">{{ filterBookingIds().length }}</span>
@@ -44,6 +44,16 @@
         </button>
         @if (showIdDropdown()) {
           <div class="filter-panel">
+            <div class="filter-search" (click)="$event.stopPropagation()">
+              <input
+                type="text"
+                class="filter-search-input"
+                placeholder="Buscar piso…"
+                [value]="apartmentFilterQuery()"
+                (input)="onApartmentFilterInput($event)"
+                autocomplete="off"
+              />
+            </div>
             @for (id of bookingIdOptions(); track id) {
               <label class="filter-option">
                 <input
@@ -53,6 +63,9 @@
                 />
                 {{ id }}
               </label>
+            }
+            @if (bookingIdOptions().length === 0) {
+              <p class="filter-empty">Sin pisos para "{{ apartmentFilterQuery() }}"</p>
             }
           </div>
         }

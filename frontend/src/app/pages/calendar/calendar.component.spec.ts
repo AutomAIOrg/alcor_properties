@@ -263,11 +263,17 @@ describe('CalendarComponent', () => {
 
     beforeEach(() => {
       component.bookings.set([b1, b2, b3]);
+      component.allApartmentIds.set(['R101', 'R180', 'R223', 'R050']);
       component.currentDate.set(new Date(2025, 5, 1)); // junio 2025, donde caen las reservas
     });
 
-    it('bookingIdOptions devuelve IDs únicos y ordenados', () => {
-      expect(component.bookingIdOptions()).toEqual(['R101', 'R180']);
+    it('bookingIdOptions lista todos los pisos, no solo los de la vista', () => {
+      expect(component.bookingIdOptions()).toEqual(['R050', 'R101', 'R180', 'R223']);
+    });
+
+    it('bookingIdOptions filtra por el texto del buscador del panel', () => {
+      component.apartmentFilterQuery.set('18');
+      expect(component.bookingIdOptions()).toEqual(['R180']);
     });
 
     it('hasActiveFilters es false sin filtros', () => {
