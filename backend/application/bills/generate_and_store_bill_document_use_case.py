@@ -19,6 +19,7 @@ from domain.bills.bill_document import (
     BILL_DOCUMENT_OPERATION_GENERATE_PENDING,
     BILL_DOCUMENT_STATUS_COMPLETED,
     BILL_DOCUMENT_STATUS_ERROR,
+    BILL_DOCUMENT_STATUS_PROCESSING,
     BillDocument,
 )
 from domain.bills.bill_document_repository import IBillDocumentRepository
@@ -27,14 +28,16 @@ from domain.exceptions import FileStorageError
 
 logger = logging.getLogger(__name__)
 
+_RETRY_DELAY = timedelta(hours=1)
+
 
 class GenerateAndStoreBillDocumentUseCase:
     """
     Orquesta la generación del PDF de factura (vía renderer) y su subida al NAS.
 
-    Los datos del documento se derivan de la factura persistida; la dirección del
-    apartamento se resuelve desde el repositorio de apartamentos. La generación real del
-    PDF se delega en IBillPdfRenderer (Chromium headless).
+    Persiste el documento como ``Procesando`` *antes* de renderizar/subir, para que un
+    kill o timeout a mitad de camino deje una fila reintentable en lugar de una factura
+    huérfana sin documento.
     """
 
     def __init__(
@@ -73,8 +76,19 @@ class GenerateAndStoreBillDocumentUseCase:
         assert bill.cleaning_date is not None
         remote_folder = pending_invoices_folder(self._nas_base_path)
         filename = build_bill_document_filename(bill.apartment_id, bill.cleaning_date)
+        expected_nas_path = f"{remote_folder}/{filename}"
         now = datetime.now(UTC)
         old_nas_path = existing_document.nas_path if existing_document else None
+
+        processing = self._claim_processing(
+            existing_document=existing_document,
+            bill_id=bill_id,
+            filename=filename,
+            nas_path=expected_nas_path,
+            uploaded_by=uploaded_by,
+            uploaded_at=now,
+            old_nas_path=old_nas_path,
+        )
 
         try:
             pdf_data = build_bill_pdf_data(bill, bill_id, self._apartment_repository)
@@ -85,58 +99,47 @@ class GenerateAndStoreBillDocumentUseCase:
                 content=content,
                 content_type=CONTENT_TYPE_PDF,
             )
-            document = BillDocument(
-                id=existing_document.id if existing_document else None,
-                bill_id=bill_id,
-                filename=filename,
-                nas_path=nas_path,
-                content_type=CONTENT_TYPE_PDF,
-                size_bytes=len(content),
-                uploaded_by=uploaded_by,
-                uploaded_at=now,
-                status=BILL_DOCUMENT_STATUS_COMPLETED,
-                operation=BILL_DOCUMENT_OPERATION_GENERATE_PENDING,
-                attempts=(existing_document.attempts if existing_document else 0) + 1,
-                completed_at=now,
-                previous_nas_path=(
-                    old_nas_path if old_nas_path and old_nas_path != nas_path else None
-                ),
+            completed = processing.model_copy(
+                update={
+                    "filename": filename,
+                    "nas_path": nas_path,
+                    "content_type": CONTENT_TYPE_PDF,
+                    "size_bytes": len(content),
+                    "uploaded_by": uploaded_by,
+                    "uploaded_at": now,
+                    "status": BILL_DOCUMENT_STATUS_COMPLETED,
+                    "operation": BILL_DOCUMENT_OPERATION_GENERATE_PENDING,
+                    "last_error": None,
+                    "next_retry_at": None,
+                    "completed_at": now,
+                    "previous_nas_path": (
+                        old_nas_path if old_nas_path and old_nas_path != nas_path else None
+                    ),
+                }
             )
         except FileStorageError:
-            document = self._failed_document(
-                existing_document=existing_document,
-                bill_id=bill_id,
-                filename=filename,
-                nas_path=f"{remote_folder}/{filename}",
-                uploaded_by=uploaded_by,
+            return self._persist_failed(
+                processing,
+                error="No se pudo almacenar el documento de factura en el NAS.",
                 uploaded_at=now,
                 old_nas_path=old_nas_path,
-                error="No se pudo almacenar el documento de factura en el NAS.",
             )
         except Exception as exc:
             logger.exception("Error inesperado al subir documento de factura %s al NAS", bill_id)
-            document = self._failed_document(
-                existing_document=existing_document,
-                bill_id=bill_id,
-                filename=filename,
-                nas_path=f"{remote_folder}/{filename}",
-                uploaded_by=uploaded_by,
+            return self._persist_failed(
+                processing,
+                error=str(exc),
                 uploaded_at=now,
                 old_nas_path=old_nas_path,
-                error=str(exc),
             )
 
         try:
-            if existing_document is not None:
-                persisted = self._document_repository.update(document)
-            else:
-                persisted = self._document_repository.create(document)
+            persisted = self._document_repository.update(completed)
         except Exception as exc:
-            if document.status == BILL_DOCUMENT_STATUS_COMPLETED:
-                self._compensate_upload(document.nas_path)
+            self._compensate_upload(completed.nas_path)
             logger.error(
                 "Falló la persistencia del estado documental (%s) para factura %s",
-                document.nas_path,
+                completed.nas_path,
                 bill_id,
             )
             raise FileStorageError(
@@ -145,11 +148,7 @@ class GenerateAndStoreBillDocumentUseCase:
 
         # Al regenerar con cambio de nombre (p. ej. otra fecha de limpieza), el archivo anterior
         # del NAS queda huérfano: se elimina para no dejar dos PDF de la misma factura.
-        if (
-            document.status == BILL_DOCUMENT_STATUS_COMPLETED
-            and old_nas_path
-            and old_nas_path != persisted.nas_path
-        ):
+        if old_nas_path and old_nas_path != persisted.nas_path:
             try:
                 self._file_storage.delete(old_nas_path)
             except Exception:
@@ -161,8 +160,8 @@ class GenerateAndStoreBillDocumentUseCase:
 
         return persisted
 
-    @staticmethod
-    def _failed_document(
+    def _claim_processing(
+        self,
         *,
         existing_document: BillDocument | None,
         bill_id: int,
@@ -171,25 +170,48 @@ class GenerateAndStoreBillDocumentUseCase:
         uploaded_by: int,
         uploaded_at: datetime,
         old_nas_path: str | None,
-        error: str,
     ) -> BillDocument:
-        return BillDocument(
+        """Persiste el documento como Procesando antes de tocar el NAS."""
+        base = BillDocument(
             id=existing_document.id if existing_document else None,
             bill_id=bill_id,
-            # Si ya existía, se conserva la ruta válida previa (el PDF anterior sigue en el NAS).
-            nas_path=existing_document.nas_path if existing_document else nas_path,
             filename=filename,
+            nas_path=existing_document.nas_path if existing_document else nas_path,
             content_type=CONTENT_TYPE_PDF,
             size_bytes=existing_document.size_bytes if existing_document else 0,
             uploaded_by=uploaded_by,
             uploaded_at=uploaded_at,
-            status=BILL_DOCUMENT_STATUS_ERROR,
+            status=BILL_DOCUMENT_STATUS_PROCESSING,
             operation=BILL_DOCUMENT_OPERATION_GENERATE_PENDING,
             attempts=(existing_document.attempts if existing_document else 0) + 1,
-            last_error=error[:1000],
-            next_retry_at=uploaded_at + timedelta(hours=1),
+            last_error=None,
+            next_retry_at=None,
+            completed_at=None,
             previous_nas_path=old_nas_path if existing_document else None,
         )
+        if existing_document is not None:
+            return self._document_repository.update(base)
+        return self._document_repository.create(base)
+
+    def _persist_failed(
+        self,
+        processing: BillDocument,
+        *,
+        error: str,
+        uploaded_at: datetime,
+        old_nas_path: str | None,
+    ) -> BillDocument:
+        failed = processing.model_copy(
+            update={
+                "status": BILL_DOCUMENT_STATUS_ERROR,
+                "operation": BILL_DOCUMENT_OPERATION_GENERATE_PENDING,
+                "last_error": error[:1000],
+                "next_retry_at": uploaded_at + _RETRY_DELAY,
+                "completed_at": None,
+                "previous_nas_path": old_nas_path if processing.id is not None else None,
+            }
+        )
+        return self._document_repository.update(failed)
 
     def _compensate_upload(self, nas_path: str) -> None:
         try:
