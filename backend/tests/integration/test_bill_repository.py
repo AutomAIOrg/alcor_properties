@@ -242,3 +242,49 @@ class TestDeleteCancelledForBooking:
         repo.delete_cancelled_for_booking(booking.record_id)
 
         assert not repo.exists_for_booking(booking.record_id)
+
+
+class TestListWithoutDocuments:
+    def test_returns_created_and_paid_bills_missing_documents(self, sqlite_session):
+        from datetime import UTC
+
+        from passlib.context import CryptContext
+
+        from domain.bills.bill_document import BillDocument
+        from infrastructure.models.user import UserORM
+        from infrastructure.repositories.sqlalchemy_bill_document_repository import (
+            SQLAlchemyBillDocumentRepository,
+        )
+
+        pwd = CryptContext(schemes=["bcrypt"], deprecated="auto")
+        user = UserORM(
+            username="limpiadora",
+            password=pwd.hash("pass"),
+            name="Limpiadora",
+            lastname="Test",
+            email="limpiadora@example.com",
+            role="limpiadora",
+        )
+        sqlite_session.add(user)
+        sqlite_session.commit()
+
+        orphan_created = _insert_bill(sqlite_session, apartment_id="O1", state="Creada")
+        orphan_paid = _insert_bill(sqlite_session, apartment_id="O2", state="Pagada")
+        _insert_bill(sqlite_session, apartment_id="O3", state="Cancelada")
+        with_doc = _insert_bill(sqlite_session, apartment_id="O4", state="Creada")
+
+        SQLAlchemyBillDocumentRepository(sqlite_session).create(
+            BillDocument(
+                bill_id=with_doc.bill_id,
+                filename="bill.pdf",
+                nas_path="/facturas/bill.pdf",
+                content_type="application/pdf",
+                size_bytes=10,
+                uploaded_by=user.id,
+                uploaded_at=datetime.now(UTC),
+            )
+        )
+
+        result = SQLAlchemyBillRepository(sqlite_session).list_without_documents()
+
+        assert {b.bill_id for b in result} == {orphan_created.bill_id, orphan_paid.bill_id}

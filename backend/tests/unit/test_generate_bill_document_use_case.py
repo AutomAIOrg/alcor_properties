@@ -12,7 +12,11 @@ from application.bills.generate_and_store_bill_document_use_case import (
     GenerateAndStoreBillDocumentUseCase,
 )
 from domain.apartments.repository import IApartmentRepository
-from domain.bills.bill_document import BILL_DOCUMENT_STATUS_COMPLETED, BILL_DOCUMENT_STATUS_ERROR
+from domain.bills.bill_document import (
+    BILL_DOCUMENT_STATUS_COMPLETED,
+    BILL_DOCUMENT_STATUS_ERROR,
+    BILL_DOCUMENT_STATUS_PROCESSING,
+)
 from domain.bills.bill_document_repository import IBillDocumentRepository
 from domain.bills.repository import IBillRepository
 from domain.exceptions import (
@@ -43,7 +47,8 @@ def _use_case(
         documents = MagicMock(spec=IBillDocumentRepository)
         documents.get_by_bill_id.return_value = None
         documents.list_by_bill_id.return_value = []
-        documents.create.side_effect = lambda doc: doc
+        documents.create.side_effect = lambda doc: doc.model_copy(update={"id": 10})
+        documents.update.side_effect = lambda doc: doc
     if apartments is None:
         apartments = MagicMock(spec=IApartmentRepository)
         apartments.get_by_apartment_id.return_value = make_apartment(address="Calle Glaucio 15")
@@ -60,18 +65,36 @@ def _use_case(
 
 
 class TestGenerateAndStoreBillDocumentUseCase:
-    def test_happy_path_renders_uploads_and_persists(self):
+    def test_happy_path_claims_processing_before_upload(self):
         bill = make_bill(bill_id=1)
         bills = MagicMock(spec=IBillRepository)
         bills.get_by_id.return_value = bill
         documents = MagicMock(spec=IBillDocumentRepository)
         documents.get_by_bill_id.return_value = None
-        documents.list_by_bill_id.return_value = []
         documents.create.side_effect = lambda doc: doc.model_copy(update={"id": 10})
+        documents.update.side_effect = lambda doc: doc
         renderer = MagicMock()
         renderer.render.return_value = _PDF_BYTES
         storage = MagicMock()
         storage.upload_bytes.return_value = f"{_PENDING_FOLDER}/TEST-001 LIMPIEZA 01.06.2026.pdf"
+
+        call_order: list[str] = []
+
+        def track_create(doc):
+            call_order.append(f"create:{doc.status}")
+            return doc.model_copy(update={"id": 10})
+
+        def track_upload(**_kwargs):
+            call_order.append("upload")
+            return f"{_PENDING_FOLDER}/TEST-001 LIMPIEZA 01.06.2026.pdf"
+
+        def track_update(doc):
+            call_order.append(f"update:{doc.status}")
+            return doc
+
+        documents.create.side_effect = track_create
+        documents.update.side_effect = track_update
+        storage.upload_bytes.side_effect = track_upload
 
         result = _use_case(bills, documents, None, renderer, storage).execute(1, uploaded_by=2)
 
@@ -79,8 +102,12 @@ class TestGenerateAndStoreBillDocumentUseCase:
         assert result.bill_id == 1
         assert result.status == BILL_DOCUMENT_STATUS_COMPLETED
         assert result.nas_path.endswith(".pdf")
+        assert call_order[0] == f"create:{BILL_DOCUMENT_STATUS_PROCESSING}"
+        assert "upload" in call_order
+        assert call_order.index(f"create:{BILL_DOCUMENT_STATUS_PROCESSING}") < call_order.index(
+            "upload"
+        )
 
-        # El renderer recibe los datos de negocio de la factura, con la dirección resuelta.
         renderer.render.assert_called_once()
         pdf_data = renderer.render.call_args.args[0]
         assert pdf_data.bill_id == 1
@@ -92,19 +119,17 @@ class TestGenerateAndStoreBillDocumentUseCase:
         assert pdf_data.address == "Calle Glaucio 15"
         assert pdf_data.paid is False
 
-        storage.upload_bytes.assert_called_once()
         call_kwargs = storage.upload_bytes.call_args.kwargs
         assert call_kwargs["remote_folder"] == _PENDING_FOLDER
         assert call_kwargs["content"] == _PDF_BYTES
         documents.create.assert_called_once()
+        documents.update.assert_called()
 
     def test_resolves_address_even_when_apartment_missing(self):
         apartments = MagicMock(spec=IApartmentRepository)
         apartments.get_by_apartment_id.return_value = None
 
         _use_case(apartments=apartments).execute(1, uploaded_by=2)
-
-        # Se tolera un apartamento inexistente: el recibo sale sin dirección.
 
     def test_raises_when_bill_not_found(self):
         bills = MagicMock(spec=IBillRepository)
@@ -145,6 +170,7 @@ class TestGenerateAndStoreBillDocumentUseCase:
         documents = MagicMock(spec=IBillDocumentRepository)
         documents.get_by_bill_id.return_value = None
         documents.create.side_effect = lambda doc: doc.model_copy(update={"id": 10})
+        documents.update.side_effect = lambda doc: doc
         storage = MagicMock()
         storage.upload_bytes.side_effect = FileStorageError("NAS caído")
 
@@ -153,12 +179,16 @@ class TestGenerateAndStoreBillDocumentUseCase:
         assert result.status == BILL_DOCUMENT_STATUS_ERROR
         assert result.last_error is not None
         assert result.next_retry_at is not None
+        documents.create.assert_called_once()
+        assert documents.create.call_args.args[0].status == BILL_DOCUMENT_STATUS_PROCESSING
+        documents.update.assert_called_once()
+        assert documents.update.call_args.args[0].status == BILL_DOCUMENT_STATUS_ERROR
 
-    def test_raises_and_deletes_nas_file_when_db_persist_fails(self):
+    def test_raises_and_deletes_nas_file_when_final_persist_fails(self):
         documents = MagicMock(spec=IBillDocumentRepository)
         documents.get_by_bill_id.return_value = None
-        documents.list_by_bill_id.return_value = []
-        documents.create.side_effect = RuntimeError("db down")
+        documents.create.side_effect = lambda doc: doc.model_copy(update={"id": 10})
+        documents.update.side_effect = RuntimeError("db down")
         storage = MagicMock()
         storage.upload_bytes.return_value = "/facturas/2026-06-01/bill_1.pdf"
 
@@ -170,8 +200,8 @@ class TestGenerateAndStoreBillDocumentUseCase:
     def test_raises_even_when_nas_delete_fails_after_db_persist_error(self):
         documents = MagicMock(spec=IBillDocumentRepository)
         documents.get_by_bill_id.return_value = None
-        documents.list_by_bill_id.return_value = []
-        documents.create.side_effect = RuntimeError("db down")
+        documents.create.side_effect = lambda doc: doc.model_copy(update={"id": 10})
+        documents.update.side_effect = RuntimeError("db down")
         storage = MagicMock()
         storage.upload_bytes.return_value = "/facturas/2026-06-01/bill_1.pdf"
         storage.delete.side_effect = FileStorageError("delete failed")
@@ -189,11 +219,13 @@ class TestGenerateAndStoreBillDocumentUseCase:
         result = _use_case(documents=documents).execute(1, uploaded_by=2)
 
         assert result == existing
+        documents.create.assert_not_called()
 
-    def test_returns_error_document_when_nas_fails_before_persist(self):
+    def test_returns_error_document_when_nas_fails_after_claim(self):
         documents = MagicMock(spec=IBillDocumentRepository)
         documents.get_by_bill_id.return_value = None
-        documents.create.side_effect = lambda doc: doc
+        documents.create.side_effect = lambda doc: doc.model_copy(update={"id": 10})
+        documents.update.side_effect = lambda doc: doc
         storage = MagicMock()
         storage.upload_bytes.side_effect = FileStorageError("NAS caído")
 
@@ -210,7 +242,6 @@ class TestGenerateAndStoreBillDocumentUseCase:
         documents.get_by_bill_id.return_value = existing
         documents.update.side_effect = lambda doc: doc
         storage = MagicMock()
-        # Mismo nombre (misma fecha) → se sobrescribe el archivo, no hay limpieza.
         storage.upload_bytes.return_value = existing.nas_path
 
         result = _use_case(documents=documents, storage=storage).execute(
@@ -219,7 +250,9 @@ class TestGenerateAndStoreBillDocumentUseCase:
 
         assert result.id == 10
         assert result.status == BILL_DOCUMENT_STATUS_COMPLETED
-        documents.update.assert_called_once()
+        assert documents.update.call_count == 2
+        assert documents.update.call_args_list[0].args[0].status == BILL_DOCUMENT_STATUS_PROCESSING
+        assert documents.update.call_args_list[1].args[0].status == BILL_DOCUMENT_STATUS_COMPLETED
         documents.create.assert_not_called()
         storage.delete.assert_not_called()
 
