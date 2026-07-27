@@ -21,16 +21,21 @@ from domain.bills.bill_document import (
     BILL_DOCUMENT_OPERATION_MOVE_TO_PAID,
     BILL_DOCUMENT_STATUS_COMPLETED,
     BILL_DOCUMENT_STATUS_ERROR,
+    BILL_DOCUMENT_STATUS_PENDING,
     BillDocument,
 )
 from domain.bills.bill_document_repository import IBillDocumentRepository
+from domain.bills.entity import BILL_STATE_PAID, Bill
 from domain.bills.repository import IBillRepository
 
 logger = logging.getLogger(__name__)
 
+STALE_PROCESSING_AFTER = timedelta(minutes=15)
+_RETRY_DELAY = timedelta(hours=1)
+
 
 class RetryBillDocumentSyncUseCase:
-    """Procesa documentos pendientes de sincronización para un worker periódico."""
+    """Procesa documentos pendientes de sincronización y facturas huérfanas sin documento."""
 
     def __init__(
         self,
@@ -48,10 +53,59 @@ class RetryBillDocumentSyncUseCase:
         self._file_storage = file_storage
         self._nas_base_path = nas_base_path.rstrip("/")
 
-    def execute(self, limit: int = 100) -> list[BillDocument]:
+    def execute(self, limit: int = 100, *, uploaded_by: int) -> list[BillDocument]:
         now = datetime.now(UTC)
-        documents = self._document_repository.list_retryable(now, limit=limit)
-        return [self._retry_document(document, now) for document in documents]
+        results: list[BillDocument] = []
+        remaining = limit
+
+        orphans = self._bill_repository.list_without_documents(limit=remaining)
+        for bill in orphans:
+            document = self._ensure_orphan_document(bill, uploaded_by=uploaded_by, now=now)
+            results.append(self._retry_document(document, now))
+            remaining -= 1
+            if remaining <= 0:
+                return results
+
+        if remaining > 0:
+            stale_before = now - STALE_PROCESSING_AFTER
+            documents = self._document_repository.list_retryable(
+                now,
+                limit=remaining,
+                stale_processing_before=stale_before,
+            )
+            results.extend(self._retry_document(document, now) for document in documents)
+
+        return results
+
+    def _ensure_orphan_document(
+        self, bill: Bill, *, uploaded_by: int, now: datetime
+    ) -> BillDocument:
+        assert bill.bill_id is not None
+        assert bill.cleaning_date is not None
+        validate_bill_for_document(bill)
+
+        operation = (
+            BILL_DOCUMENT_OPERATION_MOVE_TO_PAID
+            if bill.state == BILL_STATE_PAID
+            else BILL_DOCUMENT_OPERATION_GENERATE_PENDING
+        )
+        folder = self._folder_for_operation(operation)
+        filename = build_bill_document_filename(bill.apartment_id, bill.cleaning_date)
+        return self._document_repository.create(
+            BillDocument(
+                bill_id=bill.bill_id,
+                filename=filename,
+                nas_path=f"{folder}/{filename}",
+                content_type=CONTENT_TYPE_PDF,
+                size_bytes=0,
+                uploaded_by=uploaded_by,
+                uploaded_at=now,
+                status=BILL_DOCUMENT_STATUS_PENDING,
+                operation=operation,
+                attempts=0,
+                next_retry_at=None,
+            )
+        )
 
     def _retry_document(self, document: BillDocument, now: datetime) -> BillDocument:
         try:
@@ -98,7 +152,7 @@ class RetryBillDocumentSyncUseCase:
                         "status": BILL_DOCUMENT_STATUS_ERROR,
                         "attempts": document.attempts + 1,
                         "last_error": str(exc)[:1000],
-                        "next_retry_at": now + timedelta(hours=1),
+                        "next_retry_at": now + _RETRY_DELAY,
                         "completed_at": None,
                     }
                 )
@@ -124,7 +178,7 @@ class RetryBillDocumentSyncUseCase:
                     update={
                         "status": BILL_DOCUMENT_STATUS_ERROR,
                         "last_error": str(exc)[:1000],
-                        "next_retry_at": now + timedelta(hours=1),
+                        "next_retry_at": now + _RETRY_DELAY,
                         "completed_at": None,
                     }
                 )
