@@ -40,6 +40,18 @@ class IBillDocumentRepository(ABC):
         pass
 
     @abstractmethod
-    def list_retryable(self, now: datetime, limit: int = 100) -> list[BillDocument]:
-        """Devuelve documentos pendientes de sincronización que ya pueden reintentarse."""
+    def list_retryable(
+        self,
+        now: datetime,
+        limit: int = 100,
+        *,
+        stale_processing_before: datetime | None = None,
+    ) -> list[BillDocument]:
+        """
+        Devuelve documentos pendientes de sincronización que ya pueden reintentarse.
+
+        Incluye ``Pendiente``/``Error`` con ``next_retry_at`` nulo o vencido, y
+        opcionalmente ``Procesando`` cuyo ``uploaded_at`` es anterior a
+        ``stale_processing_before`` (intentos cortados a mitad de camino).
+        """
         pass

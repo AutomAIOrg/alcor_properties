@@ -4,13 +4,14 @@ Implementación de IBillDocumentRepository usando SQLAlchemy.
 
 from datetime import datetime
 
-from sqlalchemy import or_
+from sqlalchemy import and_, or_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from domain.bills.bill_document import (
     BILL_DOCUMENT_STATUS_ERROR,
     BILL_DOCUMENT_STATUS_PENDING,
+    BILL_DOCUMENT_STATUS_PROCESSING,
     BillDocument,
 )
 from domain.bills.bill_document_repository import IBillDocumentRepository
@@ -105,18 +106,32 @@ class SQLAlchemyBillDocumentRepository(IBillDocumentRepository):
         self._db.refresh(orm)
         return self._to_entity(orm)
 
-    def list_retryable(self, now: datetime, limit: int = 100) -> list[BillDocument]:
+    def list_retryable(
+        self,
+        now: datetime,
+        limit: int = 100,
+        *,
+        stale_processing_before: datetime | None = None,
+    ) -> list[BillDocument]:
+        due_pending_or_error = and_(
+            BillDocumentORM.status.in_([BILL_DOCUMENT_STATUS_PENDING, BILL_DOCUMENT_STATUS_ERROR]),
+            or_(
+                BillDocumentORM.next_retry_at.is_(None),
+                BillDocumentORM.next_retry_at <= now,
+            ),
+        )
+        filters = [due_pending_or_error]
+        if stale_processing_before is not None:
+            filters.append(
+                and_(
+                    BillDocumentORM.status == BILL_DOCUMENT_STATUS_PROCESSING,
+                    BillDocumentORM.uploaded_at <= stale_processing_before,
+                )
+            )
+
         rows = (
             self._db.query(BillDocumentORM)
-            .filter(
-                BillDocumentORM.status.in_(
-                    [BILL_DOCUMENT_STATUS_PENDING, BILL_DOCUMENT_STATUS_ERROR]
-                ),
-                or_(
-                    BillDocumentORM.next_retry_at.is_(None),
-                    BillDocumentORM.next_retry_at <= now,
-                ),
-            )
+            .filter(or_(*filters))
             .order_by(BillDocumentORM.uploaded_at.asc())
             .limit(limit)
             .all()
