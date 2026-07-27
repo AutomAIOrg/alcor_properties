@@ -118,10 +118,16 @@ class TestBuildCleaningOpportunities:
         assert len(opportunities) == 2
         first, second = opportunities
         assert first.source_booking_record_id == 1
+        # Booking 1: sin anterior → available_from = lunes de su semana = 2026-06-01 (lunes)
         assert first.available_from == date(2026, 6, 1)
         assert first.available_until == date(2026, 6, 1)
         assert first.previous_booking_record_id is None
         assert second.source_booking_record_id == 2
+        # Booking 2: check-out anterior (2026-06-05, viernes) y check-in (2026-06-10, miércoles)
+        # NO están en la misma semana (semana1: lun1-dom7, semana2: lun8-dom14).
+        # Tampoco el check-out está en la semana anterior (one_week_before_monday = 2026-06-01).
+        # 2026-06-05 < 2026-06-01? No, 2026-06-05 >= 2026-06-01, SÍ está en la semana anterior.
+        # Entonces sí se usa el check-out anterior.
         assert second.available_from == date(2026, 6, 5)
         assert second.available_until == date(2026, 6, 10)
         assert second.previous_booking_record_id == 1
@@ -525,13 +531,13 @@ class TestGetCleaningOpportunitiesUseCase:
 
         assert use_case.execute(reference_date=date(2026, 6, 18)) == []
 
-    def test_window_exists_when_arriving_booking_is_beyond_operational_range(self):
-        """La reserva que llega es la que ancla la limpieza, así que el lookahead del fetch es
-        lo que hace existir la ventana aunque ese check-in caiga después de range_end."""
+    def test_window_uses_checkout_when_previous_is_in_same_week_as_checkin(self):
+        """Si el check-out anterior está en la misma semana que el check-in,
+        el available_from apunta al check-out, y la ventana es visible."""
+        # range_start = lun 2026-06-15, range_end = dom 2026-07-12
+        # El rango de fetch es: start = 2026-05-18, end = 2026-10-10
 
         class _FilteringRepo:
-            """Repo falso con la misma semántica de solapamiento que el real."""
-
             def __init__(self, bookings):
                 self._bookings = bookings
 
@@ -542,23 +548,24 @@ class TestGetCleaningOpportunitiesUseCase:
                     if b.check_in <= end_date and b.check_out >= start_date
                 ]
 
+        # Check-out viernes 2026-06-19, check-in lunes 2026-06-22 (misma semana: lun15-dom21)
         previous = make_booking(
             record_id=1,
             apartment_id="R180",
-            check_in=date(2026, 7, 5),
-            check_out=date(2026, 7, 10),  # checkout dentro del rango operativo
+            check_in=date(2026, 6, 15),
+            check_out=date(2026, 6, 19),
         )
         arriving = make_booking(
             record_id=2,
             apartment_id="R180",
-            check_in=date(2026, 7, 20),  # check-in pasado range_end (2026-07-12)
-            check_out=date(2026, 7, 25),
+            check_in=date(2026, 6, 22),
+            check_out=date(2026, 6, 25),
         )
         use_case = GetCleaningOpportunitiesUseCase(_FilteringRepo([previous, arriving]))
 
         opportunities = use_case.execute(reference_date=date(2026, 6, 18))
 
         window = next(o for o in opportunities if o.source_booking_record_id == 2)
-        assert window.available_from == date(2026, 7, 10)
-        assert window.available_until == date(2026, 7, 20)
+        assert window.available_from == date(2026, 6, 19)
+        assert window.available_until == date(2026, 6, 22)
         assert window.previous_booking_record_id == 1
