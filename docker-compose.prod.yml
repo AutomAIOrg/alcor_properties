@@ -40,6 +40,31 @@ services:
         max-size: "10m"
         max-file: "3"
 
+  bill-docs-retry:
+    image: alcor-backend:${IMAGE_TAG:-latest}
+    env_file:
+      - .env.production
+    environment:
+      ALCOR_IGNORE_ENV_FILE: "1"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        while true; do
+          python scripts/retry_bill_documents.py || true
+          sleep 3600
+        done
+    healthcheck:
+      disable: true
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
   web:
     build:
       context: .
