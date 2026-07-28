@@ -190,4 +190,10 @@ export class BookingModalComponent {
   private isNonBlockingStatus(status: string | null | undefined): boolean {
     return status?.trim().toLowerCase() === 'cancelled';
   }
+
+  /** Limpia el teléfono dejando solo dígitos para wa.me */
+  cleanPhone(phone: string | null | undefined): string {
+    if (!phone) return '';
+    return phone.replace(/\D/g, '');
+  }
 }
