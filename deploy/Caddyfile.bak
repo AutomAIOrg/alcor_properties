@@ -1,7 +1,3 @@
-{
-	default_sni {$APP_DOMAIN:localhost}
-}
-
 # Dominio público (HTTPS automático con Let's Encrypt salvo localhost).
 # Variable inyectada por docker-compose.prod.yml: APP_DOMAIN
 {$APP_DOMAIN:localhost} {
