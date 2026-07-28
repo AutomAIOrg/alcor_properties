@@ -363,7 +363,10 @@ export class CleaningOrganizationComponent implements OnInit, OnDestroy {
     if (!this.canGenerateInvoice(opportunity)) return;
 
     this.selectedInvoiceOpportunity.set(opportunity);
-    this.cleaningDate.set(this.layout.toIso(new Date()));
+    // Por defecto la fecha de limpieza es la fecha desde la que se puede facturar
+    // (availableFromDate), no la fecha actual. Así la limpiadora filtra correctamente
+    // desde que la ventana está abierta.
+    this.cleaningDate.set(opportunity.availableFromDate);
     this.startTime.set('');
     this.endTime.set('');
     this.selectedCleaningTypeId.set(null);
@@ -574,9 +577,6 @@ export class CleaningOrganizationComponent implements OnInit, OnDestroy {
 
   openTimesModal(opportunity: CleaningWindow, field: TimeField): void {
     if (!this.isAdmin()) return;
-    // Sin reserva anterior no hay salida real: la hora mostrada es la estándar del lunes y no
-    // hay reserva donde escribirla.
-    if (field === 'checkOut' && opportunity.previousBookingRecordId === null) return;
 
     this.selectedTimesOpportunity.set(opportunity);
     this.editingTimeField.set(field);
@@ -622,7 +622,7 @@ export class CleaningOrganizationComponent implements OnInit, OnDestroy {
     }
 
     const recordId = editsCheckOut
-      ? opportunity.previousBookingRecordId!
+      ? (opportunity.previousBookingRecordId ?? opportunity.sourceBookingRecordId)
       : opportunity.sourceBookingRecordId;
     const payload: Partial<Booking> = editsCheckOut
       ? { check_out_time: time }

@@ -182,18 +182,17 @@ class TestCreateBillUseCase:
         arriving = make_booking(
             record_id=5,
             apartment_id="R180",
-            check_in=date(2099, 12, 1),
-            check_out=date(2099, 12, 10),
+            check_in=date(2026, 6, 25),  # jueves, misma semana que _NOW (lun 22)
+            check_out=date(2026, 7, 5),
         )
         bookings.get_by_id.return_value = arriving
-        # La reserva anterior ya salió, así que el piso está libre y la limpieza es facturable
-        # aunque la entrada que prepara sea futura.
+        # La reserva anterior salió el lunes de la misma semana (ventana abierta desde el check-out).
         bookings.get_all_by_apartment_id.return_value = [
             make_booking(
                 record_id=4,
                 apartment_id="R180",
-                check_in=date(2026, 1, 5),
-                check_out=date(2026, 1, 9),
+                check_in=date(2026, 6, 15),
+                check_out=date(2026, 6, 22),  # lunes, misma semana que el check-in (lun 22)
             ),
             arriving,
         ]

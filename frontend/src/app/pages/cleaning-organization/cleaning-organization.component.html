@@ -131,7 +131,7 @@
                 <td>
                   <div class="time-cell">
                     <span>{{ formatTime(opportunity.availableFromTime) }}</span>
-                    @if (isAdmin() && opportunity.previousBookingRecordId !== null) {
+                    @if (isAdmin()) {
                       <button
                         class="icon-btn time-edit-btn"
                         type="button"

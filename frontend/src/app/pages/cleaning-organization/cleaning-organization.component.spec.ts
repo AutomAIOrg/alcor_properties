@@ -1010,24 +1010,52 @@ describe('CleaningOrganizationComponent', () => {
     expect(fixture.nativeElement.querySelector('.comment-dialog')).toBeNull();
   });
 
-  it('no ofrece editar la hora de salida si no hay reserva anterior', () => {
+  it('permite editar la hora de salida incluso sin reserva anterior', () => {
     setup(
       [
         makeCleaningOpportunity({
           source_booking_record_id: 1,
           previous_booking_record_id: null,
+          available_from_time: '11:00:00',
+          available_until_time: '16:00:00',
         }),
       ],
       true
     );
+    bookingServiceSpy.updateBooking.mockReturnValue(of(makeBooking()));
 
     component.currentDate.set(new Date(2026, 5, 3));
     fixture.detectChanges();
 
-    // Sin salida real que editar solo queda el lápiz de la hora de entrada.
+    // Sin reserva anterior aun se muestra el lápiz de salida y su hora.
     const pencils = fixture.nativeElement.querySelectorAll('.time-edit-btn');
-    expect(pencils.length).toBe(1);
-    expect(pencils[0].getAttribute('title')).toBe('Editar hora de entrada');
+    expect(pencils.length).toBe(2);
+    expect(pencils[0].getAttribute('title')).toBe('Editar hora de salida');
+    expect(pencils[1].getAttribute('title')).toBe('Editar hora de entrada');
+
+    // La hora de salida se muestra y se puede editar (se guarda en la propia reserva que llega).
+    const [checkOutPencil] = pencils as HTMLButtonElement[];
+    checkOutPencil.click();
+    fixture.detectChanges();
+
+    const inputs = fixture.nativeElement.querySelectorAll('.times-form-grid input[type="time"]');
+    expect(inputs.length).toBe(1);
+    expect((inputs[0] as HTMLInputElement).value).toBe('11:00');
+    expect(fixture.nativeElement.textContent).toContain('Editar hora de salida');
+
+    (inputs[0] as HTMLInputElement).value = '13:30';
+    inputs[0].dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+
+    const acceptButton: HTMLButtonElement = fixture.nativeElement.querySelector('.primary-btn');
+    acceptButton.click();
+    fixture.detectChanges();
+
+    // Como no hay reserva anterior, se guarda en la propia reserva que llega.
+    expect(bookingServiceSpy.updateBooking).toHaveBeenCalledWith(1, { check_out_time: '13:30' });
+    expect(component.cleaningOpportunities()[0].availableFromTime).toBe('13:30');
+    expect(component.cleaningOpportunities()[0].availableUntilTime).toBe('16:00:00');
+    expect(fixture.nativeElement.textContent).toContain('Hora guardada con éxito');
   });
 
   it('muestra toast de error si falla al guardar la hora', () => {
