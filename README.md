@@ -326,14 +326,17 @@ Si una migración ya se aplicó, el rollback de código puede requerir restaurar
 
 ```bash
 docker compose -f docker-compose.prod.yml logs -f backend
+docker compose -f docker-compose.prod.yml logs -f bill-docs-retry
 docker compose -f docker-compose.prod.yml logs -f web
 docker compose -f docker-compose.prod.yml ps
 ```
 
-Reintentar sincronización de documentos de factura con el NAS (cron opcional en el host):
+El servicio `bill-docs-retry` reintenta cada hora la sincronización de PDFs con el NAS
+(documentos en error/pendientes, intentos `Procesando` cortados y facturas sin documento).
+Para forzar un ciclo manual:
 
 ```bash
-docker compose -f docker-compose.prod.yml exec backend python scripts/retry_bill_documents.py
+docker compose -f docker-compose.prod.yml exec bill-docs-retry python scripts/retry_bill_documents.py
 ```
 
 ### Smoke tests post-despliegue

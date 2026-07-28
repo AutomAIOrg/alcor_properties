@@ -2,6 +2,7 @@
 Interfaz abstracta de repositorio para el dominio de Facturas.
 """
 
+import builtins
 from abc import ABC, abstractmethod
 from datetime import date
 
@@ -75,5 +76,14 @@ class IBillRepository(ABC):
     def delete_cancelled_for_booking(self, record_id: int) -> None:
         """
         Elimina la factura cancelada asociada a *record_id*, si existe.
+        """
+        pass
+
+    @abstractmethod
+    def list_without_documents(self, limit: int = 100) -> builtins.list[Bill]:
+        """
+        Devuelve facturas activas (Creada/Pagada) sin fila en ``bill_documents``.
+
+        Usado por el worker de reintento NAS para recuperar facturas huérfanas.
         """
         pass

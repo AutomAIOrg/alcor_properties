@@ -21,6 +21,15 @@ def _build_parser() -> argparse.ArgumentParser:
         default=100,
         help="Número máximo de documentos a procesar en esta ejecución.",
     )
+    parser.add_argument(
+        "--uploaded-by",
+        type=int,
+        default=None,
+        help=(
+            "ID de usuario para documentos huérfanos creados en este ciclo. "
+            "Por defecto, el primer usuario de la base de datos."
+        ),
+    )
     return parser
 
 
@@ -43,6 +52,21 @@ def _build_file_storage():
     )
 
 
+def _resolve_uploaded_by(session, explicit_user_id: int | None) -> int:
+    from infrastructure.models.user import UserORM
+
+    if explicit_user_id is not None:
+        return explicit_user_id
+
+    user = session.query(UserORM).order_by(UserORM.id.asc()).first()
+    if user is None:
+        raise RuntimeError(
+            "No hay usuarios en la base de datos para atribuir documentos huérfanos; "
+            "pase --uploaded-by."
+        )
+    return user.id
+
+
 def main(argv: list[str] | None = None) -> int:
     from application.bills.retry_bill_document_sync_use_case import RetryBillDocumentSyncUseCase
     from config import settings
@@ -62,6 +86,7 @@ def main(argv: list[str] | None = None) -> int:
         raise RuntimeError("--limit debe ser mayor que cero.")
 
     with SessionLocal() as session:
+        uploaded_by = _resolve_uploaded_by(session, args.uploaded_by)
         use_case = RetryBillDocumentSyncUseCase(
             bill_repository=SQLAlchemyBillRepository(session),
             document_repository=SQLAlchemyBillDocumentRepository(session),
@@ -70,7 +95,7 @@ def main(argv: list[str] | None = None) -> int:
             file_storage=_build_file_storage(),
             nas_base_path=settings.NAS_BASE_PATH,
         )
-        results = use_case.execute(limit=args.limit)
+        results = use_case.execute(limit=args.limit, uploaded_by=uploaded_by)
 
     completed = sum(1 for document in results if document.status == BILL_DOCUMENT_STATUS_COMPLETED)
     failed = len(results) - completed

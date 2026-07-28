@@ -2,15 +2,17 @@
 Implementación de IBillRepository usando SQLAlchemy.
 """
 
+import builtins
 from datetime import date
 
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from domain.bills.entity import BILL_STATE_CANCELLED, Bill
+from domain.bills.entity import BILL_STATE_CANCELLED, BILL_STATE_CREATED, BILL_STATE_PAID, Bill
 from domain.bills.repository import IBillRepository
 from domain.exceptions import BillAlreadyExistsError, BillNotFoundError
 from infrastructure.models.bill import BillORM
+from infrastructure.models.bill_document import BillDocumentORM
 
 
 class SQLAlchemyBillRepository(IBillRepository):
@@ -174,6 +176,21 @@ class SQLAlchemyBillRepository(IBillRepository):
         if orm is not None:
             self._db.delete(orm)
             self._db.commit()
+
+    def list_without_documents(self, limit: int = 100) -> builtins.list[Bill]:
+        """Devuelve facturas Creada/Pagada sin documento asociado."""
+        rows = (
+            self._db.query(BillORM)
+            .outerjoin(BillDocumentORM, BillDocumentORM.bill_id == BillORM.bill_id)
+            .filter(
+                BillDocumentORM.id.is_(None),
+                BillORM.state.in_([BILL_STATE_CREATED, BILL_STATE_PAID]),
+            )
+            .order_by(BillORM.bill_id.asc())
+            .limit(limit)
+            .all()
+        )
+        return [self._to_entity(orm) for orm in rows]
 
     # ------------------------------------------------------------------ #
     # Helpers privados de conversión                                   #

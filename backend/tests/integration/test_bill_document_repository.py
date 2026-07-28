@@ -7,7 +7,11 @@ from datetime import UTC, datetime
 import pytest
 from passlib.context import CryptContext
 
-from domain.bills.bill_document import BILL_DOCUMENT_STATUS_ERROR, BillDocument
+from domain.bills.bill_document import (
+    BILL_DOCUMENT_STATUS_ERROR,
+    BILL_DOCUMENT_STATUS_PROCESSING,
+    BillDocument,
+)
 from domain.exceptions import BillDocumentAlreadyExistsError
 from infrastructure.models.bill import BillORM
 from infrastructure.models.user import UserORM
@@ -155,3 +159,34 @@ class TestSQLAlchemyBillDocumentRepository:
         assert len(retryable) == 1
         assert retryable[0].status == BILL_DOCUMENT_STATUS_ERROR
         assert retryable[0].next_retry_at == retry_at.replace(tzinfo=None)
+
+    def test_list_retryable_includes_stale_processing_documents(self, sqlite_session):
+        bill_id, user_id = _seed_bill_and_user(sqlite_session)
+        repo = SQLAlchemyBillDocumentRepository(sqlite_session)
+
+        repo.create(
+            BillDocument(
+                bill_id=bill_id,
+                filename="bill_1.pdf",
+                nas_path="/facturas/1FACTURAS PENDIENTE/bill_1.pdf",
+                content_type="application/pdf",
+                size_bytes=0,
+                uploaded_by=user_id,
+                uploaded_at=datetime(2026, 6, 1, 10, 0, tzinfo=UTC),
+                status=BILL_DOCUMENT_STATUS_PROCESSING,
+                attempts=1,
+            )
+        )
+
+        fresh = repo.list_retryable(
+            datetime(2026, 6, 1, 10, 5, tzinfo=UTC),
+            stale_processing_before=datetime(2026, 6, 1, 9, 45, tzinfo=UTC),
+        )
+        assert fresh == []
+
+        stale = repo.list_retryable(
+            datetime(2026, 6, 1, 10, 20, tzinfo=UTC),
+            stale_processing_before=datetime(2026, 6, 1, 10, 5, tzinfo=UTC),
+        )
+        assert len(stale) == 1
+        assert stale[0].status == BILL_DOCUMENT_STATUS_PROCESSING

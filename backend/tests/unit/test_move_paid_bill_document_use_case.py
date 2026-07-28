@@ -8,7 +8,11 @@ import pytest
 
 from application.bills.move_paid_bill_document_use_case import MovePaidBillDocumentUseCase
 from domain.apartments.repository import IApartmentRepository
-from domain.bills.bill_document import BILL_DOCUMENT_STATUS_COMPLETED, BILL_DOCUMENT_STATUS_ERROR
+from domain.bills.bill_document import (
+    BILL_DOCUMENT_STATUS_COMPLETED,
+    BILL_DOCUMENT_STATUS_ERROR,
+    BILL_DOCUMENT_STATUS_PROCESSING,
+)
 from domain.bills.bill_document_repository import IBillDocumentRepository
 from domain.bills.repository import IBillRepository
 from domain.exceptions import BillNotFoundError, DomainValidationError, FileStorageError
@@ -36,6 +40,7 @@ def _use_case(
         documents = MagicMock(spec=IBillDocumentRepository)
         documents.list_by_bill_id.return_value = [make_bill_document(id=10, nas_path=_PENDING_PATH)]
         documents.update.side_effect = lambda doc: doc
+        documents.create.side_effect = lambda doc: doc.model_copy(update={"id": 11})
     if apartments is None:
         apartments = MagicMock(spec=IApartmentRepository)
         apartments.get_by_apartment_id.return_value = make_apartment()
@@ -62,10 +67,26 @@ class TestMovePaidBillDocumentUseCase:
         storage = MagicMock()
         storage.upload_bytes.return_value = _PAID_PATH
 
+        call_order: list[str] = []
+
+        def track_update(doc):
+            call_order.append(doc.status)
+            return doc
+
+        def track_upload(**_kwargs):
+            call_order.append("upload")
+            return _PAID_PATH
+
+        documents.update.side_effect = track_update
+        storage.upload_bytes.side_effect = track_upload
+
         result = _use_case(bills, documents, renderer, storage).execute(1, uploaded_by=2)
 
         assert result.nas_path == _PAID_PATH
         assert result.status == BILL_DOCUMENT_STATUS_COMPLETED
+        assert result.previous_nas_path is None
+        assert call_order[0] == BILL_DOCUMENT_STATUS_PROCESSING
+        assert call_order.index(BILL_DOCUMENT_STATUS_PROCESSING) < call_order.index("upload")
         renderer.render.assert_called_once()
         pdf_data = renderer.render.call_args.args[0]
         assert pdf_data.bill_id == 1
@@ -76,7 +97,6 @@ class TestMovePaidBillDocumentUseCase:
         assert pdf_data.cost == bill.cost
         call_kwargs = storage.upload_bytes.call_args.kwargs
         assert call_kwargs["remote_folder"] == "/facturas/1FACTURAS PAGADAS"
-        documents.update.assert_called_once()
         documents.create.assert_not_called()
         storage.delete.assert_called_once_with(_PENDING_PATH)
 
@@ -84,13 +104,16 @@ class TestMovePaidBillDocumentUseCase:
         documents = MagicMock(spec=IBillDocumentRepository)
         documents.list_by_bill_id.return_value = []
         documents.create.side_effect = lambda doc: doc.model_copy(update={"id": 11})
+        documents.update.side_effect = lambda doc: doc
 
         result = _use_case(documents=documents).execute(1, uploaded_by=2)
 
         assert result.id == 11
         assert result.nas_path == _PAID_PATH
         documents.create.assert_called_once()
-        documents.update.assert_not_called()
+        assert documents.create.call_args.args[0].status == BILL_DOCUMENT_STATUS_PROCESSING
+        documents.update.assert_called()
+        assert documents.update.call_args.args[0].status == BILL_DOCUMENT_STATUS_COMPLETED
 
     def test_raises_when_bill_not_found(self):
         bills = MagicMock(spec=IBillRepository)
@@ -119,7 +142,16 @@ class TestMovePaidBillDocumentUseCase:
     def test_compensates_upload_when_db_update_fails(self):
         documents = MagicMock(spec=IBillDocumentRepository)
         documents.list_by_bill_id.return_value = [make_bill_document(id=10, nas_path=_PENDING_PATH)]
-        documents.update.side_effect = RuntimeError("db down")
+        # Primer update = claim Procesando; segundo = Completado → falla.
+        updates = {"n": 0}
+
+        def update_side_effect(doc):
+            updates["n"] += 1
+            if updates["n"] == 1:
+                return doc
+            raise RuntimeError("db down")
+
+        documents.update.side_effect = update_side_effect
         storage = MagicMock()
         storage.upload_bytes.return_value = _PAID_PATH
 
