@@ -14,6 +14,7 @@ import {
   BillReceiptData,
   billToReceiptData,
 } from '../../shared/components/bill-receipt/bill-receipt.component';
+import { BookingModalComponent } from '../../shared/components/booking-modal/booking-modal.component';
 import { DismissableBackdropDirective } from '../../shared/directives/dismissable-backdrop.directive';
 import { billStateLabel } from '../../shared/utils/bill-transitions';
 
@@ -70,7 +71,12 @@ interface ToastMessage {
 @Component({
   selector: 'app-cleaning-organization',
   standalone: true,
-  imports: [CurrencyPipe, BillReceiptComponent, DismissableBackdropDirective],
+  imports: [
+    CurrencyPipe,
+    BillReceiptComponent,
+    BookingModalComponent,
+    DismissableBackdropDirective,
+  ],
   templateUrl: './cleaning-organization.component.html',
   styleUrl: './cleaning-organization.component.scss',
 })
@@ -82,6 +88,7 @@ export class CleaningOrganizationComponent implements OnInit, OnDestroy {
   private layout = inject(CalendarLayoutService);
   private apartmentColor = inject(ApartmentColorService);
   private toastTimeout: ReturnType<typeof setTimeout> | null = null;
+  private bookingRequestId = 0;
 
   readonly weekdays = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
   readonly pendingTime = 'Pendiente';
@@ -119,9 +126,15 @@ export class CleaningOrganizationComponent implements OnInit, OnDestroy {
   previewEmissionIso = signal('');
   billReceiptView = signal<BillReceiptData | null>(null);
   isLoadingBillReceipt = signal(false);
+  // Reserva abierta en el modal de detalle (el mismo componente que usa el calendario).
+  selectedBooking = signal<Booking | null>(null);
+  isLoadingBooking = signal(false);
   toast = signal<ToastMessage | null>(null);
   isAdmin = computed(() => this.authService.hasRole('admin'));
   canCreateBill = computed(() => this.authService.hasPermission('bills:create'));
+  // El detalle de reserva es la vista del calendario, así que se rige por su mismo permiso:
+  // hoy solo lo tiene administración. Las limpiadoras siguen viendo la tabla tal cual.
+  canViewBookingDetail = computed(() => this.authService.hasPermission('calendar:access'));
 
   // El diálogo edita una sola hora: la que se ha pulsado manda en el título, la etiqueta,
   // la fecha mostrada y la hora estándar de referencia.
@@ -457,6 +470,45 @@ export class CleaningOrganizationComponent implements OnInit, OnDestroy {
 
   closeBillReceipt(): void {
     this.billReceiptView.set(null);
+  }
+
+  // ─── Detalle de reserva ──────────────────────────────────────────────────────
+  // Abre el mismo modal que el calendario, con la reserva que llega: es la que identifica
+  // la limpieza y de la que salen las columnas de entrada, ocupantes, noches y comentarios.
+  // La tabla solo trae el record_id, así que hay que pedir la reserva completa.
+  openBookingDetail(opportunity: CleaningWindow): void {
+    if (!this.canViewBookingDetail() || this.isLoadingBooking()) return;
+
+    const requestId = ++this.bookingRequestId;
+    this.isLoadingBooking.set(true);
+
+    this.bookingService.getBooking(opportunity.sourceBookingRecordId).subscribe({
+      next: booking => {
+        if (requestId !== this.bookingRequestId) return;
+        this.isLoadingBooking.set(false);
+        this.selectedBooking.set(booking);
+      },
+      error: () => {
+        if (requestId !== this.bookingRequestId) return;
+        this.isLoadingBooking.set(false);
+        this.showToast('error', 'No se ha podido cargar la reserva.');
+      },
+    });
+  }
+
+  closeBookingDetail(): void {
+    // Invalida cualquier petición en vuelo: si el usuario cierra antes de que llegue,
+    // el modal no debe abrirse solo después.
+    this.bookingRequestId++;
+    this.isLoadingBooking.set(false);
+    this.selectedBooking.set(null);
+  }
+
+  // Tras guardar en el modal se recargan las limpiezas: cambiar fechas, horas o estado de la
+  // reserva altera la ventana de limpieza que muestra esta pantalla.
+  onBookingSaved(updated: Booking): void {
+    this.selectedBooking.set(updated);
+    this.loadBookings();
   }
 
   updateCleaningDate(event: Event): void {

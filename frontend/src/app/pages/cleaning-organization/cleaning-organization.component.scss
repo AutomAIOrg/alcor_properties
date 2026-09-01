@@ -223,6 +223,30 @@
   pointer-events: none;
 }
 
+// Misma etiqueta, pero abre el detalle de la reserva. Ocupa toda la barra para que la
+// zona pulsable sea la barra entera, y anula los estilos propios del <button> para que
+// se vea igual que la versión estática que ven las limpiadoras.
+.bar-label--action {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  border: none;
+  background: none;
+  font-family: inherit;
+  text-align: left;
+  pointer-events: auto;
+  cursor: pointer;
+
+  &:focus-visible {
+    outline: 2px solid #fff;
+    outline-offset: -3px;
+  }
+
+  &:disabled {
+    cursor: progress;
+  }
+}
+
 .notice {
   margin-bottom: 1rem;
   padding: 0.75rem;
@@ -306,6 +330,32 @@ table {
   font-weight: 700;
   line-height: 1;
   padding: 0.35rem 0.55rem;
+}
+
+// Mismo chip, pero abre el detalle de la reserva. Se anulan los estilos propios del
+// <button> para que sea indistinguible de la versión estática que ven las limpiadoras.
+.reference-chip--action {
+  border: none;
+  font-family: inherit;
+  cursor: pointer;
+  transition:
+    filter 0.15s,
+    box-shadow 0.15s;
+
+  &:hover:not(:disabled) {
+    filter: brightness(1.08);
+    box-shadow: 0 1px 4px rgba(16, 24, 40, 0.2);
+  }
+
+  &:focus-visible {
+    outline: 2px solid #1d4ed8;
+    outline-offset: 2px;
+  }
+
+  &:disabled {
+    cursor: progress;
+    opacity: 0.7;
+  }
 }
 
 .comments-text {

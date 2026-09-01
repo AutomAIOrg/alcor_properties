@@ -1,6 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { HttpErrorResponse } from '@angular/common/http';
-import { of, throwError } from 'rxjs';
+import { of, Subject, throwError } from 'rxjs';
 
 import { CleaningOrganizationComponent } from './cleaning-organization.component';
 import { AuthService } from '../../auth/auth.service';
@@ -114,7 +114,9 @@ describe('CleaningOrganizationComponent', () => {
   ): void {
     bookingServiceSpy = {
       getCleaningOpportunities: jest.fn().mockReturnValue(of(opportunities)),
+      getBooking: jest.fn().mockReturnValue(of(makeBooking())),
       updateBooking: jest.fn(),
+      searchBookings: jest.fn().mockReturnValue(of([])),
     } as unknown as jest.Mocked<BookingService>;
 
     billServiceSpy = {
@@ -130,6 +132,8 @@ describe('CleaningOrganizationComponent', () => {
       hasRole: jest.fn().mockReturnValue(isAdmin),
       hasPermission: jest.fn().mockImplementation((permission: string) => {
         if (permission === 'bills:create') return canCreateBill;
+        // Solo administración tiene acceso al calendario (y, por tanto, a su modal).
+        if (permission === 'calendar:access') return isAdmin;
         return true;
       }),
     } as unknown as jest.Mocked<AuthService>;
@@ -1126,5 +1130,128 @@ describe('CleaningOrganizationComponent', () => {
       'No se han podido cargar las reservas para organizar las limpiezas.'
     );
     expect(fixture.nativeElement.textContent).toContain('No se han podido cargar las reservas');
+  });
+
+  // ── Detalle de reserva (el modal del calendario) ────────────────────────────────
+
+  describe('detalle de reserva', () => {
+    // Las filas solo se pintan si la limpieza cae en la semana mostrada.
+    function setupWithRow(opportunities: CleaningOpportunityDto[], isAdmin: boolean): void {
+      setup(opportunities, isAdmin);
+      component.currentDate.set(new Date(2026, 5, 3));
+      fixture.detectChanges();
+    }
+
+    function chipButton(): HTMLButtonElement | null {
+      return fixture.nativeElement.querySelector('.reference-chip--action');
+    }
+
+    it('administración abre el modal del calendario con la reserva que llega', () => {
+      setupWithRow([makeCleaningOpportunity({ source_booking_record_id: 7 })], true);
+      bookingServiceSpy.getBooking.mockReturnValue(of(makeBooking({ record_id: 7 })));
+
+      chipButton()!.click();
+      fixture.detectChanges();
+
+      expect(bookingServiceSpy.getBooking).toHaveBeenCalledWith(7);
+      expect(component.selectedBooking()?.record_id).toBe(7);
+      expect(fixture.nativeElement.querySelector('app-booking-modal')).not.toBeNull();
+    });
+
+    it('administración también abre el modal desde la barra de la semana', () => {
+      setupWithRow([makeCleaningOpportunity({ source_booking_record_id: 9 })], true);
+      bookingServiceSpy.getBooking.mockReturnValue(of(makeBooking({ record_id: 9 })));
+
+      const bar: HTMLButtonElement = fixture.nativeElement.querySelector(
+        '.cleaning-bar .bar-label--action'
+      );
+      expect(bar).not.toBeNull();
+
+      bar.click();
+      fixture.detectChanges();
+
+      expect(bookingServiceSpy.getBooking).toHaveBeenCalledWith(9);
+      expect(fixture.nativeElement.querySelector('app-booking-modal')).not.toBeNull();
+    });
+
+    it('para limpiadora la barra de la semana no es pulsable', () => {
+      setupWithRow([makeCleaningOpportunity()], false);
+
+      expect(fixture.nativeElement.querySelector('.bar-label--action')).toBeNull();
+      // La barra y su etiqueta siguen estando, solo que sin pulsación.
+      expect(fixture.nativeElement.querySelector('.cleaning-bar .bar-label')).not.toBeNull();
+    });
+
+    it('el modal permite editar la reserva', () => {
+      setupWithRow([makeCleaningOpportunity()], true);
+
+      chipButton()!.click();
+      fixture.detectChanges();
+
+      // El botón "Editar reserva" lo pinta el propio modal compartido. La consulta se acota
+      // al modal porque la tabla de limpiezas tiene su propio .edit-btn (editar comentario).
+      const editButton: HTMLButtonElement = fixture.nativeElement.querySelector(
+        'app-booking-modal .edit-btn'
+      );
+      expect(editButton).not.toBeNull();
+      expect(editButton.textContent).toContain('Editar reserva');
+    });
+
+    it('para limpiadora el piso no es pulsable y el modal no se abre', () => {
+      setupWithRow([makeCleaningOpportunity()], false);
+
+      expect(chipButton()).toBeNull();
+      // El chip sigue ahí, solo que estático.
+      expect(fixture.nativeElement.querySelector('.reference-chip')).not.toBeNull();
+
+      // Ni siquiera invocándolo a mano: el permiso se comprueba también en el método.
+      component.openBookingDetail(component.cleaningOpportunities()[0]);
+      fixture.detectChanges();
+
+      expect(bookingServiceSpy.getBooking).not.toHaveBeenCalled();
+      expect(component.selectedBooking()).toBeNull();
+      expect(fixture.nativeElement.querySelector('app-booking-modal')).toBeNull();
+    });
+
+    it('guardar en el modal recarga las limpiezas de la semana', () => {
+      setupWithRow([makeCleaningOpportunity()], true);
+      bookingServiceSpy.getCleaningOpportunities.mockClear();
+
+      component.onBookingSaved(makeBooking({ guest_name: 'Editada' }));
+
+      expect(component.selectedBooking()?.guest_name).toBe('Editada');
+      expect(bookingServiceSpy.getCleaningOpportunities).toHaveBeenCalledTimes(1);
+    });
+
+    it('si la reserva no se puede cargar, avisa y no abre el modal', () => {
+      setupWithRow([makeCleaningOpportunity()], true);
+      bookingServiceSpy.getBooking.mockReturnValue(
+        throwError(() => new HttpErrorResponse({ status: 404 }))
+      );
+
+      chipButton()!.click();
+      fixture.detectChanges();
+
+      expect(component.selectedBooking()).toBeNull();
+      expect(component.isLoadingBooking()).toBe(false);
+      expect(component.toast()?.type).toBe('error');
+      expect(fixture.nativeElement.querySelector('app-booking-modal')).toBeNull();
+    });
+
+    it('cerrar el modal descarta una petición que aún esté en vuelo', () => {
+      setupWithRow([makeCleaningOpportunity()], true);
+
+      const pending = new Subject<Booking>();
+      bookingServiceSpy.getBooking.mockReturnValue(pending.asObservable());
+
+      chipButton()!.click();
+      component.closeBookingDetail();
+      pending.next(makeBooking());
+      pending.complete();
+      fixture.detectChanges();
+
+      expect(component.selectedBooking()).toBeNull();
+      expect(fixture.nativeElement.querySelector('app-booking-modal')).toBeNull();
+    });
   });
 });
