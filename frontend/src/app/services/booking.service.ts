@@ -58,6 +58,10 @@ export class BookingService {
     return this.http.get<BookingStatsResponse>(`${this.API}/stats`, { params });
   }
 
+  getBooking(recordId: number): Observable<Booking> {
+    return this.http.get<Booking>(`${this.API}/${recordId}`);
+  }
+
   updateBooking(recordId: number, data: Partial<Booking>): Observable<Booking> {
     return this.http.put<Booking>(`${this.API}/${recordId}`, data);
   }
