@@ -42,12 +42,9 @@ export class BookingModalComponent {
   private bookingsRequestId = 0;
   authService = inject(AuthService);
 
-  statusOptions = computed(() => {
-    const currentLower = this.booking().status?.toLowerCase();
-    const inBase = (BASE_STATUSES as readonly string[]).some(s => s.toLowerCase() === currentLower);
-
-    return inBase ? BASE_STATUSES : [this.booking().status, ...BASE_STATUSES];
-  });
+  // Antes se anteponía el estado actual cuando no estaba en la lista, lo que sacaba a la
+  // superficie valores como "ok" o "Pending". El desplegable ofrece solo los dos estados.
+  readonly statusOptions = BASE_STATUSES;
 
   editing = signal(false);
   saving = signal(false);

@@ -195,7 +195,7 @@
           <div class="field">
             <label>Estado</label>
             <select (change)="patchDraftSelect('status', $event)">
-              @for (s of statusOptions(); track s) {
+              @for (s of statusOptions; track s) {
                 <option [value]="s" [selected]="draft().status === s">{{ s }}</option>
               }
             </select>

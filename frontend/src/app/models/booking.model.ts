@@ -22,7 +22,11 @@ export interface Booking {
   notes_cleaning: string | null;
 }
 
-export const BASE_STATUSES = ['Confirmed', 'Pending', 'Cancelled', 'ok'] as const;
+/**
+ * Estados de reserva que ofrece la aplicación. Alimenta el desplegable de crear y editar
+ * reserva y los filtros de estado del calendario y del buscador.
+ */
+export const BASE_STATUSES = ['Confirmed', 'Cancelled'] as const;
 export type BookingStatus = (typeof BASE_STATUSES)[number];
 
 /** Limpieza que prepara el check-in de una reserva: solo se limpia cuando hay entrada. */

@@ -258,7 +258,7 @@ describe('CalendarComponent', () => {
 
   describe('D — filtros', () => {
     const b1 = makeBooking({ record_id: 1, apartment_id: 'R180', status: 'Confirmed' });
-    const b2 = makeBooking({ record_id: 2, apartment_id: 'R101', status: 'Pending' });
+    const b2 = makeBooking({ record_id: 2, apartment_id: 'R101', status: 'Confirmed' });
     const b3 = makeBooking({ record_id: 3, apartment_id: 'R180', status: 'Cancelled' });
 
     beforeEach(() => {
@@ -302,14 +302,14 @@ describe('CalendarComponent', () => {
     });
 
     it('toggleBookingState añade el estado', () => {
-      component.toggleBookingState('Pending');
-      expect(component.filterBookingStates()).toContain('Pending');
+      component.toggleBookingState('Cancelled');
+      expect(component.filterBookingStates()).toContain('Cancelled');
     });
 
     it('toggleBookingState elimina el estado si ya estaba seleccionado', () => {
-      component.toggleBookingState('Pending');
-      component.toggleBookingState('Pending');
-      expect(component.filterBookingStates()).not.toContain('Pending');
+      component.toggleBookingState('Cancelled');
+      component.toggleBookingState('Cancelled');
+      expect(component.filterBookingStates()).not.toContain('Cancelled');
     });
 
     it('clearAllFilters limpia ambos arrays', () => {
