@@ -249,22 +249,10 @@
   color: #027a48;
 }
 
-.status-chip[data-status='pending'],
-.status-pill[data-status='pending'] {
-  background: #fffbeb;
-  color: #b45309;
-}
-
 .status-chip[data-status='cancelled'],
 .status-pill[data-status='cancelled'] {
   background: #fef3f2;
   color: #b42318;
-}
-
-.status-chip[data-status='ok'],
-.status-pill[data-status='ok'] {
-  background: #eff6ff;
-  color: #1d4ed8;
 }
 
 .results-header {
