@@ -84,6 +84,57 @@
   gap: 0.6rem;
 }
 
+.totals-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.total-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  flex: 1 1 140px;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid #eaecf0;
+  border-radius: 10px;
+  background: #f9fafb;
+
+  &--main {
+    border-color: #bfdbfe;
+    background: #eff6ff;
+  }
+
+  &--muted {
+    color: #98a2b3;
+  }
+}
+
+.total-label {
+  color: #667085;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.total-value {
+  color: #101828;
+  font-size: 1.1rem;
+  font-weight: 700;
+
+  .total-item--muted & {
+    color: #98a2b3;
+  }
+}
+
+.totals-hint {
+  margin: 0 0 0.75rem;
+  color: #667085;
+  font-size: 0.8rem;
+}
+
 .table-wrapper {
   overflow-x: auto;
 }

@@ -93,6 +93,45 @@
       <div class="notice error-notice">{{ loadError() }}</div>
     }
 
+    @if (!isLoading() && !loadError() && bills().length) {
+      <div class="totals-bar" aria-label="Subtotal de las facturas filtradas">
+        <div class="total-item total-item--main">
+          <span class="total-label">Subtotal</span>
+          <span class="total-value">
+            {{ billTotals().total | currency: 'EUR' : 'symbol' : '1.2-2' }}
+          </span>
+        </div>
+        <div class="total-item">
+          <span class="total-label">Pendiente de pago</span>
+          <span class="total-value">
+            {{ billTotals().unpaid | currency: 'EUR' : 'symbol' : '1.2-2' }}
+          </span>
+        </div>
+        <div class="total-item">
+          <span class="total-label">Pagado</span>
+          <span class="total-value">
+            {{ billTotals().paid | currency: 'EUR' : 'symbol' : '1.2-2' }}
+          </span>
+        </div>
+        @if (billTotals().cancelled > 0) {
+          <div class="total-item total-item--muted">
+            <span class="total-label">Canceladas (no suman)</span>
+            <span class="total-value">
+              {{ billTotals().cancelled | currency: 'EUR' : 'symbol' : '1.2-2' }}
+            </span>
+          </div>
+        }
+      </div>
+
+      @if (billTotals().withoutAmount > 0) {
+        <p class="totals-hint">
+          {{ billTotals().withoutAmount }}
+          {{ billTotals().withoutAmount === 1 ? 'limpieza pendiente' : 'limpiezas pendientes' }}
+          de facturar, aún sin importe.
+        </p>
+      }
+    }
+
     <div class="table-wrapper">
       <table>
         <thead>

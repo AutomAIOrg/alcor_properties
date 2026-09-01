@@ -508,6 +508,89 @@ describe('BillsComponent', () => {
     expect(component.creatingBillFor()).toBeNull();
   });
 
+  describe('subtotal de las facturas listadas', () => {
+    it('suma los importes de las facturas mostradas y los desglosa por estado', () => {
+      billServiceSpy.listBills.mockReturnValue(
+        of([
+          makeBill({ bill_id: 1, state: 'Creada', cost: 30.1 }),
+          makeBill({ bill_id: 2, state: 'Creada', cost: 20.2 }),
+          makeBill({ bill_id: 3, state: 'Pagada', cost: 45.5, paid_at: '2026-06-05' }),
+          // Sin importe todavía: solo se cuenta, no suma.
+          makeBill({ bill_id: null, state: 'Pendiente', record_id: 7, cost: null }),
+        ])
+      );
+      component.filterState.set('');
+      component.searchBills();
+      fixture.detectChanges();
+
+      const totals = component.billTotals();
+      expect(totals.unpaid).toBe(50.3);
+      expect(totals.paid).toBe(45.5);
+      expect(totals.total).toBe(95.8);
+      expect(totals.withoutAmount).toBe(1);
+
+      const bar: HTMLElement = fixture.nativeElement.querySelector('.totals-bar');
+      expect(bar.textContent).toContain('Subtotal');
+      // El separador decimal depende del locale (las pruebas no registran el espanol).
+      expect(bar.textContent).toMatch(/95[.,]80/);
+      expect(fixture.nativeElement.textContent).toContain(
+        '1 limpieza pendiente de facturar, aún sin importe.'
+      );
+    });
+
+    it('deja las canceladas fuera del subtotal y las muestra aparte', () => {
+      billServiceSpy.listBills.mockReturnValue(
+        of([
+          makeBill({ bill_id: 1, state: 'Creada', cost: 30 }),
+          makeBill({ bill_id: 2, state: 'Cancelada', cost: 80, cancellation_note: 'Error' }),
+        ])
+      );
+      component.filterState.set('');
+      component.searchBills();
+      fixture.detectChanges();
+
+      const totals = component.billTotals();
+      expect(totals.total).toBe(30);
+      expect(totals.cancelled).toBe(80);
+    });
+
+    it('el subtotal sigue a los filtros: se recalcula con el resultado filtrado', () => {
+      billServiceSpy.listBills.mockReturnValue(
+        of([
+          makeBill({ bill_id: 1, state: 'Pagada', cost: 40, paid_at: '2026-06-05' }),
+          makeBill({ bill_id: 2, state: 'Pagada', cost: 60, paid_at: '2026-06-06' }),
+        ])
+      );
+      component.filterState.set('Pagada');
+      component.filterDateFrom.set('2026-06-01');
+      component.filterDateTo.set('2026-06-30');
+      component.searchBills();
+
+      expect(billServiceSpy.listBills).toHaveBeenLastCalledWith({
+        state: 'Pagada',
+        date_from: '2026-06-01',
+        date_to: '2026-06-30',
+      });
+      expect(component.billTotals().total).toBe(100);
+
+      // Un rango más estrecho devuelve menos facturas: el subtotal baja con ellas.
+      billServiceSpy.listBills.mockReturnValue(
+        of([makeBill({ bill_id: 1, state: 'Pagada', cost: 40, paid_at: '2026-06-05' })])
+      );
+      component.setDateRange({ from: '2026-06-01', to: '2026-06-05' });
+
+      expect(component.billTotals().total).toBe(40);
+    });
+
+    it('no muestra el subtotal cuando no hay resultados', () => {
+      billServiceSpy.listBills.mockReturnValue(of([]));
+      component.searchBills();
+      fixture.detectChanges();
+
+      expect(fixture.nativeElement.querySelector('.totals-bar')).toBeNull();
+    });
+  });
+
   describe('descarga del recibo', () => {
     let createObjectURL: jest.Mock;
     let revokeObjectURL: jest.Mock;
