@@ -23,6 +23,7 @@ type DraftNumberField =
   | 'charges'
   | 'electric_allowance';
 type DraftSelectField = 'status';
+type DraftTextareaField = 'notes' | 'notes_cleaning';
 
 const DATE_CONFLICT_MESSAGE = 'El piso ya tiene una reserva en ese rango de fechas.';
 
@@ -162,6 +163,11 @@ export class BookingModalComponent {
   patchDraftSelect(field: DraftSelectField, event: Event): void {
     const select = event.target as HTMLSelectElement;
     this.patchDraft(field, select.value);
+  }
+
+  patchDraftTextarea(field: DraftTextareaField, event: Event): void {
+    const textarea = event.target as HTMLTextAreaElement;
+    this.patchDraft(field, textarea.value);
   }
 
   private loadBookingsForApartment(apartmentId: string | null | undefined): void {

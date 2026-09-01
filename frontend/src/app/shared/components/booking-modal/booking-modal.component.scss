@@ -316,6 +316,27 @@
   padding: 0.25rem 0;
 }
 
+// ── COMENTARIOS ─────────────────────────────────────────────────────────────
+.notes-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.notes-text {
+  margin: 0;
+  padding: 0.5rem 0.75rem;
+  background: #f9fafb;
+  border: 1px solid #eaecf0;
+  border-radius: 8px;
+  color: #344054;
+  font-size: 0.875rem;
+  // El comentario es texto libre: se respetan los saltos de línea que escribió el usuario
+  // y se parten las palabras muy largas para que no desborden el modal.
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
 .warning-banner {
   background: #fffbeb;
   border: 1px solid #fde68a;
@@ -470,7 +491,8 @@
   }
 
   input,
-  select {
+  select,
+  textarea {
     border: 1.5px solid #d0d5dd;
     border-radius: 7px;
     padding: 0.45rem 0.6rem;
@@ -488,6 +510,18 @@
       color: #c1c9d4;
     }
   }
+
+  textarea {
+    resize: vertical;
+    min-height: 72px;
+    font-family: inherit;
+  }
+}
+
+.field-hint {
+  margin: 0;
+  font-size: 0.72rem;
+  color: #98a2b3;
 }
 
 .edit-actions {

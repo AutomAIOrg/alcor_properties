@@ -368,6 +368,98 @@ describe('BookingModalComponent', () => {
 
   // ── DOM — vista de detalle ────────────────────────────────────────────────────
 
+  // El comentario de la reserva se escribe al crearla; hasta ahora no había forma de verlo
+  // ni corregirlo después, porque el modal de edición no traía el campo.
+  describe('comentarios (notes)', () => {
+    // El formulario tiene dos áreas de texto: [0] comentario de la reserva, [1] notas de limpieza.
+    function editTextareas(): HTMLTextAreaElement[] {
+      return Array.from(fixture.nativeElement.querySelectorAll('.edit-form textarea'));
+    }
+
+    it('la vista de detalle muestra el comentario guardado', () => {
+      fixture.componentRef.setInput(
+        'booking',
+        makeBooking({ notes: 'Llega en el vuelo de las 23h' })
+      );
+      fixture.detectChanges();
+
+      expect(fixture.nativeElement.querySelector('.notes-text').textContent).toContain(
+        'Llega en el vuelo de las 23h'
+      );
+    });
+
+    it('sin comentario, la vista de detalle lo indica', () => {
+      fixture.componentRef.setInput('booking', makeBooking({ notes: null }));
+      fixture.detectChanges();
+
+      expect(fixture.nativeElement.textContent).toContain('Sin comentarios');
+    });
+
+    it('el formulario de edición trae el comentario actual y lo guarda editado', () => {
+      fixture.componentRef.setInput('booking', makeBooking({ notes: 'Cuna solicitada' }));
+      fixture.detectChanges();
+      component.startEdit();
+      fixture.detectChanges();
+
+      const textarea = editTextareas()[0];
+      expect(textarea.value).toBe('Cuna solicitada');
+
+      textarea.value = 'Cuna solicitada y late check-out';
+      textarea.dispatchEvent(new Event('input'));
+      component.saveEdit();
+
+      expect(bookingServiceSpy.updateBooking).toHaveBeenCalledWith(
+        1,
+        expect.objectContaining({ notes: 'Cuna solicitada y late check-out' })
+      );
+    });
+
+    it('la vista de detalle muestra las notas de limpieza', () => {
+      fixture.componentRef.setInput('booking', makeBooking({ notes_cleaning: 'Cambiar toallas' }));
+      fixture.detectChanges();
+
+      expect(fixture.nativeElement.textContent).toContain('Cambiar toallas');
+    });
+
+    it('sin notas de limpieza, la vista de detalle lo indica', () => {
+      expect(fixture.nativeElement.textContent).toContain('Sin notas de limpieza');
+    });
+
+    // Es el mismo campo que edita el diálogo "Editar comentario" de Organización de limpiezas.
+    it('el formulario de edición guarda las notas de limpieza', () => {
+      fixture.componentRef.setInput('booking', makeBooking({ notes_cleaning: 'Ropa de cama' }));
+      fixture.detectChanges();
+      component.startEdit();
+      fixture.detectChanges();
+
+      const cleaningTextarea = editTextareas()[1];
+      expect(cleaningTextarea.value).toBe('Ropa de cama');
+
+      cleaningTextarea.value = 'Ropa de cama y menaje';
+      cleaningTextarea.dispatchEvent(new Event('input'));
+      component.saveEdit();
+
+      expect(bookingServiceSpy.updateBooking).toHaveBeenCalledWith(
+        1,
+        expect.objectContaining({ notes_cleaning: 'Ropa de cama y menaje' })
+      );
+    });
+
+    it('vaciar el comentario lo guarda como null', () => {
+      fixture.componentRef.setInput('booking', makeBooking({ notes: 'Algo' }));
+      fixture.detectChanges();
+      component.startEdit();
+
+      component.patchDraftTextarea('notes', { target: { value: '' } } as unknown as Event);
+      component.saveEdit();
+
+      expect(bookingServiceSpy.updateBooking).toHaveBeenCalledWith(
+        1,
+        expect.objectContaining({ notes: null })
+      );
+    });
+  });
+
   describe('DOM — vista de detalle', () => {
     it('muestra .modal-body y botón "Editar reserva" cuando no está en modo edición', () => {
       expect(component.editing()).toBe(false);

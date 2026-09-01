@@ -27,7 +27,7 @@ type BookingCreateDraft = Partial<{
 type InputField = 'guest_name' | 'check_in' | 'check_out' | 'email' | 'phone' | 'booking_number';
 type NumberField = 'adults' | 'children' | 'price' | 'charges';
 type SelectField = 'apartment_id' | 'status';
-type TextareaField = 'notes';
+type TextareaField = 'notes' | 'notes_cleaning';
 
 type CalendarDay = {
   iso: string;
@@ -436,7 +436,7 @@ export class BookingCreateModalComponent implements OnInit {
       phone: d.phone ?? null,
       booking_number: d.booking_number ?? null,
       notes: d.notes ?? null,
-      notes_cleaning: null,
+      notes_cleaning: d.notes_cleaning ?? null,
     };
 
     this.bookingService.createBooking(payload).subscribe({

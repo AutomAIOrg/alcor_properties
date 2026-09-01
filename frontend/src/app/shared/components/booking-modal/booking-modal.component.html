@@ -151,6 +151,26 @@
           }
         </div>
 
+        <!-- COMENTARIOS -->
+        <div class="notes-section">
+          <p class="section-title">Comentarios</p>
+          @if (booking().notes) {
+            <p class="notes-text">{{ booking().notes }}</p>
+          } @else {
+            <span class="no-contact">Sin comentarios</span>
+          }
+        </div>
+
+        <!-- NOTAS DE LIMPIEZA -->
+        <div class="notes-section">
+          <p class="section-title">Notas de limpieza</p>
+          @if (booking().notes_cleaning) {
+            <p class="notes-text">{{ booking().notes_cleaning }}</p>
+          } @else {
+            <span class="no-contact">Sin notas de limpieza</span>
+          }
+        </div>
+
         <!-- Nº RESERVA + RECORD ID -->
         <div class="refs-row">
           <div class="booking-ref">
@@ -336,6 +356,31 @@
               (input)="patchDraftInput('booking_number', $event)"
             />
           </div>
+        </div>
+
+        <p class="edit-section-title">Comentarios</p>
+
+        <div class="field">
+          <textarea
+            rows="3"
+            placeholder="Cualquier información adicional sobre la reserva..."
+            [value]="draft().notes ?? ''"
+            (input)="patchDraftTextarea('notes', $event)"
+          ></textarea>
+        </div>
+
+        <p class="edit-section-title">Notas de limpieza</p>
+
+        <div class="field">
+          <textarea
+            rows="3"
+            placeholder="Indicaciones para la limpieza de esta reserva..."
+            [value]="draft().notes_cleaning ?? ''"
+            (input)="patchDraftTextarea('notes_cleaning', $event)"
+          ></textarea>
+          <p class="field-hint">
+            Es el mismo comentario que se edita en Organización de limpiezas.
+          </p>
         </div>
 
         <!-- ACCIONES -->
