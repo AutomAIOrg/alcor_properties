@@ -246,6 +246,18 @@
         ></textarea>
       </div>
 
+      <p class="section-title">Notas de limpieza</p>
+
+      <div class="field">
+        <textarea
+          rows="3"
+          placeholder="Indicaciones para la limpieza de esta reserva..."
+          [value]="draft().notes_cleaning ?? ''"
+          (input)="patchTextarea('notes_cleaning', $event)"
+        ></textarea>
+        <p class="field-hint">Se muestran en Organización de limpiezas.</p>
+      </div>
+
       <div class="edit-actions">
         <button class="btn-cancel" (click)="close.emit()" [disabled]="saving()">Cancelar</button>
 
