@@ -135,25 +135,34 @@ describe('BookingModalComponent', () => {
   // ── statusOptions ─────────────────────────────────────────────────────────────
 
   describe('statusOptions', () => {
-    it('status en BASE_STATUSES devuelve exactamente BASE_STATUSES', () => {
-      fixture.componentRef.setInput('booking', makeBooking({ status: 'Confirmed' }));
-      fixture.detectChanges();
-      expect(component.statusOptions()).toEqual(BASE_STATUSES as unknown as string[]);
+    it('ofrece exactamente los dos estados admitidos', () => {
+      expect(component.statusOptions).toEqual(['Confirmed', 'Cancelled']);
+      expect(component.statusOptions).toEqual(BASE_STATUSES);
     });
 
-    it('status fuera de BASE_STATUSES lo antepone a la lista', () => {
-      fixture.componentRef.setInput('booking', makeBooking({ status: 'Custom' }));
+    it('el desplegable de estado pinta esas dos opciones y ninguna más', () => {
+      component.startEdit();
       fixture.detectChanges();
-      const opts = component.statusOptions();
-      expect(opts[0]).toBe('Custom');
-      expect(opts.length).toBe(BASE_STATUSES.length + 1);
+
+      const options = [...fixture.nativeElement.querySelectorAll('.edit-form select option')].map(
+        (option: HTMLOptionElement) => option.value
+      );
+
+      expect(options).toEqual(['Confirmed', 'Cancelled']);
     });
 
-    it('la comparación es case-insensitive ("confirmed" = "Confirmed")', () => {
-      fixture.componentRef.setInput('booking', makeBooking({ status: 'confirmed' }));
+    // Un estado inesperado ya no se cuela como opción suelta en el desplegable.
+    it('un estado ajeno a la lista no aparece entre las opciones', () => {
+      fixture.componentRef.setInput('booking', makeBooking({ status: 'ok' }));
       fixture.detectChanges();
-      // "confirmed" está en BASE_STATUSES (case-insensitive) → no se antepone
-      expect(component.statusOptions().length).toBe(BASE_STATUSES.length);
+      component.startEdit();
+      fixture.detectChanges();
+
+      const options = [...fixture.nativeElement.querySelectorAll('.edit-form select option')].map(
+        (option: HTMLOptionElement) => option.value
+      );
+
+      expect(options).toEqual(['Confirmed', 'Cancelled']);
     });
   });
 
