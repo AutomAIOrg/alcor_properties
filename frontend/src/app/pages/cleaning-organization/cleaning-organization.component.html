@@ -62,11 +62,24 @@
                 formatDate(bar.opportunity.availableUntilDate)
               "
             >
-              <span class="bar-label">
-                {{ bar.opportunity.apartmentId }} ·
-                {{ formatDate(bar.opportunity.availableFromDate) }} -
-                {{ formatDate(bar.opportunity.availableUntilDate) }}
-              </span>
+              @if (canViewBookingDetail()) {
+                <button
+                  class="bar-label bar-label--action"
+                  type="button"
+                  [disabled]="isLoadingBooking()"
+                  (click)="openBookingDetail(bar.opportunity)"
+                >
+                  {{ bar.opportunity.apartmentId }} ·
+                  {{ formatDate(bar.opportunity.availableFromDate) }} -
+                  {{ formatDate(bar.opportunity.availableUntilDate) }}
+                </button>
+              } @else {
+                <span class="bar-label">
+                  {{ bar.opportunity.apartmentId }} ·
+                  {{ formatDate(bar.opportunity.availableFromDate) }} -
+                  {{ formatDate(bar.opportunity.availableUntilDate) }}
+                </span>
+              }
             </div>
           }
         </div>
@@ -120,12 +133,25 @@
             @for (opportunity of cleaningOpportunities(); track opportunity.sourceBookingRecordId) {
               <tr>
                 <td>
-                  <span
-                    class="reference-chip"
-                    [style.background]="getApartmentColor(opportunity.apartmentId)"
-                  >
-                    {{ opportunity.apartmentId }}
-                  </span>
+                  @if (canViewBookingDetail()) {
+                    <button
+                      class="reference-chip reference-chip--action"
+                      type="button"
+                      title="Ver reserva"
+                      [style.background]="getApartmentColor(opportunity.apartmentId)"
+                      [disabled]="isLoadingBooking()"
+                      (click)="openBookingDetail(opportunity)"
+                    >
+                      {{ opportunity.apartmentId }}
+                    </button>
+                  } @else {
+                    <span
+                      class="reference-chip"
+                      [style.background]="getApartmentColor(opportunity.apartmentId)"
+                    >
+                      {{ opportunity.apartmentId }}
+                    </span>
+                  }
                 </td>
                 <td>{{ formatDate(opportunity.availableFromDate) }}</td>
                 <td>
@@ -511,5 +537,15 @@
     <div class="toast" [class.error]="toast()!.type === 'error'" role="status">
       {{ toast()!.text }}
     </div>
+  }
+
+  <!-- Detalle de reserva: el mismo componente que abre el calendario, así que cualquier
+       cambio allí (campos, edición, permisos) se refleja también aquí. -->
+  @if (selectedBooking()) {
+    <app-booking-modal
+      [booking]="selectedBooking()!"
+      (close)="closeBookingDetail()"
+      (saved)="onBookingSaved($event)"
+    />
   }
 </section>
