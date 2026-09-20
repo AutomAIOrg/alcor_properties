@@ -92,6 +92,45 @@ export class BillsComponent implements OnInit, OnDestroy {
   filterCostMin = signal('');
   filterCostMax = signal('');
 
+  // Importes agregados de las facturas listadas. Se calculan sobre bills(), así que
+  // reflejan exactamente lo que muestra la tabla con los filtros aplicados (fechas, piso,
+  // estado, coste), incluido el filtro combinado "Pendiente" que se resuelve en cliente.
+  // El listado no está paginado —el backend devuelve todas las coincidencias—, de modo que
+  // la suma es la del total filtrado y no la de una página.
+  //
+  // Las canceladas se agregan aparte y quedan fuera del subtotal (no se cobran), y las
+  // "Pendiente de facturar" aún no tienen importe: solo se cuentan.
+  readonly billTotals = computed(() => {
+    let paidCents = 0;
+    let unpaidCents = 0;
+    let cancelledCents = 0;
+    let withoutAmount = 0;
+
+    for (const bill of this.bills()) {
+      if (bill.cost === null) {
+        withoutAmount++;
+        continue;
+      }
+      // Se acumula en céntimos: sumar euros en coma flotante arrastra restos (0.1 + 0.2).
+      const cents = Math.round(bill.cost * 100);
+      if (bill.state === 'Pagada') {
+        paidCents += cents;
+      } else if (bill.state === 'Cancelada') {
+        cancelledCents += cents;
+      } else {
+        unpaidCents += cents;
+      }
+    }
+
+    return {
+      total: (paidCents + unpaidCents) / 100,
+      paid: paidCents / 100,
+      unpaid: unpaidCents / 100,
+      cancelled: cancelledCents / 100,
+      withoutAmount,
+    };
+  });
+
   billReceiptView = signal<BillReceiptData | null>(null);
   // Factura del recibo abierto: el modal muestra billReceiptView (datos ya formateados),
   // pero la descarga necesita el bill_id.
