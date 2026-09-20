@@ -771,6 +771,46 @@ describe('BookingCreateModalComponent', () => {
       expect(error.textContent).toContain('No se pudieron cargar los pisos disponibles.');
     });
 
+    // Las notas de limpieza se escribían solo desde Organización de limpiezas, una vez creada
+    // la reserva; ahora pueden dejarse ya al darla de alta.
+    it('envía el comentario y las notas de limpieza escritos en el formulario', () => {
+      apartmentServiceSpy.getAvailableApartmentIds.mockReturnValue(of(['R202']));
+
+      component.selectRangeDate('2025-07-01');
+      component.selectRangeDate('2025-07-05');
+
+      fixture.detectChanges();
+
+      const selects: HTMLSelectElement[] = Array.from(
+        fixture.nativeElement.querySelectorAll('select')
+      );
+      const guestInput: HTMLInputElement =
+        fixture.nativeElement.querySelector('input[type="text"]');
+      // [0] comentario de la reserva, [1] notas de limpieza.
+      const textareas: HTMLTextAreaElement[] = Array.from(
+        fixture.nativeElement.querySelectorAll('textarea')
+      );
+
+      selects[0].value = 'R202';
+      selects[0].dispatchEvent(new Event('change'));
+      guestInput.value = 'Laura García';
+      guestInput.dispatchEvent(new Event('input'));
+      textareas[0].value = 'Llega tarde';
+      textareas[0].dispatchEvent(new Event('input'));
+      textareas[1].value = 'Dejar cuna montada';
+      textareas[1].dispatchEvent(new Event('input'));
+
+      fixture.detectChanges();
+      (fixture.nativeElement.querySelector('.btn-save') as HTMLButtonElement).click();
+
+      expect(bookingServiceSpy.createBooking).toHaveBeenCalledWith(
+        expect.objectContaining({
+          notes: 'Llega tarde',
+          notes_cleaning: 'Dejar cuna montada',
+        })
+      );
+    });
+
     it('permite crear una reserva seleccionando un piso filtrado por disponibilidad', () => {
       apartmentServiceSpy.getAvailableApartmentIds.mockReturnValue(of(['R202']));
 
