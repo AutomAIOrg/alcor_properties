@@ -4,6 +4,7 @@
 
 # Dominio público (HTTPS automático con Let's Encrypt salvo localhost).
 # Variable inyectada por docker-compose.prod.yml: APP_DOMAIN
+# For Tailscale Funnel use the explicit overlay documented in AUTH_SECURITY.md.
 {$APP_DOMAIN:localhost} {
 	encode gzip zstd
 

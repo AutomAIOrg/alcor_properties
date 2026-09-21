@@ -1,0 +1,23 @@
+# Overlay: docker compose -f docker-compose.prod.yml -f deploy/docker-compose.funnel.yml up -d
+services:
+  web:
+    volumes:
+      - ./deploy/Caddyfile.funnel:/etc/caddy/Caddyfile:ro
+    networks:
+      default:
+      auth_proxy:
+        ipv4_address: 172.30.253.3
+  backend:
+    environment:
+      AUTH_TRUSTED_PROXY_CIDRS: "172.30.253.3/32"
+    networks:
+      default:
+      auth_proxy:
+        ipv4_address: 172.30.253.2
+        aliases:
+          - auth-api
+networks:
+  auth_proxy:
+    ipam:
+      config:
+        - subnet: 172.30.253.0/29

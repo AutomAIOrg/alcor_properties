@@ -60,6 +60,17 @@ class InvalidCredentials(DomainException):
         super().__init__("Usuario o contraseña inválidos")
 
 
+class RateLimitExceeded(DomainException):
+    """Se lanza cuando se supera el límite de intentos de autenticación."""
+
+    def __init__(self, retry_after_seconds: int) -> None:
+        self.retry_after_seconds = max(1, int(retry_after_seconds))
+        super().__init__(
+            f"Demasiados intentos de inicio de sesión. "
+            f"Reinténtalo en {self.retry_after_seconds} segundos."
+        )
+
+
 class UserAlreadyExists(DomainException):
     """Se lanza cuando un usuario ya existe."""
 

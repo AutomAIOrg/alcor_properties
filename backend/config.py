@@ -57,6 +57,15 @@ class Settings(BaseSettings):
     JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
     JWT_REFRESH_TOKEN_EXPIRE_DAYS: int = 1
 
+    # Rate limiting de login (intentos fallidos por IP y por usuario).
+    LOGIN_RATE_LIMIT_MAX_ATTEMPTS: int = Field(default=5, ge=1)
+    LOGIN_RATE_LIMIT_WINDOW_SECONDS: int = Field(default=900, ge=1)
+
+    # Proxies de confianza (CIDR separados por coma). Solo si el peer inmediato
+    # está aquí se leen X-Forwarded-For / X-Real-IP (Caddy + Tailscale Funnel).
+    # Por defecto no se confía en ningún proxy. Configurar solo la IP de Caddy.
+    AUTH_TRUSTED_PROXY_CIDRS: str = ""
+
     # URL pública del frontend, usada para construir el enlace de restablecimiento de contraseña.
     FRONTEND_URL: str = "http://localhost:4200"
 
