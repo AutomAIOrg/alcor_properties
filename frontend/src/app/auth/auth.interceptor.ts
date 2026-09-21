@@ -12,8 +12,8 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const authService = inject(AuthService);
   const sessionActivity = inject(SessionActivityService);
 
-  const isAuthRequest =
-    req.url.includes('/api/v1/auth/login') || req.url.includes('/api/v1/auth/refresh');
+  const isRefreshRequest = req.url.includes('/api/v1/auth/refresh');
+  const isAuthRequest = req.url.includes('/api/v1/auth/login') || isRefreshRequest;
   const token = tokenService.getAccessToken();
 
   const authReq =
@@ -22,6 +22,11 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
   return next(authReq).pipe(
     catchError((error: HttpErrorResponse) => {
       if (error.status !== 401) {
+        return throwError(() => error);
+      }
+
+      // Refresh errors belong to its caller. A late failure must not log out a new login.
+      if (isRefreshRequest || (!isAuthRequest && tokenService.getAccessToken() !== token)) {
         return throwError(() => error);
       }
 
@@ -39,13 +44,20 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
       );
 
       return refreshInProgress$.pipe(
-        switchMap(accessToken =>
-          next(req.clone({ setHeaders: { Authorization: `Bearer ${accessToken}` } }))
-        ),
         catchError(refreshError => {
-          authService.logout();
+          if (tokenService.getAccessToken() === token) authService.logout();
           return throwError(() => refreshError);
-        })
+        }),
+        switchMap(accessToken =>
+          next(req.clone({ setHeaders: { Authorization: `Bearer ${accessToken}` } })).pipe(
+            catchError(error => {
+              if (error.status === 401 && tokenService.getAccessToken() === accessToken) {
+                authService.logout();
+              }
+              return throwError(() => error);
+            })
+          )
+        )
       );
     })
   );

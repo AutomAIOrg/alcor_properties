@@ -16,7 +16,7 @@ services:
     environment:
       ALCOR_IGNORE_ENV_FILE: "1"
     entrypoint: ["alembic"]
-    command: ["upgrade", "head"]
+    command: ["upgrade", "heads"]
     restart: "no"
 
   backend:

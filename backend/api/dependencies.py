@@ -156,6 +156,8 @@ def get_current_user(
 
     if (token.token_version or 0) != user.token_version:
         raise InvalidToken("Token de sesión revocado.")
+    if token.session_id and not user_repository.is_auth_session_active(user.id, token.session_id):
+        raise InvalidToken("Sesión revocada.")
     return user
 
 

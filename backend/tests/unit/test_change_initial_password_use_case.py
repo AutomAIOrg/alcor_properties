@@ -5,7 +5,7 @@ El repositorio, el gestor de contraseñas y el de tokens se sustituyen por mocks
 para aislar las reglas de negocio.
 """
 
-from unittest.mock import MagicMock
+from unittest.mock import ANY, MagicMock
 
 import pytest
 
@@ -16,6 +16,7 @@ from application.auth.change_initial_password_use_case import (
 from application.auth.token_manager_interface import ITokenManager
 from application.shared.password_manager_interface import IPasswordManager
 from application.shared.user_repository_interface import IUserRepository
+from domain.auth.issued_refresh_token import IssuedRefreshToken
 from domain.auth.user_entity import Role
 from domain.exceptions import DomainValidationError, UserNotFound
 from tests.helpers import make_user
@@ -37,7 +38,9 @@ def password_manager() -> MagicMock:
 def token_manager() -> MagicMock:
     manager = MagicMock(spec=ITokenManager)
     manager.create_access_token.return_value = "new-access-token"
-    manager.create_refresh_token.return_value = "new-refresh-token"
+    manager.create_refresh_token.return_value = IssuedRefreshToken(
+        token="new-refresh-token", jti="new-refresh-jti"
+    )
     return manager
 
 
@@ -70,9 +73,14 @@ class TestChangeInitialPasswordUseCase:
         # Los tokens emitidos ya no arrastran la marca de cambio obligatorio.
         token_manager.create_access_token.assert_called_once_with(
             subject="1",
-            claims={"username": "admin", "role": Role.ADMIN, "ver": 1, "mcp": False},
+            claims={"sid": ANY, "username": "admin", "role": Role.ADMIN, "ver": 1, "mcp": False},
         )
-        token_manager.create_refresh_token.assert_called_once_with(subject="1", token_version=1)
+        token_manager.create_refresh_token.assert_called_once_with(
+            subject="1", token_version=1, session_id=ANY
+        )
+        user_repository.create_auth_session.assert_called_once_with(
+            1, ANY, "new-refresh-jti", None, 1
+        )
 
     def test_user_without_pending_change_raises_validation_error(
         self, user_repository, password_manager, token_manager

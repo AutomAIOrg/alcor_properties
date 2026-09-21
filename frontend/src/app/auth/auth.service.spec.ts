@@ -254,7 +254,7 @@ describe('AuthService', () => {
 
       httpMock!.expectOne('/api/v1/auth/login');
 
-      expect(tokenServiceSpy.setTokens).not.toHaveBeenCalled();
+      expect(tokenServiceSpy.setAccessToken).not.toHaveBeenCalled();
       expect(tokenServiceSpy.decodeToken).not.toHaveBeenCalled();
       expect(service.currentUser()).toBeNull();
       expect(service.isAuthenticated()).toBe(false);
@@ -286,25 +286,61 @@ describe('AuthService', () => {
       expect(req.request.method).toBe('POST');
       expect(req.request.body).toEqual({ refresh_token: 'stored.refresh.token' });
 
-      req.flush({ access_token: 'new.access.token', token_type: 'bearer' });
+      req.flush({
+        access_token: 'new.access.token',
+        refresh_token: 'new.refresh.token',
+        token_type: 'bearer',
+      });
     });
 
-    it('actualiza solo el access_token cuando refresh responde correctamente', () => {
+    it('sustituye ambos tokens cuando refresh responde correctamente', () => {
       setup();
       tokenServiceSpy.getRefreshToken.mockReturnValue('stored.refresh.token');
 
       service.refreshToken().subscribe();
 
       const req = httpMock!.expectOne('/api/v1/auth/refresh');
-      req.flush({ access_token: 'new.access.token', token_type: 'bearer' });
+      req.flush({
+        access_token: 'new.access.token',
+        refresh_token: 'new.refresh.token',
+        token_type: 'bearer',
+      });
 
-      expect(tokenServiceSpy.setAccessToken).toHaveBeenCalledTimes(1);
-      expect(tokenServiceSpy.setAccessToken).toHaveBeenCalledWith('new.access.token');
-      expect(tokenServiceSpy.setTokens).not.toHaveBeenCalled();
+      expect(tokenServiceSpy.setTokens).toHaveBeenCalledTimes(1);
+      expect(tokenServiceSpy.setTokens).toHaveBeenCalledWith(
+        'new.access.token',
+        'new.refresh.token'
+      );
+      expect(tokenServiceSpy.setAccessToken).not.toHaveBeenCalled();
     });
   });
 
   // ── C: Logout ───────────────────────────────────────────────────────────────
+
+  it('lee el refresh guardado después de adquirir el bloqueo entre pestañas', async () => {
+    setup();
+    tokenServiceSpy.getRefreshToken.mockReturnValue('old.refresh');
+    const descriptor = Object.getOwnPropertyDescriptor(navigator, 'locks');
+    const request = jest.fn(async (_name: string, run: () => Promise<unknown>) => {
+      tokenServiceSpy.getRefreshToken.mockReturnValue('rotated.in.other.tab');
+      return run();
+    });
+    Object.defineProperty(navigator, 'locks', { configurable: true, value: { request } });
+    try {
+      const completed = new Promise<void>((resolve, reject) => {
+        service.refreshToken().subscribe({ complete: resolve, error: reject });
+      });
+      const req = httpMock!.expectOne('/api/v1/auth/refresh');
+      expect(req.request.body.refresh_token).toBe('rotated.in.other.tab');
+      req.flush({ access_token: 'access', refresh_token: 'refresh', token_type: 'bearer' });
+      await completed;
+      expect(request).toHaveBeenCalledTimes(1);
+      expect(tokenServiceSpy.setTokens).toHaveBeenCalledWith('access', 'refresh');
+    } finally {
+      if (descriptor) Object.defineProperty(navigator, 'locks', descriptor);
+      else Reflect.deleteProperty(navigator, 'locks');
+    }
+  });
 
   describe('C — logout', () => {
     it('elimina el token, limpia currentUser y navega a /login', () => {

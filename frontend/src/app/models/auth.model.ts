@@ -21,9 +21,10 @@ export interface RefreshTokenRequest {
   refresh_token: string;
 }
 
-// Respuesta que devuelve el backend al renovar el access token
+// Respuesta que devuelve el backend al renovar access y refresh tokens
 export interface AccessTokenResponse {
   access_token: string;
+  refresh_token: string;
   token_type: string;
 }
 

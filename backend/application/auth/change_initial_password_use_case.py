@@ -10,6 +10,7 @@ modo que quien realiza el cambio continúa sin volver a iniciar sesión.
 """
 
 import logging
+import uuid
 from dataclasses import dataclass
 
 from application.auth.token_manager_interface import ITokenManager
@@ -78,22 +79,32 @@ class ChangeInitialPasswordUseCase:
         if updated_user is None:
             raise UserNotFound()
 
+        session_id = str(uuid.uuid4())
         access_token = self._token_manager.create_access_token(
             subject=str(updated_user.id),
             claims={
+                "sid": session_id,
                 "username": updated_user.username,
                 "role": updated_user.role,
                 "ver": updated_user.token_version,
                 "mcp": updated_user.must_change_password,
             },
         )
-        refresh_token = self._token_manager.create_refresh_token(
+        issued_refresh = self._token_manager.create_refresh_token(
             subject=str(updated_user.id),
             token_version=updated_user.token_version,
+            session_id=session_id,
+        )
+        self._user_repository.create_auth_session(
+            updated_user.id,
+            session_id,
+            issued_refresh.jti,
+            issued_refresh.expires_at,
+            updated_user.token_version,
         )
 
         logger.info(f"El usuario {user.id} ha fijado su contraseña inicial")
         return ChangeInitialPasswordResult(
             access_token=access_token,
-            refresh_token=refresh_token,
+            refresh_token=issued_refresh.token,
         )

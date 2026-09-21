@@ -6,6 +6,7 @@ from abc import ABC, abstractmethod
 from collections.abc import Mapping
 from typing import Any
 
+from domain.auth.issued_refresh_token import IssuedRefreshToken
 from domain.auth.reset_token import IssuedResetToken
 from domain.auth.token_payload_entity import TokenPayload
 
@@ -28,7 +29,9 @@ class ITokenManager(ABC):
         pass
 
     @abstractmethod
-    def create_refresh_token(self, subject: str, token_version: int = 0) -> str:
+    def create_refresh_token(
+        self, subject: str, token_version: int = 0, session_id: str | None = None
+    ) -> IssuedRefreshToken:
         """Crea un token de refresh para un sujeto autenticado."""
         pass
 

@@ -19,6 +19,7 @@ export type Permission =
 
 export interface User {
   sub: string;
+  sid?: string;
   username: string;
   name: string;
   role: Role;

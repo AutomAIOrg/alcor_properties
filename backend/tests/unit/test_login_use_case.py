@@ -4,7 +4,7 @@ Unit tests — caso de uso de login.
 El repositorio, el verificador de password y el manager de tokens se sustituyen por mocks.
 """
 
-from unittest.mock import MagicMock
+from unittest.mock import ANY, MagicMock
 
 import pytest
 
@@ -12,6 +12,7 @@ from application.auth.login_use_case import LoginCredentials, LoginUseCase
 from application.auth.token_manager_interface import ITokenManager
 from application.shared.password_manager_interface import IPasswordManager
 from application.shared.user_repository_interface import IUserRepository
+from domain.auth.issued_refresh_token import IssuedRefreshToken
 from domain.auth.user_entity import Role
 from domain.exceptions import InvalidCredentials
 from tests.helpers import make_user
@@ -27,7 +28,9 @@ class TestLoginUseCase:
         user_repository.get_by_username.return_value = make_user()
         password_verifier.verify.return_value = True
         token_manager.create_access_token.return_value = "access-token"
-        token_manager.create_refresh_token.return_value = "refresh-token"
+        token_manager.create_refresh_token.return_value = IssuedRefreshToken(
+            token="refresh-token", jti="refresh-jti"
+        )
 
         result = LoginUseCase(user_repository, token_manager, password_verifier).execute(
             LoginCredentials(username="admin", password="admin-password")
@@ -41,9 +44,12 @@ class TestLoginUseCase:
         )
         token_manager.create_access_token.assert_called_once_with(
             subject="1",
-            claims={"username": "admin", "role": Role.ADMIN, "ver": 0, "mcp": False},
+            claims={"sid": ANY, "username": "admin", "role": Role.ADMIN, "ver": 0, "mcp": False},
         )
-        token_manager.create_refresh_token.assert_called_once_with(subject="1", token_version=0)
+        token_manager.create_refresh_token.assert_called_once_with(
+            subject="1", token_version=0, session_id=ANY
+        )
+        user_repository.create_auth_session.assert_called_once_with(1, ANY, "refresh-jti", None, 0)
 
     def test_unknown_username_raises_invalid_credentials(self):
         user_repository = MagicMock(spec=IUserRepository)

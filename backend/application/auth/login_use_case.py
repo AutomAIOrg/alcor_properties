@@ -3,6 +3,7 @@ Casos de uso (comandos) para autenticación.
 """
 
 import logging
+import uuid
 from dataclasses import dataclass
 
 from application.auth.token_manager_interface import ITokenManager
@@ -53,7 +54,9 @@ class LoginUseCase:
             logger.warning("Contraseña inválida")
             raise InvalidCredentials()
 
+        session_id = str(uuid.uuid4())
         claims = {
+            "sid": session_id,
             "username": user.username,
             "role": user.role,
             "ver": user.token_version,
@@ -63,9 +66,13 @@ class LoginUseCase:
             subject=str(user.id),
             claims=claims,
         )
-        refresh_token = self._token_manager.create_refresh_token(
+        issued_refresh = self._token_manager.create_refresh_token(
             subject=str(user.id),
             token_version=user.token_version,
+            session_id=session_id,
+        )
+        self._user_repository.create_auth_session(
+            user.id, session_id, issued_refresh.jti, issued_refresh.expires_at, user.token_version
         )
 
-        return LoginResult(access_token=access_token, refresh_token=refresh_token)
+        return LoginResult(access_token=access_token, refresh_token=issued_refresh.token)

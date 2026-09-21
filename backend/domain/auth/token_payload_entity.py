@@ -19,3 +19,4 @@ class TokenPayload:
     role: Role | None = None
     jti: str | None = None
     token_version: int | None = None
+    session_id: str | None = None

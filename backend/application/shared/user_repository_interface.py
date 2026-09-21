@@ -59,3 +59,25 @@ class IUserRepository(ABC):
     def bump_token_version(self, user_id: int) -> None:
         """Incrementa la versión de token del usuario, invalidando sus sesiones activas."""
         pass
+
+    @abstractmethod
+    def create_auth_session(
+        self, user_id: int, session_id: str, jti: str, expires_at, token_version: int
+    ) -> None:
+        """Create a family only while the authenticated user version is still current."""
+
+    @abstractmethod
+    def rotate_auth_session(
+        self,
+        user_id: int,
+        session_id: str,
+        expected_jti: str,
+        new_jti: str,
+        expires_at,
+        token_version: int,
+    ) -> bool:
+        """Rotate under a lock; persist family revocation before returning False on reuse."""
+
+    @abstractmethod
+    def is_auth_session_active(self, user_id: int, session_id: str) -> bool:
+        """Check family revocation for each protected request."""
