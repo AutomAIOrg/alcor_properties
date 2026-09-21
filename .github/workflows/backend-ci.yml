@@ -99,6 +99,6 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
       - name: Apply migrations
-        run: alembic upgrade head
+        run: alembic upgrade heads
       - name: Run tests with coverage
         run: python -m pytest tests/ --cov --cov-report=term-missing

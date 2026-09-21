@@ -1,9 +1,21 @@
+{
+	servers {
+		# Funnel entra por el gateway de la red Docker dedicada.
+		trusted_proxies static 172.30.253.1/32
+		trusted_proxies_strict
+	}
+}
+
 :80 {
 	encode gzip zstd
 
 	# API FastAPI (red interna de Compose)
 	handle /api/* {
-		reverse_proxy backend:8000
+		reverse_proxy backend:8000 {
+			# Enviar solo la IP verificada de la cadena de proxies.
+			header_up X-Forwarded-For {client_ip}
+			header_up -X-Real-IP
+		}
 	}
 
 	# Healthcheck accesible vía proxy
