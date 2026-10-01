@@ -37,6 +37,7 @@ class BookingUpdateData:
     booking_number: str | None | _UnsetType = _UNSET
     notes: str | None | _UnsetType = _UNSET
     notes_cleaning: str | None | _UnsetType = _UNSET
+    cleaning_required: bool | None | _UnsetType = _UNSET
 
     def as_update_dict(self) -> dict[str, object]:
         """Devuelve solo los campos enviados; conserva None como limpieza explícita."""

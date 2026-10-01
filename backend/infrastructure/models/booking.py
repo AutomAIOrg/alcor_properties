@@ -7,7 +7,7 @@ Mapea los nombres de columnas heredados en español a nombres de atributos limpi
 from datetime import date, time
 from decimal import Decimal
 
-from sqlalchemy import Date, Integer, Numeric, String, Text, Time
+from sqlalchemy import Boolean, Date, Integer, Numeric, String, Text, Time
 from sqlalchemy.orm import Mapped, mapped_column
 
 from infrastructure.database.base import Base
@@ -36,6 +36,10 @@ class BookingORM(Base):
     check_out_time: Mapped[time | None] = mapped_column("Check-Out Time", Time, nullable=True)
     nights: Mapped[int | None] = mapped_column("Nº Noches", Integer, nullable=True)
     status: Mapped[str | None] = mapped_column("Status", String(100), nullable=True)
+    # False = no hay que limpiar el piso antes de esta entrada: no genera limpieza pendiente.
+    cleaning_required: Mapped[bool] = mapped_column(
+        "Cleaning Required", Boolean, nullable=False, default=True, server_default="1"
+    )
 
     # Ocupación
     persons: Mapped[int | None] = mapped_column("Nº Personas", Integer, nullable=True)

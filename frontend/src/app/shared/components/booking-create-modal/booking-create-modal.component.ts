@@ -71,6 +71,7 @@ export class BookingCreateModalComponent implements OnInit {
     status: 'Confirmed',
     adults: 1,
     children: 0,
+    cleaning_required: true,
   });
 
   rangeCalendarOpen = signal(false);
@@ -437,6 +438,7 @@ export class BookingCreateModalComponent implements OnInit {
       booking_number: d.booking_number ?? null,
       notes: d.notes ?? null,
       notes_cleaning: d.notes_cleaning ?? null,
+      cleaning_required: d.cleaning_required ?? true,
     };
 
     this.bookingService.createBooking(payload).subscribe({

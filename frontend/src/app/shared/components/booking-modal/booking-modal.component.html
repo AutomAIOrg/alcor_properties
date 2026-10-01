@@ -371,6 +371,16 @@
 
         <p class="edit-section-title">Notas de limpieza</p>
 
+        <label class="cleaning-toggle">
+          <input
+            type="checkbox"
+            [checked]="draft().cleaning_required"
+            (change)="patchDraft('cleaning_required', cleaningToggle.checked)"
+            #cleaningToggle
+          />
+          <span>Requiere limpieza</span>
+        </label>
+
         <div class="field">
           <textarea
             rows="3"

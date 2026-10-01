@@ -95,6 +95,32 @@ class TestBuildCleaningOpportunities:
         assert len(opportunities) == 1
         assert opportunities[0].source_booking_record_id == 2
 
+    def test_skips_bookings_that_do_not_require_cleaning(self):
+        bookings = [
+            make_booking(
+                record_id=1,
+                apartment_id="R180",
+                check_in=date(2026, 6, 1),
+                check_out=date(2026, 6, 3),
+                cleaning_required=False,
+            ),
+            make_booking(
+                record_id=2,
+                apartment_id="R180",
+                check_in=date(2026, 6, 4),
+                check_out=date(2026, 6, 6),
+            ),
+        ]
+
+        opportunities = _build_cleaning_opportunities(bookings)
+
+        # La reserva 1 no genera limpieza, pero sigue ocupando el piso: la limpieza de la 2
+        # no puede empezar hasta su salida.
+        assert len(opportunities) == 1
+        assert opportunities[0].source_booking_record_id == 2
+        assert opportunities[0].previous_booking_record_id == 1
+        assert opportunities[0].available_from == date(2026, 6, 3)
+
     def test_window_runs_from_previous_checkout_to_own_check_in(self):
         bookings = [
             make_booking(
