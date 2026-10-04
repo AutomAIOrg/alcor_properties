@@ -76,6 +76,9 @@ class Booking(BaseModel):
     )
     notes: str | None = Field(default=None, description="Notas en texto libre")
     notes_cleaning: str | None = Field(default=None, description="Notas de limpieza")
+    cleaning_required: bool = Field(
+        default=True, description="Si hay que limpiar el piso antes de esta entrada"
+    )
 
     # Campo calculado — establecido por la capa de aplicación, no persistido en la BD
     electric_allowance: float | None = Field(

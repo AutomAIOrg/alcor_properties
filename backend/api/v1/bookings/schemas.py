@@ -32,6 +32,7 @@ class BookingResponse(BaseModel):
     booking_number: str | None = None
     notes: str | None = None
     notes_cleaning: str | None = None
+    cleaning_required: bool
     electric_allowance: float | None = None
 
 
@@ -79,6 +80,9 @@ class BookingCreateRequest(BaseModel):
     booking_number: str | None = None
     notes: str | None = None
     notes_cleaning: str | None = None
+    cleaning_required: bool = Field(
+        default=True, description="Si hay que limpiar antes de la entrada"
+    )
 
 
 class BookingUpdateRequest(BaseModel):
@@ -102,6 +106,7 @@ class BookingUpdateRequest(BaseModel):
     booking_number: str | None = None
     notes: str | None = None
     notes_cleaning: str | None = None
+    cleaning_required: bool | None = None
 
 
 class CleaningOpportunityResponse(BaseModel):

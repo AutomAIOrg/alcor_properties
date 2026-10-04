@@ -378,6 +378,10 @@ def _build_cleaning_opportunities(
             assert booking.record_id is not None  # sort_for_cleaning ya descarta las sin ID
 
             previous = apartment_bookings[index - 1] if index else None
+            # La reserva sigue contando como anterior de la siguiente: ocupa el piso igual.
+            if not booking.cleaning_required:
+                continue
+
             window_start = cleaning_window_start(booking, previous)
             apartment = apartments.get(booking.apartment_id)
             opportunities.append(

@@ -20,6 +20,8 @@ export interface Booking {
   booking_number: string | null;
   notes: string | null;
   notes_cleaning: string | null;
+  /** false = no hay que limpiar antes de esta entrada: no aparece en limpiezas pendientes. */
+  cleaning_required: boolean;
 }
 
 /**

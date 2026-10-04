@@ -322,6 +322,9 @@ class TestCreateBooking:
         )
 
         assert response.status_code == 201
+        created = mock_use_cases.create_command.execute.call_args.args[0]
+        assert created.cleaning_required is True
+        assert response.json()["cleaning_required"] is True
 
     def test_invalid_payload_returns_422(self, api_client):
         response = api_client.post(
@@ -357,6 +360,18 @@ class TestUpdateBooking:
         assert response.status_code == 200
         _, update_data = mock_use_cases.update_command.execute.call_args.args
         assert update_data.as_update_dict() == {"email": None}
+
+    def test_update_forwards_cleaning_required(self, api_client, mock_use_cases):
+        mock_use_cases.update_command.execute.return_value = make_booking(
+            record_id=1, cleaning_required=False
+        )
+
+        response = api_client.put("/api/v1/bookings/1", json={"cleaning_required": False})
+
+        assert response.status_code == 200
+        _, update_data = mock_use_cases.update_command.execute.call_args.args
+        assert update_data.as_update_dict() == {"cleaning_required": False}
+        assert response.json()["cleaning_required"] is False
 
     def test_returns_404_when_not_found(self, api_client, mock_use_cases):
         mock_use_cases.update_command.execute.side_effect = BookingNotFound(99)

@@ -29,6 +29,7 @@ function makeCreatedBooking(overrides: Partial<Booking> = {}): Booking {
     booking_number: null,
     notes: null,
     notes_cleaning: null,
+    cleaning_required: true,
     ...overrides,
   };
 }
@@ -807,7 +808,39 @@ describe('BookingCreateModalComponent', () => {
         expect.objectContaining({
           notes: 'Llega tarde',
           notes_cleaning: 'Dejar cuna montada',
+          cleaning_required: true,
         })
+      );
+    });
+
+    it('permite crear una reserva que no requiere limpieza', () => {
+      apartmentServiceSpy.getAvailableApartmentIds.mockReturnValue(of(['R202']));
+
+      component.selectRangeDate('2025-07-01');
+      component.selectRangeDate('2025-07-05');
+
+      fixture.detectChanges();
+
+      const selects: HTMLSelectElement[] = Array.from(
+        fixture.nativeElement.querySelectorAll('select')
+      );
+      const guestInput: HTMLInputElement =
+        fixture.nativeElement.querySelector('input[type="text"]');
+      const toggle: HTMLInputElement =
+        fixture.nativeElement.querySelector('.cleaning-toggle input');
+      expect(toggle.checked).toBe(true);
+
+      selects[0].value = 'R202';
+      selects[0].dispatchEvent(new Event('change'));
+      guestInput.value = 'Laura García';
+      guestInput.dispatchEvent(new Event('input'));
+      toggle.click();
+
+      fixture.detectChanges();
+      (fixture.nativeElement.querySelector('.btn-save') as HTMLButtonElement).click();
+
+      expect(bookingServiceSpy.createBooking).toHaveBeenCalledWith(
+        expect.objectContaining({ cleaning_required: false })
       );
     });
 

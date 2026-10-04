@@ -31,6 +31,7 @@ function makeBooking(overrides: Partial<Booking> = {}): Booking {
     booking_number: 'BK001',
     notes: null,
     notes_cleaning: null,
+    cleaning_required: true,
     ...overrides,
   };
 }
@@ -451,6 +452,23 @@ describe('BookingModalComponent', () => {
       expect(bookingServiceSpy.updateBooking).toHaveBeenCalledWith(
         1,
         expect.objectContaining({ notes_cleaning: 'Ropa de cama y menaje' })
+      );
+    });
+
+    it('el formulario de edición permite desmarcar que la reserva requiere limpieza', () => {
+      component.startEdit();
+      fixture.detectChanges();
+
+      const toggle: HTMLInputElement =
+        fixture.nativeElement.querySelector('.cleaning-toggle input');
+      expect(toggle.checked).toBe(true);
+
+      toggle.click();
+      component.saveEdit();
+
+      expect(bookingServiceSpy.updateBooking).toHaveBeenCalledWith(
+        1,
+        expect.objectContaining({ cleaning_required: false })
       );
     });
 

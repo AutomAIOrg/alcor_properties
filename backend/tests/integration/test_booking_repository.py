@@ -398,6 +398,16 @@ class TestUpdate:
         assert result.notes == "Nota reserva"
         assert result.notes_cleaning == "Llaves en conserjería"
 
+    def test_persists_cleaning_required(self, sqlite_session):
+        repo = SQLAlchemyBookingRepository(sqlite_session)
+        orm = _insert_orm(sqlite_session)
+        existing = repo.get_by_id(orm.record_id)
+        assert existing.cleaning_required is True
+
+        result = repo.update(existing.model_copy(update={"cleaning_required": False}))
+
+        assert result.cleaning_required is False
+
     def test_persists_agreed_check_times(self, sqlite_session):
         repo = SQLAlchemyBookingRepository(sqlite_session)
         orm = _insert_orm(sqlite_session)

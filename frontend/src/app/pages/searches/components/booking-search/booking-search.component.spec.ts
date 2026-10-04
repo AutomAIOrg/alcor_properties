@@ -38,6 +38,7 @@ function makeBooking(overrides: Partial<Booking> = {}): Booking {
     booking_number: 'BK-1',
     notes: null,
     notes_cleaning: null,
+    cleaning_required: true,
     ...overrides,
   };
 }

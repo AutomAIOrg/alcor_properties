@@ -451,6 +451,20 @@
   gap: 0.75rem;
 }
 
+.cleaning-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  color: #344054;
+  cursor: pointer;
+
+  input {
+    margin: 0;
+    cursor: pointer;
+  }
+}
+
 .edit-section-title {
   font-size: 0.72rem;
   font-weight: 700;
