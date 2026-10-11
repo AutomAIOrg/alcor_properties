@@ -9,6 +9,7 @@ from fastapi import Depends, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
+from api.v1.auth.schemas import RefreshTokenRequest
 from application.apartments.use_cases import (
     CreateApartmentUseCase,
     DeleteApartmentUseCase,
@@ -22,6 +23,7 @@ from application.auth.change_initial_password_use_case import ChangeInitialPassw
 from application.auth.change_password_use_case import ChangePasswordUseCase
 from application.auth.forgot_password_use_case import ForgotPasswordUseCase
 from application.auth.login_use_case import LoginUseCase
+from application.auth.logout_use_case import LogoutUseCase
 from application.auth.refresh_token_use_case import RefreshTokenUseCase
 from application.auth.reset_password_use_case import ResetPasswordUseCase
 from application.auth.token_manager_interface import ITokenManager
@@ -68,6 +70,7 @@ from application.users.reset_user_password_use_case import ResetUserPasswordUseC
 from application.users.update_user_use_case import UpdateUserUseCase
 from config import settings
 from domain.apartments.repository import IApartmentRepository
+from domain.auth.token_payload_entity import TokenPayload
 from domain.auth.user_entity import Role, User
 from domain.bills.bill_document_repository import IBillDocumentRepository
 from domain.bills.repository import IBillRepository
@@ -143,7 +146,27 @@ def get_authenticated_user(
         raise InvalidToken("Token de autenticación no proporcionado.")
 
     token = token_manager.decode_access_token(credentials.credentials)
+    return _get_user_from_token(token, user_repository)
 
+
+def get_logout_user(
+    request: RefreshTokenRequest | None = None,
+    credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
+    token_manager: ITokenManager = Depends(get_token_manager),
+    user_repository: IUserRepository = Depends(get_user_repository),
+) -> User:
+    """Allow revocation with a signed, unexpired refresh even after access expiry.
+
+    This credential only authorizes logout, never access or token renewal.
+    Keep access-only logout for clients without a stored refresh token.
+    """
+    if request is None:
+        return get_authenticated_user(credentials, token_manager, user_repository)
+    token = token_manager.decode_refresh_token(request.refresh_token)
+    return _get_user_from_token(token, user_repository)
+
+
+def _get_user_from_token(token: TokenPayload, user_repository: IUserRepository) -> User:
     try:
         user_id = int(token.subject)
     except (TypeError, ValueError) as exc:
@@ -305,6 +328,13 @@ def get_change_initial_password_use_case(
 ) -> ChangeInitialPasswordUseCase:
     """Inyección de dependencias para que un usuario fije su contraseña inicial."""
     return ChangeInitialPasswordUseCase(user_repository, password_manager, token_manager)
+
+
+def get_logout_use_case(
+    user_repository: IUserRepository = Depends(get_user_repository),
+) -> LogoutUseCase:
+    """Inyección de dependencias para cerrar sesión invalidando tokens."""
+    return LogoutUseCase(user_repository)
 
 
 def get_create_user_use_case(

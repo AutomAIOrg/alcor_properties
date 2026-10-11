@@ -13,7 +13,9 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const sessionActivity = inject(SessionActivityService);
 
   const isAuthRequest =
-    req.url.includes('/api/v1/auth/login') || req.url.includes('/api/v1/auth/refresh');
+    req.url.includes('/api/v1/auth/login') ||
+    req.url.includes('/api/v1/auth/refresh') ||
+    req.url.includes('/api/v1/auth/logout');
   const token = tokenService.getAccessToken();
 
   const authReq =
@@ -25,8 +27,16 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
         return throwError(() => error);
       }
 
-      if (isAuthRequest || sessionActivity.isIdleExpired() || !tokenService.getRefreshToken()) {
-        authService.logout();
+      // Logout ya limpia la sesión local; no reentrar en logout() ante su propio 401.
+      if (
+        req.url.includes('/api/v1/auth/logout') ||
+        isAuthRequest ||
+        sessionActivity.isIdleExpired() ||
+        !tokenService.getRefreshToken()
+      ) {
+        if (!req.url.includes('/api/v1/auth/logout')) {
+          authService.logout();
+        }
         return throwError(() => error);
       }
 

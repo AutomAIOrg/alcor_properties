@@ -267,3 +267,39 @@ class TestInitialPasswordFlows:
         )
 
         assert response.status_code == 422
+
+    def test_logout_allowed_while_must_change_password_and_revokes_tokens(
+        self, e2e_client, sqlite_session
+    ):
+        pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+        _insert_user(
+            sqlite_session,
+            username="pending",
+            password=pwd_context.hash(settings.DEFAULT_PASSWORD),
+            name="Pending",
+            email="pending@example.com",
+            role=Role.LIMPIADORA.value,
+            must_change_password=True,
+        )
+
+        login_response = e2e_client.post(
+            "/api/v1/auth/login",
+            json={"username": "pending", "password": settings.DEFAULT_PASSWORD},
+        )
+        assert login_response.status_code == 200
+        token = login_response.json()["access_token"]
+
+        logout_response = e2e_client.post(
+            "/api/v1/auth/logout",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert logout_response.status_code == 200
+
+        assert (
+            e2e_client.post(
+                "/api/v1/auth/change-initial-password",
+                headers={"Authorization": f"Bearer {token}"},
+                json={"new_password": "propia123"},
+            ).status_code
+            == 401
+        )
