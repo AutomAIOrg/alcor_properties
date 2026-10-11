@@ -51,6 +51,7 @@ def password_api_client(
         get_change_initial_password_use_case,
         get_change_password_use_case,
         get_current_user,
+        get_current_user_allowing_password_change,
         get_reset_user_password_use_case,
     )
     from main import app
@@ -58,6 +59,7 @@ def password_api_client(
     admin_user = make_user(id=7, role=Role.ADMIN)
 
     app.dependency_overrides[get_current_user] = lambda: admin_user
+    app.dependency_overrides[get_current_user_allowing_password_change] = lambda: admin_user
     app.dependency_overrides[get_change_password_use_case] = lambda: mock_change_password_use_case
     app.dependency_overrides[get_reset_user_password_use_case] = lambda: (
         mock_reset_user_password_use_case
@@ -71,6 +73,7 @@ def password_api_client(
             yield client
     finally:
         app.dependency_overrides.pop(get_current_user, None)
+        app.dependency_overrides.pop(get_current_user_allowing_password_change, None)
         app.dependency_overrides.pop(get_change_password_use_case, None)
         app.dependency_overrides.pop(get_reset_user_password_use_case, None)
         app.dependency_overrides.pop(get_change_initial_password_use_case, None)

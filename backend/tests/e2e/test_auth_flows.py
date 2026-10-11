@@ -164,6 +164,15 @@ class TestInitialPasswordFlows:
         first_token = login_response.json()["access_token"]
         assert _claims(first_token)["mcp"] is True
 
+        # Sin cambiar la contraseña no puede eludir el bloqueo con peticiones directas.
+        assert (
+            e2e_client.get(
+                "/api/v1/bookings/cleaning-opportunities",
+                headers={"Authorization": f"Bearer {first_token}"},
+            ).status_code
+            == 403
+        )
+
         # Fija su contraseña propia sin aportar la actual y sigue autenticado.
         change_response = e2e_client.post(
             "/api/v1/auth/change-initial-password",

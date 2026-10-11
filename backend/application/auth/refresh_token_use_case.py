@@ -6,7 +6,7 @@ from dataclasses import dataclass
 
 from application.auth.token_manager_interface import ITokenManager
 from application.shared.user_repository_interface import IUserRepository
-from domain.exceptions import InvalidToken
+from domain.exceptions import InvalidToken, PasswordChangeRequired
 
 
 @dataclass(frozen=True)
@@ -48,6 +48,9 @@ class RefreshTokenUseCase:
 
         if (token_payload.token_version or 0) != user.token_version:
             raise InvalidToken("Token de sesión revocado")
+
+        if user.must_change_password:
+            raise PasswordChangeRequired()
 
         access_token = self._token_manager.create_access_token(
             subject=str(user.id),

@@ -11,6 +11,7 @@ from api.dependencies import (
     get_change_initial_password_use_case,
     get_change_password_use_case,
     get_current_user,
+    get_current_user_allowing_password_change,
     get_forgot_password_use_case,
     get_login_use_case,
     get_refresh_token_use_case,
@@ -114,7 +115,7 @@ async def change_password(
 @router.post("/change-initial-password", response_model=LoginResponse)
 async def change_initial_password(
     request: ChangeInitialPasswordRequest,
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[User, Depends(get_current_user_allowing_password_change)],
     change_initial_password_use_case: Annotated[
         ChangeInitialPasswordUseCase, Depends(get_change_initial_password_use_case)
     ],
@@ -122,7 +123,8 @@ async def change_initial_password(
     """Fija la contraseña propia de un usuario que aún tiene la inicial del sistema.
 
     No exige la contraseña actual y devuelve tokens nuevos: el usuario sigue
-    autenticado sin volver a pasar por el login.
+    autenticado sin volver a pasar por el login. Permitido aunque
+    must_change_password=True (único recurso de negocio habilitado junto a logout).
     """
     logger.info("Cambio de la contraseña inicial del usuario autenticado")
     result = change_initial_password_use_case.execute(

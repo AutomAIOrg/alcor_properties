@@ -4,11 +4,12 @@ Implementación de IUserRepository usando SQLAlchemy.
 
 import logging
 
+from sqlalchemy import update
 from sqlalchemy.orm import Session
 
 from application.shared.user_repository_interface import IUserRepository
 from domain.auth.user_entity import NewUser, Role, User
-from domain.exceptions import UserDatabaseError, UserNotFound
+from domain.exceptions import InvalidToken, UserDatabaseError, UserNotFound
 from infrastructure.models.user import UserORM
 
 logger = logging.getLogger(__name__)
@@ -130,17 +131,44 @@ class SQLAlchemyUserRepository(IUserRepository):
         return rows == 1
 
     def bump_token_version(self, user_id: int) -> None:
-        """Incrementa la versión de token del usuario, invalidando sus sesiones activas."""
-        orm = self._db.query(UserORM).filter(UserORM.id == user_id).first()
-        if orm is None:
-            raise UserNotFound()
-        orm.token_version = orm.token_version + 1
         try:
+            result = self._db.execute(
+                update(UserORM)
+                .where(UserORM.id == user_id)
+                .values(token_version=UserORM.token_version + 1)
+            )
+            if result.rowcount != 1:
+                raise UserNotFound()
             self._db.commit()
-        except Exception as e:
+        except Exception:
             self._db.rollback()
-            logger.exception(f"Error al invalidar las sesiones del usuario: {e}")
-            raise UserDatabaseError("Error al invalidar las sesiones del usuario.") from e
+            raise
+
+    def complete_initial_password(self, user_id, password_hash, expected_version):
+        try:
+            result = self._db.execute(
+                update(UserORM)
+                .where(
+                    UserORM.id == user_id,
+                    UserORM.token_version == expected_version,
+                    UserORM.must_change_password.is_(True),
+                )
+                .values(
+                    password=password_hash,
+                    must_change_password=False,
+                    token_version=UserORM.token_version + 1,
+                )
+                .execution_options(synchronize_session=False)
+            )
+            if result.rowcount != 1:
+                raise InvalidToken("El cambio de contraseña ya no es válido")
+            self._db.expire_all()
+            user = self.get_by_id(user_id)
+            self._db.commit()
+            return user
+        except Exception:
+            self._db.rollback()
+            raise
 
     # ------------------------------------------------------------------ #
     # Helpers privados de conversión                                     #

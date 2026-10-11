@@ -73,7 +73,7 @@ from domain.bills.bill_document_repository import IBillDocumentRepository
 from domain.bills.repository import IBillRepository
 from domain.bookings.repository import IBookingRepository
 from domain.cleaning_types.repository import ICleaningTypeRepository
-from domain.exceptions import InvalidToken
+from domain.exceptions import InvalidToken, PasswordChangeRequired
 from infrastructure.database.session import get_db
 from infrastructure.documents.chromium_bill_pdf_renderer import ChromiumBillPdfRenderer
 from infrastructure.email.smtp_email_sender import ConsoleEmailSender, SMTPEmailSender
@@ -133,12 +133,12 @@ def get_email_sender() -> IEmailSender:
     return ConsoleEmailSender()
 
 
-def get_current_user(
+def get_authenticated_user(
     credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
     token_manager: ITokenManager = Depends(get_token_manager),
     user_repository: IUserRepository = Depends(get_user_repository),
 ) -> User:
-    """Decodifica el token y devuelve el payload."""
+    """Decodifica el access token y devuelve el usuario sin comprobar must_change_password."""
     if credentials is None:
         raise InvalidToken("Token de autenticación no proporcionado.")
 
@@ -156,6 +156,25 @@ def get_current_user(
 
     if (token.token_version or 0) != user.token_version:
         raise InvalidToken("Token de sesión revocado.")
+    return user
+
+
+def get_current_user(
+    user: User = Depends(get_authenticated_user),
+) -> User:
+    """Usuario autenticado con acceso normal a la API (sin cambio de contraseña pendiente)."""
+    if user.must_change_password:
+        raise PasswordChangeRequired()
+    return user
+
+
+def get_current_user_allowing_password_change(
+    user: User = Depends(get_authenticated_user),
+) -> User:
+    """Usuario autenticado aunque deba cambiar la contraseña inicial.
+
+    Solo para endpoints de cambio de contraseña inicial y cierre de sesión.
+    """
     return user
 
 

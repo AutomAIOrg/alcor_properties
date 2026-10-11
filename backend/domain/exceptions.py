@@ -60,6 +60,13 @@ class InvalidCredentials(DomainException):
         super().__init__("Usuario o contraseña inválidos")
 
 
+class PasswordChangeRequired(DomainException):
+    """Se lanza cuando el usuario debe cambiar la contraseña inicial antes de operar."""
+
+    def __init__(self) -> None:
+        super().__init__("Debes cambiar tu contraseña antes de acceder a este recurso.")
+
+
 class UserAlreadyExists(DomainException):
     """Se lanza cuando un usuario ya existe."""
 

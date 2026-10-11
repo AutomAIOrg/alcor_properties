@@ -117,21 +117,26 @@ class TestCleaningOpportunitiesAuth:
 
         assert response.status_code == 200
 
-    def test_cleaning_opportunities_with_admin_token_returns_200(self, protected_api_client):
+    def test_cleaning_opportunities_with_must_change_password_returns_403(
+        self, protected_api_client
+    ):
         from api.dependencies import get_user_repository
         from main import app
         from tests.helpers import make_user
 
         mock_user_repository = MagicMock()
-        mock_user_repository.get_by_id.return_value = make_user(id=1, role=Role.ADMIN)
+        mock_user_repository.get_by_id.return_value = make_user(
+            id=1, role=Role.LIMPIADORA, must_change_password=True
+        )
         app.dependency_overrides[get_user_repository] = lambda: mock_user_repository
 
         try:
             response = protected_api_client.get(
                 "/api/v1/bookings/cleaning-opportunities",
-                headers={"Authorization": _bearer_token(Role.ADMIN)},
+                headers={"Authorization": _bearer_token(Role.LIMPIADORA)},
             )
         finally:
             app.dependency_overrides.pop(get_user_repository, None)
 
-        assert response.status_code == 200
+        assert response.status_code == 403
+        assert "cambiar tu contraseña" in response.json()["detail"]
