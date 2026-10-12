@@ -59,3 +59,9 @@ class IUserRepository(ABC):
     def bump_token_version(self, user_id: int) -> None:
         """Incrementa la versión de token del usuario, invalidando sus sesiones activas."""
         pass
+
+    @abstractmethod
+    def complete_initial_password(
+        self, user_id: int, password_hash: str, expected_version: int
+    ) -> User:
+        """Atomically set the password, clear the flag and revoke existing tokens."""

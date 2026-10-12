@@ -144,4 +144,14 @@ describe('authInterceptor', () => {
       req.flush([]);
     });
   });
+  it('no intenta refresh ni logout recursivo ante un 401 de logout', () => {
+    http
+      .post('/api/v1/auth/logout', {}, { headers: { Authorization: 'Bearer captured' } })
+      .subscribe({ error: error => expect(error.status).toBe(401) });
+    const req = httpMock.expectOne('/api/v1/auth/logout');
+    expect(req.request.headers.get('Authorization')).toBe('Bearer captured');
+    req.flush({}, { status: 401, statusText: 'Unauthorized' });
+    expect(authServiceSpy.refreshToken).not.toHaveBeenCalled();
+    expect(authServiceSpy.logout).not.toHaveBeenCalled();
+  });
 });

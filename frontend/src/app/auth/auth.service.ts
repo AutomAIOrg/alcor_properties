@@ -98,10 +98,25 @@ export class AuthService {
       );
   }
 
+  // Cierra la sesión en servidor (invalida tokens) y limpia el estado local.
+  // Si hay cambio de contraseña pendiente, el backend también permite este endpoint.
   logout(): void {
+    const token = this.tokenService.getAccessToken();
+    const refreshToken = this.tokenService.getRefreshToken();
     this.sessionActivity.stop();
     this.tokenService.removeTokens();
     this._currentUser.set(null);
+
+    if (refreshToken || token) {
+      this.http
+        .post<MessageResponse>(
+          `${this.API}/logout`,
+          refreshToken ? { refresh_token: refreshToken } : null,
+          token ? { headers: { Authorization: `Bearer ${token}` } } : {}
+        )
+        .subscribe({ error: () => undefined });
+    }
+
     void this.router.navigate(['/login']);
   }
 

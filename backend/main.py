@@ -29,6 +29,7 @@ from api.error_handlers import (
     integrity_error_handler,
     invalid_credentials_handler,
     invalid_token_handler,
+    password_change_required_handler,
     token_expired_handler,
     user_already_exists_handler,
     user_database_error_handler,
@@ -56,6 +57,7 @@ from domain.exceptions import (
     IntegrityError,
     InvalidCredentials,
     InvalidToken,
+    PasswordChangeRequired,
     TokenExpired,
     UserAlreadyExists,
     UserDatabaseError,
@@ -99,6 +101,7 @@ app.add_exception_handler(BookingNotFound, booking_not_found_handler)
 app.add_exception_handler(BookingConflict, booking_conflict_handler)
 app.add_exception_handler(DomainValidationError, domain_validation_error_handler)
 app.add_exception_handler(InvalidCredentials, invalid_credentials_handler)
+app.add_exception_handler(PasswordChangeRequired, password_change_required_handler)
 app.add_exception_handler(InvalidToken, invalid_token_handler)
 app.add_exception_handler(TokenExpired, token_expired_handler)
 app.add_exception_handler(UserAlreadyExists, user_already_exists_handler)

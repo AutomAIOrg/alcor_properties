@@ -306,6 +306,18 @@ describe('AuthService', () => {
 
   // ── C: Logout ───────────────────────────────────────────────────────────────
 
+  it('envía el access capturado al cerrar sesión y limpia el estado aunque falle el servidor', () => {
+    setup({ tokenValid: true, decodedUser: makeUser() });
+    tokenServiceSpy.getAccessToken.mockReturnValue('captured-access');
+    service.logout();
+    const req = httpMock!.expectOne('/api/v1/auth/logout');
+    expect(req.request.headers.get('Authorization')).toBe('Bearer captured-access');
+    expect(tokenServiceSpy.removeTokens).toHaveBeenCalledTimes(1);
+    req.flush({ detail: 'Token revocado' }, { status: 401, statusText: 'Unauthorized' });
+    expect(service.currentUser()).toBeNull();
+    expect(routerSpy.navigate).toHaveBeenCalledWith(['/login']);
+  });
+
   describe('C — logout', () => {
     it('elimina el token, limpia currentUser y navega a /login', () => {
       const user = makeUser();
@@ -518,5 +530,16 @@ describe('AuthService', () => {
 
       expect(service.currentRole()).toBe(primaryRole);
     });
+  });
+  it('envia el refresh capturado aunque el access haya caducado', () => {
+    setup({ tokenValid: true, decodedUser: makeUser() });
+    tokenServiceSpy.getAccessToken.mockReturnValue('expired-access');
+    tokenServiceSpy.getRefreshToken.mockReturnValue('valid-refresh');
+    service.logout();
+    const req = httpMock!.expectOne('/api/v1/auth/logout');
+    expect(req.request.body).toEqual({ refresh_token: 'valid-refresh' });
+    expect(tokenServiceSpy.removeTokens).toHaveBeenCalledTimes(1);
+    req.flush({ message: 'ok' });
+    expect(service.currentUser()).toBeNull();
   });
 });

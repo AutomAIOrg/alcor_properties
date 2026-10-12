@@ -11,8 +11,11 @@ from api.dependencies import (
     get_change_initial_password_use_case,
     get_change_password_use_case,
     get_current_user,
+    get_current_user_allowing_password_change,
     get_forgot_password_use_case,
     get_login_use_case,
+    get_logout_use_case,
+    get_logout_user,
     get_refresh_token_use_case,
     get_reset_password_use_case,
 )
@@ -34,6 +37,7 @@ from application.auth.change_initial_password_use_case import (
 from application.auth.change_password_use_case import ChangePasswordCommand, ChangePasswordUseCase
 from application.auth.forgot_password_use_case import ForgotPasswordUseCase
 from application.auth.login_use_case import LoginCredentials, LoginUseCase
+from application.auth.logout_use_case import LogoutCommand, LogoutUseCase
 from application.auth.refresh_token_use_case import RefreshTokenCommand, RefreshTokenUseCase
 from application.auth.reset_password_use_case import ResetPasswordCommand, ResetPasswordUseCase
 from domain.auth.user_entity import User
@@ -57,6 +61,17 @@ async def user_login(
         access_token=token.access_token,
         refresh_token=token.refresh_token,
     )
+
+
+@router.post("/logout", response_model=MessageResponse)
+async def logout(
+    current_user: Annotated[User, Depends(get_logout_user)],
+    logout_use_case: Annotated[LogoutUseCase, Depends(get_logout_use_case)],
+):
+    """Cierra la sesión invalidando access y refresh tokens del usuario."""
+    logger.info("Cierre de sesión del usuario autenticado")
+    logout_use_case.execute(LogoutCommand(user_id=current_user.id))
+    return MessageResponse(message="Sesión cerrada correctamente.")
 
 
 @router.post("/forgot-password", response_model=MessageResponse)
@@ -114,7 +129,7 @@ async def change_password(
 @router.post("/change-initial-password", response_model=LoginResponse)
 async def change_initial_password(
     request: ChangeInitialPasswordRequest,
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[User, Depends(get_current_user_allowing_password_change)],
     change_initial_password_use_case: Annotated[
         ChangeInitialPasswordUseCase, Depends(get_change_initial_password_use_case)
     ],
@@ -122,7 +137,8 @@ async def change_initial_password(
     """Fija la contraseña propia de un usuario que aún tiene la inicial del sistema.
 
     No exige la contraseña actual y devuelve tokens nuevos: el usuario sigue
-    autenticado sin volver a pasar por el login.
+    autenticado sin volver a pasar por el login. Permitido aunque
+    must_change_password=True (único recurso de negocio habilitado junto a logout).
     """
     logger.info("Cambio de la contraseña inicial del usuario autenticado")
     result = change_initial_password_use_case.execute(

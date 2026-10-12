@@ -68,15 +68,9 @@ class ChangeInitialPasswordUseCase:
         if self._password_manager.verify(command.new_password, user.password):
             raise DomainValidationError("La nueva contraseña debe ser distinta de la inicial")
 
-        user.password = self._password_manager.hash(command.new_password)
-        user.must_change_password = False
-        self._user_repository.update_user(user)
-
-        # Invalida las sesiones abiertas con la contraseña inicial.
-        self._user_repository.bump_token_version(user.id)
-        updated_user = self._user_repository.get_by_id(user.id)
-        if updated_user is None:
-            raise UserNotFound()
+        updated_user = self._user_repository.complete_initial_password(
+            user.id, self._password_manager.hash(command.new_password), user.token_version
+        )
 
         access_token = self._token_manager.create_access_token(
             subject=str(updated_user.id),

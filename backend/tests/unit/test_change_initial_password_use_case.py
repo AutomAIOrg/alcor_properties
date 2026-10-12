@@ -50,7 +50,8 @@ class TestChangeInitialPasswordUseCase:
         updated_user = make_user(
             id=1, password="hashed-new-password", must_change_password=False, token_version=1
         )
-        user_repository.get_by_id.side_effect = [user, updated_user]
+        user_repository.get_by_id.return_value = user
+        user_repository.complete_initial_password.return_value = updated_user
         # La nueva contraseña no coincide con la inicial almacenada.
         password_manager.verify.return_value = False
         password_manager.hash.return_value = "hashed-new-password"
@@ -62,11 +63,11 @@ class TestChangeInitialPasswordUseCase:
         assert result.access_token == "new-access-token"
         assert result.refresh_token == "new-refresh-token"
         password_manager.hash.assert_called_once_with("nueva123")
-        assert user.password == "hashed-new-password"
-        assert user.must_change_password is False
-        user_repository.update_user.assert_called_once_with(user)
-        # Las sesiones abiertas con la contraseña inicial dejan de ser válidas.
-        user_repository.bump_token_version.assert_called_once_with(1)
+        user_repository.complete_initial_password.assert_called_once_with(
+            1, "hashed-new-password", 0
+        )
+        user_repository.update_user.assert_not_called()
+        user_repository.bump_token_version.assert_not_called()
         # Los tokens emitidos ya no arrastran la marca de cambio obligatorio.
         token_manager.create_access_token.assert_called_once_with(
             subject="1",

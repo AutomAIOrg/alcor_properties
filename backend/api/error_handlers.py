@@ -33,6 +33,11 @@ async def invalid_credentials_handler(request: Request, exc: Exception) -> JSONR
     return JSONResponse(status_code=401, content={"detail": str(exc)})
 
 
+async def password_change_required_handler(request: Request, exc: Exception) -> JSONResponse:
+    """Devuelve un error 403 cuando el usuario debe cambiar la contraseña inicial."""
+    return JSONResponse(status_code=403, content={"detail": str(exc)})
+
+
 async def invalid_token_handler(request: Request, exc: Exception) -> JSONResponse:
     """Devuelve un error 401 cuando el token es inválido."""
     return JSONResponse(
