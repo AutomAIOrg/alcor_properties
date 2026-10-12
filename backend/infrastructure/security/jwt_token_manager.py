@@ -12,6 +12,7 @@ from jwt import ExpiredSignatureError, InvalidTokenError
 
 from application.auth.token_manager_interface import ITokenManager
 from config import settings
+from domain.auth.issued_refresh_token import IssuedRefreshToken
 from domain.auth.reset_token import IssuedResetToken
 from domain.auth.token_payload_entity import TokenPayload
 from domain.auth.user_entity import Role
@@ -56,20 +57,36 @@ class JwtTokenManager(ITokenManager):
             subject=subject,
             token_type="access",
             expires_delta=timedelta(minutes=self._access_token_expire_minutes),
-            claims=claims,
+            claims={**dict(claims or {}), "jti": str(uuid.uuid4())},
         )
 
     def decode_access_token(self, token: str) -> TokenPayload:
         """Valida un token de acceso y devuelve sus claims normalizados."""
         return self._decode_token(token, expected_type="access")
 
-    def create_refresh_token(self, subject: str, token_version: int = 0) -> str:
+    def create_refresh_token(
+        self, subject: str, token_version: int = 0, session_id: str | None = None
+    ) -> IssuedRefreshToken:
         """Crea un token de refresh para un sujeto autenticado."""
-        return self._create_token(
+        jti = str(uuid.uuid4())
+        token = self._create_token(
             subject=subject,
             token_type="refresh",
             expires_delta=timedelta(days=self._refresh_token_expire_days),
-            claims={"ver": token_version},
+            claims={"ver": token_version, "jti": jti, "sid": session_id},
+        )
+        return IssuedRefreshToken(
+            token=token,
+            jti=jti,
+            expires_at=datetime.fromtimestamp(
+                jwt.decode(
+                    token,
+                    self._secret_key,
+                    algorithms=[self._algorithm],
+                    options={"verify_exp": False},
+                )["exp"],
+                tz=UTC,
+            ),
         )
 
     def decode_refresh_token(self, token: str) -> TokenPayload:
@@ -145,4 +162,5 @@ class JwtTokenManager(ITokenManager):
             role=role,
             jti=payload.get("jti"),
             token_version=payload.get("ver"),
+            session_id=payload.get("sid"),
         )

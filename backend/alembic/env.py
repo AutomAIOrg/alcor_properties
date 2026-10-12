@@ -34,6 +34,7 @@ db_url: URL = URL.create(
 # Every new model added to infrastructure/models/ must be imported here.
 # ---------------------------------------------------------------------------
 import infrastructure.models.apartment  # noqa: E402, F401
+import infrastructure.models.auth_session  # noqa: E402, F401
 import infrastructure.models.bill  # noqa: E402, F401
 import infrastructure.models.bill_document  # noqa: E402, F401
 import infrastructure.models.booking  # noqa: E402, F401

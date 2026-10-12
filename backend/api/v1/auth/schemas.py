@@ -68,7 +68,8 @@ class RefreshTokenRequest(BaseModel):
 
 
 class AccessTokenResponse(BaseModel):
-    """DTO de salida para renovar access tokens."""
+    """DTO de salida para renovar access y refresh tokens."""
 
     access_token: str
+    refresh_token: str
     token_type: str = "bearer"

@@ -96,6 +96,8 @@ class TestAuthenticationFlows:
             json={"refresh_token": refresh_token},
         )
         assert refresh_response.status_code == 200
+        assert refresh_response.json()["refresh_token"]
+        assert refresh_response.json()["refresh_token"] != refresh_token
 
         access_token = refresh_response.json()["access_token"]
         response = e2e_client.get(
@@ -105,6 +107,41 @@ class TestAuthenticationFlows:
 
         assert response.status_code == 200
         assert response.json() == []
+
+    def test_reusing_old_refresh_token_revokes_session(self, e2e_client, sqlite_session):
+        _insert_user(sqlite_session)
+        login_response = e2e_client.post(
+            "/api/v1/auth/login",
+            json={"username": "admin", "password": "admin-password"},
+        )
+        old_refresh = login_response.json()["refresh_token"]
+        access_token = login_response.json()["access_token"]
+
+        first_refresh = e2e_client.post(
+            "/api/v1/auth/refresh",
+            json={"refresh_token": old_refresh},
+        )
+        assert first_refresh.status_code == 200
+        new_refresh = first_refresh.json()["refresh_token"]
+
+        reuse_response = e2e_client.post(
+            "/api/v1/auth/refresh",
+            json={"refresh_token": old_refresh},
+        )
+        assert reuse_response.status_code == 401
+
+        # La sesión comprometida queda invalidada: ni el access previo ni el refresh nuevo sirven.
+        bookings = e2e_client.get(
+            "/api/v1/bookings/",
+            headers={"Authorization": f"Bearer {access_token}"},
+        )
+        assert bookings.status_code == 401
+
+        second_refresh = e2e_client.post(
+            "/api/v1/auth/refresh",
+            json={"refresh_token": new_refresh},
+        )
+        assert second_refresh.status_code == 401
 
     def test_access_token_cannot_be_used_as_refresh_token(self, e2e_client, sqlite_session):
         _insert_user(sqlite_session)

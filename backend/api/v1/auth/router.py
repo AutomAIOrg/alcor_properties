@@ -146,4 +146,7 @@ async def refresh_access_token(
     result = refresh_token_use_case.execute(
         RefreshTokenCommand(refresh_token=request.refresh_token)
     )
-    return AccessTokenResponse(access_token=result.access_token)
+    return AccessTokenResponse(
+        access_token=result.access_token,
+        refresh_token=result.refresh_token,
+    )

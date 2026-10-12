@@ -47,13 +47,14 @@ class TestJwtTokenManager:
             refresh_token_expire_days=7,
         )
 
-        token = manager.create_refresh_token(subject="1", token_version=3)
+        issued = manager.create_refresh_token(subject="1", token_version=3)
 
-        payload = manager.decode_refresh_token(token)
+        payload = manager.decode_refresh_token(issued.token)
         assert payload.subject == "1"
         assert payload.username is None
         assert payload.role is None
         assert payload.token_version == 3
+        assert payload.jti == issued.jti
         assert payload.issued_at is not None
         assert payload.expires_at > payload.issued_at
 
@@ -74,10 +75,10 @@ class TestJwtTokenManager:
             algorithm=_ALGORITHM,
             refresh_token_expire_days=-1,
         )
-        token = manager.create_refresh_token(subject="1")
+        issued = manager.create_refresh_token(subject="1")
 
         with pytest.raises(TokenExpired):
-            manager.decode_refresh_token(token)
+            manager.decode_refresh_token(issued.token)
 
     def test_access_token_is_not_accepted_as_refresh_token(self):
         manager = JwtTokenManager(secret_key=_SECRET, algorithm=_ALGORITHM)
@@ -88,10 +89,10 @@ class TestJwtTokenManager:
 
     def test_refresh_token_is_not_accepted_as_access_token(self):
         manager = JwtTokenManager(secret_key=_SECRET, algorithm=_ALGORITHM)
-        token = manager.create_refresh_token(subject="1")
+        issued = manager.create_refresh_token(subject="1")
 
         with pytest.raises(InvalidToken, match="tipo inválido"):
-            manager.decode_access_token(token)
+            manager.decode_access_token(issued.token)
 
     def test_decode_token_with_invalid_role_raises_invalid_token(self):
         now = datetime.now(UTC)

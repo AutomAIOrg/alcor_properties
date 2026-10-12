@@ -112,7 +112,8 @@ class TestRefreshEndpoint:
         mock_refresh_token_use_case,
     ):
         mock_refresh_token_use_case.execute.return_value = RefreshTokenResult(
-            access_token="new-access-token"
+            access_token="new-access-token",
+            refresh_token="new-refresh-token",
         )
 
         response = auth_api_client.post(
@@ -123,6 +124,7 @@ class TestRefreshEndpoint:
         assert response.status_code == 200
         assert response.json() == {
             "access_token": "new-access-token",
+            "refresh_token": "new-refresh-token",
             "token_type": "bearer",
         }
         mock_refresh_token_use_case.execute.assert_called_once_with(

@@ -26,7 +26,9 @@ describe('authInterceptor', () => {
     authServiceSpy = {
       refreshToken: jest
         .fn()
-        .mockReturnValue(of({ access_token: 'new-token', token_type: 'bearer' })),
+        .mockReturnValue(
+          of({ access_token: 'new-token', refresh_token: 'rotated-refresh', token_type: 'bearer' })
+        ),
       logout: jest.fn(),
     } as unknown as jest.Mocked<AuthService>;
 
@@ -132,7 +134,11 @@ describe('authInterceptor', () => {
 
     expect(authServiceSpy.refreshToken).toHaveBeenCalledTimes(1);
 
-    refreshSubject.next({ access_token: 'shared-new-token', token_type: 'bearer' });
+    refreshSubject.next({
+      access_token: 'shared-new-token',
+      refresh_token: 'shared-refresh',
+      token_type: 'bearer',
+    });
     refreshSubject.complete();
 
     const retries = httpMock.match(req =>

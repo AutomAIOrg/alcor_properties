@@ -19,6 +19,7 @@ from sqlalchemy.pool import StaticPool
 from starlette.testclient import TestClient
 
 import infrastructure.models.apartment  # noqa: F401 — registra ApartmentORM en Base.metadata
+import infrastructure.models.auth_session  # noqa: F401
 import infrastructure.models.bill  # noqa: F401 — registra BillORM en Base.metadata
 import infrastructure.models.bill_document  # noqa: F401 — registra BillDocumentORM en Base.metadata
 import infrastructure.models.booking  # noqa: F401 — registra BookingORM en Base.metadata

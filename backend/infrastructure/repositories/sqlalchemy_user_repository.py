@@ -3,12 +3,15 @@ Implementación de IUserRepository usando SQLAlchemy.
 """
 
 import logging
+from datetime import UTC, datetime
 
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from application.shared.user_repository_interface import IUserRepository
 from domain.auth.user_entity import NewUser, Role, User
-from domain.exceptions import UserDatabaseError, UserNotFound
+from domain.exceptions import InvalidToken, UserDatabaseError, UserNotFound
+from infrastructure.models.auth_session import AuthSessionORM
 from infrastructure.models.user import UserORM
 
 logger = logging.getLogger(__name__)
@@ -130,17 +133,89 @@ class SQLAlchemyUserRepository(IUserRepository):
         return rows == 1
 
     def bump_token_version(self, user_id: int) -> None:
-        """Incrementa la versión de token del usuario, invalidando sus sesiones activas."""
-        orm = self._db.query(UserORM).filter(UserORM.id == user_id).first()
-        if orm is None:
-            raise UserNotFound()
-        orm.token_version = orm.token_version + 1
         try:
+            result = self._db.execute(
+                update(UserORM)
+                .where(UserORM.id == user_id)
+                .values(token_version=UserORM.token_version + 1)
+            )
+            if result.rowcount != 1:
+                raise UserNotFound()
             self._db.commit()
-        except Exception as e:
+        except Exception:
             self._db.rollback()
-            logger.exception(f"Error al invalidar las sesiones del usuario: {e}")
-            raise UserDatabaseError("Error al invalidar las sesiones del usuario.") from e
+            raise
+
+    def _lock_user(self, user_id: int, token_version: int):
+        user = self._db.scalar(
+            select(UserORM)
+            .where(UserORM.id == user_id)
+            .with_for_update()
+            .execution_options(populate_existing=True)
+        )
+        if user is None or user.token_version != token_version:
+            raise InvalidToken("Token de sesión revocado")
+        return user
+
+    def create_auth_session(self, user_id, session_id, jti, expires_at, token_version):
+        try:
+            self._lock_user(user_id, token_version)
+            self._db.add(
+                AuthSessionORM(
+                    id=session_id,
+                    user_id=user_id,
+                    refresh_jti=jti,
+                    expires_at=expires_at.replace(tzinfo=None),
+                    revoked=False,
+                )
+            )
+            self._db.commit()
+        except Exception:
+            self._db.rollback()
+            raise
+
+    def rotate_auth_session(
+        self, user_id, session_id, expected_jti, new_jti, expires_at, token_version
+    ):
+        try:
+            self._lock_user(user_id, token_version)
+            session = self._db.scalar(
+                select(AuthSessionORM)
+                .where(AuthSessionORM.id == session_id, AuthSessionORM.user_id == user_id)
+                .with_for_update()
+                .execution_options(populate_existing=True)
+            )
+            if (
+                session is None
+                or session.revoked
+                or session.expires_at <= datetime.now(UTC).replace(tzinfo=None)
+            ):
+                self._db.rollback()
+                return False
+            if session.refresh_jti != expected_jti:
+                session.revoked = True
+                self._db.commit()
+                return False
+            session.refresh_jti = new_jti
+            session.expires_at = expires_at.replace(tzinfo=None)
+            self._db.commit()
+            return True
+        except Exception:
+            self._db.rollback()
+            raise
+
+    def is_auth_session_active(self, user_id, session_id):
+        return (
+            self._db.scalar(
+                select(AuthSessionORM.id).where(
+                    AuthSessionORM.id == session_id,
+                    AuthSessionORM.user_id == user_id,
+                    AuthSessionORM.revoked.is_(False),
+                    AuthSessionORM.expires_at > datetime.now(UTC).replace(tzinfo=None),
+                )
+            )
+            is not None
+        )
 
     # ------------------------------------------------------------------ #
     # Helpers privados de conversión                                     #

@@ -1,7 +1,17 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
-import { Observable, tap } from 'rxjs';
+import {
+  catchError,
+  defer,
+  EMPTY,
+  filter,
+  firstValueFrom,
+  from,
+  Observable,
+  tap,
+  throwError,
+} from 'rxjs';
 import { TokenService } from './token.service';
 import { SessionActivityService } from './session-activity.service';
 import {
@@ -83,19 +93,39 @@ export class AuthService {
   }
 
   refreshToken(): Observable<AccessTokenResponse> {
-    const refreshToken = this.tokenService.getRefreshToken();
-    if (!refreshToken) {
-      throw new Error('No hay refresh token disponible.');
-    }
-
-    return this.http
-      .post<AccessTokenResponse>(`${this.API}/refresh`, { refresh_token: refreshToken })
-      .pipe(
-        tap(response => {
-          this.tokenService.setAccessToken(response.access_token);
-          this._currentUser.set(this.tokenService.decodeToken());
-        })
-      );
+    return defer(() => {
+      const sessionId = this.tokenService.decodeToken()?.sid;
+      const execute = (): Observable<AccessTokenResponse> => {
+        // A queued refresh must not run for a different login after acquiring the lock.
+        if (this.tokenService.decodeToken()?.sid !== sessionId) return EMPTY;
+        const refreshToken = this.tokenService.getRefreshToken();
+        if (!refreshToken) {
+          throw new Error('No hay refresh token disponible.');
+        }
+        return this.http
+          .post<AccessTokenResponse>(`${this.API}/refresh`, { refresh_token: refreshToken })
+          .pipe(
+            // Logout or another login may have replaced storage while HTTP was pending.
+            filter(() => this.tokenService.getRefreshToken() === refreshToken),
+            tap(response => {
+              this.tokenService.setTokens(response.access_token, response.refresh_token);
+              this._currentUser.set(this.tokenService.decodeToken());
+            }),
+            catchError(error =>
+              this.tokenService.getRefreshToken() === refreshToken ? throwError(() => error) : EMPTY
+            )
+          );
+      };
+      // Other tabs share storage. Read the token only once this origin-wide lock is held.
+      if (typeof navigator !== 'undefined' && navigator.locks) {
+        return from(
+          navigator.locks.request('alcor-auth-refresh', () =>
+            firstValueFrom(execute(), { defaultValue: null })
+          )
+        ).pipe(filter((response): response is AccessTokenResponse => response !== null));
+      }
+      return execute();
+    });
   }
 
   logout(): void {
