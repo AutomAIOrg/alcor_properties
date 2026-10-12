@@ -5,16 +5,18 @@ Enrutador de autenticación.
 import logging
 from typing import Annotated
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 
 from api.dependencies import (
     get_change_initial_password_use_case,
     get_change_password_use_case,
     get_current_user,
     get_forgot_password_use_case,
+    get_login_rate_limiter,
     get_login_use_case,
     get_refresh_token_use_case,
     get_reset_password_use_case,
+    get_trusted_proxy_cidrs,
 )
 from api.v1.auth.schemas import (
     AccessTokenResponse,
@@ -33,10 +35,12 @@ from application.auth.change_initial_password_use_case import (
 )
 from application.auth.change_password_use_case import ChangePasswordCommand, ChangePasswordUseCase
 from application.auth.forgot_password_use_case import ForgotPasswordUseCase
+from application.auth.login_rate_limiter_interface import ILoginRateLimiter
 from application.auth.login_use_case import LoginCredentials, LoginUseCase
 from application.auth.refresh_token_use_case import RefreshTokenCommand, RefreshTokenUseCase
 from application.auth.reset_password_use_case import ResetPasswordCommand, ResetPasswordUseCase
 from domain.auth.user_entity import User
+from infrastructure.security.client_ip_resolver import resolve_client_ip
 
 logger = logging.getLogger(__name__)
 
@@ -46,10 +50,14 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 @router.post("/login", response_model=LoginResponse)
 async def user_login(
     request: LoginRequest,
+    http_request: Request,
     login_use_case: Annotated[LoginUseCase, Depends(get_login_use_case)],
+    rate_limiter: Annotated[ILoginRateLimiter, Depends(get_login_rate_limiter)],
+    trusted_proxy_cidrs: Annotated[list, Depends(get_trusted_proxy_cidrs)],
 ):
     """Login de usuario."""
-    logger.info(f"Login de usuario: {request.username}")
+    client_ip = resolve_client_ip(http_request, trusted_proxy_cidrs)
+    rate_limiter.consume(client_ip=client_ip, username=request.username)
     token = login_use_case.execute(
         LoginCredentials(username=request.username, password=request.password)
     )

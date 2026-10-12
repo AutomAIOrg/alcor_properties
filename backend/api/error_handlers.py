@@ -33,6 +33,16 @@ async def invalid_credentials_handler(request: Request, exc: Exception) -> JSONR
     return JSONResponse(status_code=401, content={"detail": str(exc)})
 
 
+async def rate_limit_exceeded_handler(request: Request, exc: Exception) -> JSONResponse:
+    """Devuelve un error 429 cuando se supera el límite de intentos de login."""
+    retry_after = getattr(exc, "retry_after_seconds", 60)
+    return JSONResponse(
+        status_code=429,
+        content={"detail": str(exc)},
+        headers={"Retry-After": str(retry_after)},
+    )
+
+
 async def invalid_token_handler(request: Request, exc: Exception) -> JSONResponse:
     """Devuelve un error 401 cuando el token es inválido."""
     return JSONResponse(
