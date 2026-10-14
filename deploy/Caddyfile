@@ -1,10 +1,4 @@
-{
-	default_sni {$APP_DOMAIN:localhost}
-}
-
-# Dominio público (HTTPS automático con Let's Encrypt salvo localhost).
-# Variable inyectada por docker-compose.prod.yml: APP_DOMAIN
-{$APP_DOMAIN:localhost} {
+:80 {
 	encode gzip zstd
 
 	# API FastAPI (red interna de Compose)
@@ -12,7 +6,7 @@
 		reverse_proxy backend:8000
 	}
 
-	# Healthcheck accesible vía proxy (útil para monitorización externa)
+	# Healthcheck accesible vía proxy
 	handle /health {
 		reverse_proxy backend:8000
 	}

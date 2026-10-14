@@ -225,7 +225,7 @@ La producción usa **Docker Compose** con tres servicios lógicos:
 |---|---|
 | `migrate` | Ejecuta `alembic upgrade head` una vez contra la MySQL externa |
 | `backend` | FastAPI + Chromium (PDF de facturas) |
-| `web` | Angular estático + Caddy (HTTPS y proxy `/api/*`) |
+| `web` | Angular estático + Caddy (HTTP local y proxy `/api/*`) |
 
 **No se incluye MySQL** en el stack de producción: la base de datos del cliente ya existe y solo recibe migraciones de Alembic.
 
@@ -234,10 +234,8 @@ Los archivos `docker-compose.yml` y `docker-compose.test.yml` de la raíz son **
 ### Requisitos en la VPS
 
 - Docker Engine y Docker Compose v2
-- DNS del dominio apuntando a la IP de la VPS (`APP_DOMAIN`)
-- Puertos **80** y **443** abiertos
+- Tailscale instalado y autenticado en el host, con HTTPS y Funnel habilitados en el tailnet (también da acceso al NAS si usa una IP `100.x.x.x`)
 - Acceso de red desde la VPS a la MySQL de producción (firewall / allowlist)
-- **Tailscale** instalado en el **host** de la VPS si el NAS Synology solo es accesible por red `100.x.x.x`
 - Backup de la base de datos antes del primer despliegue
 
 ### Archivos de despliegue
@@ -247,7 +245,8 @@ alcor_properties/
 ├── backend/Dockerfile          # Imagen FastAPI + Chromium
 ├── backend/docker-entrypoint.sh
 ├── frontend/Dockerfile         # Build Angular + Caddy
-├── deploy/Caddyfile            # TLS, proxy /api, SPA fallback
+├── deploy/Caddyfile            # HTTP local, proxy /api, SPA fallback
+├── deploy/TAILSCALE_FUNNEL.md  # Publicación HTTPS desde el host
 ├── docker-compose.prod.yml     # Orquestación producción
 ├── .env.production.example     # Plantilla de variables (sin secretos)
 └── .dockerignore
@@ -262,7 +261,7 @@ alcor_properties/
 ```bash
 cp .env.production.example .env.production
 chmod 600 .env.production
-# Editar .env.production con valores reales (DB, JWT, NAS, SMTP, dominio...)
+# Editar .env.production con valores reales (DB, JWT, NAS, SMTP, URL de Funnel...)
 ```
 
 3. Validar la configuración de Compose:
@@ -283,17 +282,17 @@ docker compose -f docker-compose.prod.yml up -d --build
 docker compose -f docker-compose.prod.yml exec backend python scripts/create_admin_user.py
 ```
 
-6. Comprobar salud:
+6. Publicar con Funnel y comprobar salud siguiendo [la guía de despliegue](deploy/TAILSCALE_FUNNEL.md):
 
 ```bash
-curl -f https://TU_DOMINIO/health
+sudo tailscale funnel --bg 8080
+curl -f https://TU_NODO.TU_TAILNET.ts.net/health
 ```
 
 ### Variables críticas (`.env.production`)
 
 | Variable | Descripción |
 |---|---|
-| `APP_DOMAIN` | Dominio público (Caddy + certificado TLS) |
 | `DB_*` | Conexión a MySQL externa |
 | `JWT_SECRET_KEY` | Secreto fuerte para tokens |
 | `DEFAULT_PASSWORD` | Obligatoria para arrancar la API |
