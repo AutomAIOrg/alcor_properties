@@ -1,4 +1,4 @@
-# Imagen de producción: build Angular + Caddy (TLS + proxy /api + SPA).
+# Imagen de producción: build Angular + Caddy (HTTP interno + proxy /api + SPA).
 # Contexto de build: raíz del repositorio (docker build -f frontend/Dockerfile .)
 
 FROM node:22.22.2-bookworm-slim AS build
@@ -19,7 +19,7 @@ FROM caddy:2-alpine
 COPY deploy/Caddyfile /etc/caddy/Caddyfile
 COPY --from=build /app/dist/frontend/browser /srv/www
 
-EXPOSE 80 443 443/udp
+EXPOSE 80
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
     CMD wget -qO- http://127.0.0.1/ || exit 1
