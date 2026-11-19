@@ -12,7 +12,8 @@ from starlette.testclient import TestClient
 
 from application.auth.login_use_case import LoginCredentials, LoginResult
 from application.auth.refresh_token_use_case import RefreshTokenCommand, RefreshTokenResult
-from domain.exceptions import InvalidCredentials, InvalidToken
+from domain.exceptions import InvalidCredentials, InvalidToken, RateLimitExceeded
+from infrastructure.security.sqlalchemy_login_rate_limiter import SQLAlchemyLoginRateLimiter
 
 pytestmark = pytest.mark.integration
 
@@ -34,20 +35,26 @@ def mock_forgot_password_use_case() -> MagicMock:
 
 @pytest.fixture
 def auth_api_client(
+    sqlite_session,
     mock_login_use_case: MagicMock,
     mock_refresh_token_use_case: MagicMock,
     mock_forgot_password_use_case: MagicMock,
 ) -> Iterator[TestClient]:
     from api.dependencies import (
         get_forgot_password_use_case,
+        get_login_rate_limiter,
         get_login_use_case,
         get_refresh_token_use_case,
     )
     from main import app
 
+    # Limitador aislado por test para no compartir estado entre casos.
+    test_limiter = SQLAlchemyLoginRateLimiter(sqlite_session, max_attempts=5, window_seconds=900)
+
     app.dependency_overrides[get_login_use_case] = lambda: mock_login_use_case
     app.dependency_overrides[get_refresh_token_use_case] = lambda: mock_refresh_token_use_case
     app.dependency_overrides[get_forgot_password_use_case] = lambda: mock_forgot_password_use_case
+    app.dependency_overrides[get_login_rate_limiter] = lambda: test_limiter
 
     try:
         with TestClient(app, raise_server_exceptions=True) as client:
@@ -56,6 +63,7 @@ def auth_api_client(
         app.dependency_overrides.pop(get_login_use_case, None)
         app.dependency_overrides.pop(get_refresh_token_use_case, None)
         app.dependency_overrides.pop(get_forgot_password_use_case, None)
+        app.dependency_overrides.pop(get_login_rate_limiter, None)
 
 
 class TestLoginEndpoint:
@@ -98,6 +106,28 @@ class TestLoginEndpoint:
 
         assert response.status_code == 401
         assert response.json() == {"detail": "Usuario o contraseña inválidos"}
+
+    def test_login_returns_429_when_rate_limited(
+        self,
+        auth_api_client,
+        mock_login_use_case,
+    ):
+        from api.dependencies import get_login_rate_limiter
+        from main import app
+
+        limiter = MagicMock()
+        limiter.consume.side_effect = RateLimitExceeded(retry_after_seconds=42)
+        app.dependency_overrides[get_login_rate_limiter] = lambda: limiter
+
+        response = auth_api_client.post(
+            "/api/v1/auth/login",
+            json={"username": "admin", "password": "admin-password"},
+        )
+
+        assert response.status_code == 429
+        assert response.headers["Retry-After"] == "42"
+        assert "Demasiados intentos" in response.json()["detail"]
+        mock_login_use_case.execute.assert_not_called()
 
     def test_login_invalid_payload_returns_422(self, auth_api_client):
         response = auth_api_client.post("/api/v1/auth/login", json={"username": "admin"})

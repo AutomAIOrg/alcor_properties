@@ -33,9 +33,8 @@ Si Traefik también funciona en el host, comprobar sus direcciones de escucha
 y las de Tailscale antes de cambiar la asignación del puerto 443. No es
 necesario mover Traefik de IP si no existe un conflicto real.
 
-Cuando se habilite el límite de login por IP, comprobar desde dos redes
-externas que las solicitudes se contabilizan por cliente y que una cabecera
-`X-Forwarded-For` enviada por el cliente no altera la IP elegida. La unión
-Funnel → Caddy → FastAPI no preserva de forma segura esa identidad por el
-simple hecho de publicar el puerto 8080; cada proxy debe confiar solo en su
-salto anterior verificado. No confiar en redes privadas completas.
+Antes de activar el límite de login, seguir la verificación de la cadena de
+confianza en `deploy/AUTH_SECURITY.md`. Confirmar que la red `auth_proxy`
+(`172.30.253.0/29`) está libre en el VPS y probar desde dos redes externas:
+los intentos deben contabilizarse por IP real; una cabecera `X-Forwarded-For`
+falsificada no debe cambiar el cupo. No confiar en redes privadas completas.

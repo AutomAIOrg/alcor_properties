@@ -23,6 +23,7 @@ import infrastructure.models.bill  # noqa: F401 — registra BillORM en Base.met
 import infrastructure.models.bill_document  # noqa: F401 — registra BillDocumentORM en Base.metadata
 import infrastructure.models.booking  # noqa: F401 — registra BookingORM en Base.metadata
 import infrastructure.models.cleaning_type  # noqa: F401 — registra CleaningTypeORM en Base.metadata
+import infrastructure.models.login_limit  # noqa: F401
 import infrastructure.models.user  # noqa: F401 — registra UserORM en Base.metadata
 from domain.apartments.repository import IApartmentRepository
 from domain.auth.token_payload_entity import TokenPayload

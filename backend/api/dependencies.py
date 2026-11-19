@@ -21,6 +21,7 @@ from application.apartments.use_cases import (
 from application.auth.change_initial_password_use_case import ChangeInitialPasswordUseCase
 from application.auth.change_password_use_case import ChangePasswordUseCase
 from application.auth.forgot_password_use_case import ForgotPasswordUseCase
+from application.auth.login_rate_limiter_interface import ILoginRateLimiter
 from application.auth.login_use_case import LoginUseCase
 from application.auth.refresh_token_use_case import RefreshTokenUseCase
 from application.auth.reset_password_use_case import ResetPasswordUseCase
@@ -91,13 +92,17 @@ from infrastructure.repositories.sqlalchemy_cleaning_type_repository import (
     SQLAlchemyCleaningTypeRepository,
 )
 from infrastructure.repositories.sqlalchemy_user_repository import SQLAlchemyUserRepository
+from infrastructure.security.client_ip_resolver import parse_trusted_proxy_cidrs
 from infrastructure.security.jwt_token_manager import JwtTokenManager
 from infrastructure.security.passlib_password_manager import PasslibPasswordManager
+from infrastructure.security.sqlalchemy_login_rate_limiter import SQLAlchemyLoginRateLimiter
 from infrastructure.storage.synology_file_storage import SynologyFileStorage
 
 bearer_scheme = HTTPBearer(auto_error=False)  # Esquema de autenticación Bearer
 
 logger = logging.getLogger(__name__)
+
+_trusted_proxy_cidrs = parse_trusted_proxy_cidrs(settings.AUTH_TRUSTED_PROXY_CIDRS)
 
 # ---------------------------------------------------------------------------
 # Dependencias primitivas
@@ -117,6 +122,20 @@ def get_token_manager() -> ITokenManager:
 def get_password_manager() -> IPasswordManager:
     """Verificador de contraseñas."""
     return PasslibPasswordManager()
+
+
+def get_login_rate_limiter(db: Session = Depends(get_db)) -> ILoginRateLimiter:
+    """Shared, transactional admission across API processes."""
+    return SQLAlchemyLoginRateLimiter(
+        db,
+        max_attempts=settings.LOGIN_RATE_LIMIT_MAX_ATTEMPTS,
+        window_seconds=settings.LOGIN_RATE_LIMIT_WINDOW_SECONDS,
+    )
+
+
+def get_trusted_proxy_cidrs():
+    """Redes desde las que se aceptan cabeceras de IP reenviada."""
+    return _trusted_proxy_cidrs
 
 
 def get_email_sender() -> IEmailSender:
